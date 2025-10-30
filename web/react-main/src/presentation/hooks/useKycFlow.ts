@@ -68,6 +68,8 @@ function reduce(state: State, action: Action): State {
     }
 }
 
+// TODO: Make delayed parallel request to gateway
+
 export function useKycFlow() {
     const [state, dispatch] = useReducer(reduce, initialState);
     const ports = useMemo(() => ({
