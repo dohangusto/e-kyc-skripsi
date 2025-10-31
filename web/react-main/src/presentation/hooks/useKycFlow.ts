@@ -36,6 +36,7 @@ type Action =
     | { type: "SET_KTP", file?: File}
     | { type: "SET_SELFIE", file?: File}
     | { type: "SET_OCR", ocr: OcrResult}
+    | { type: "PATCH_OCR"; patch: Partial<{ number: string; name: string; birthDate: string; address: string }> }
     | { type: "SET_FACE", face: FaceMatchingScore}
     | { type: "SET_LIVE", live: LivenessResult}
     | { type: "PATCH_APPLICANT", patch: Partial<Applicant>}
@@ -58,6 +59,9 @@ function reduce(state: State, action: Action): State {
         case "SET_KTP": return { ...state, artifacts: { ...state.artifacts, ktpImage: action.file } };
         case "SET_SELFIE": return { ...state, artifacts: { ...state.artifacts, selfieImage: action.file } };
         case "SET_OCR": return { ...state, ocr: action.ocr };
+        case "PATCH_OCR": {
+            return { ...state, ocr: { ...state.ocr, ...action.patch } };
+        }
         case "SET_FACE": return { ...state, face: action.face };
         case "SET_LIVE": return { ...state, live: action.live };
         case "PATCH_APPLICANT": return { ...state, applicantDraft: { ...state.applicantDraft, ...action.patch } };
