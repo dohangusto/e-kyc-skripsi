@@ -63,7 +63,7 @@ function reduce(state: State, action: Action): State {
         case "PATCH_APPLICANT": return { ...state, applicantDraft: { ...state.applicantDraft, ...action.patch } };
         case "SUBMIT_START": return { ...state, submitting: true, error: undefined };
         case "SUBMIT_SUCCESS": return { ...state, submitting: false, submissionId: action.id, step: "DONE" };
-        case "SUBMIT_FAIL": return { ...state, submitting: false, error: action.error };
+        case "SUBMIT_FAIL": return {...state, submitting: false, error: action.error };
         default: return state;
     }
 }
