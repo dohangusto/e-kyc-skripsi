@@ -1,3 +1,12 @@
+// === INSTALL STEPS (already shared before) ===
+// npm i lucide-react framer-motion
+// npx shadcn@latest init
+// npx shadcn@latest add button card input textarea label badge progress alert
+// Tailwind v4 (Opsi A) already set.
+
+// ========= Revised Wizard (camera-first, better reviews) =========
+// File: src/presentation/pages/OnboardingWizard.tsx
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useKycFlow, ALL_STEPS, type StepKey } from "@presentation/hooks/useKycFlow";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,8 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload, IdCard, Camera, ScanFace, ShieldCheck, Check, User2, AlertTriangle, Repeat } from "lucide-react";
 import { motion } from "framer-motion";
-
-import { cameraManager } from "@/shared/utils";
 
 export default function OnboardingWizard() {
   const { state, dispatch, uc } = useKycFlow();
@@ -27,7 +34,10 @@ export default function OnboardingWizard() {
                 <CardTitle className="text-2xl">E-KYC Onboarding</CardTitle>
                 <CardDescription>Camera-first • Clean Architecture • shadcn/ui</CardDescription>
               </div>
-              <Badge variant="secondary" className="rounded-full">{labelFor(state.step)}</Badge>
+              <div className="flex items-center gap-2">
+                <DarkModeToggle />
+                <Badge variant="secondary" className="rounded-full">{labelFor(state.step)}</Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -42,7 +52,6 @@ export default function OnboardingWizard() {
                   dispatch({ type: "SET_KTP", file });
                   const ocr = await uc.extractKtp(file);
                   dispatch({ type: "SET_OCR", ocr });
-				  cameraManager.stopAll();
                   dispatch({ type: "NEXT" });
                 }}
               />
@@ -69,7 +78,6 @@ export default function OnboardingWizard() {
                 onCapture={(blob) => {
                   const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
                   dispatch({ type: "SET_SELFIE", file });
-				  cameraManager.stopAll();
                   dispatch({ type: "NEXT" });
                 }}
               />
@@ -93,7 +101,6 @@ export default function OnboardingWizard() {
               <LivenessStep
                 onBack={() => dispatch({ type: "BACK" })}
                 onResult={(passed, signal) => {
-				  cameraManager.stopAll();
                   dispatch({ type: "SET_LIVE", live: { passed, signal } });
                   dispatch({ type: "NEXT" });
                 }}
@@ -120,7 +127,6 @@ export default function OnboardingWizard() {
                 }}
                 onBack={() => dispatch({ type: "BACK" })}
                 onSubmit={async () => {
-					cameraManager.stopAll();
                   try {
                     dispatch({ type: "SUBMIT_START" });
                     const applicant = {
@@ -199,14 +205,17 @@ function Section({ icon, title, desc, children }: { icon: React.ReactNode; title
  **************************/
 function KtpCaptureStep({ onCapture }: { onCapture: (blob: Blob) => void }) {
   return (
-    <Section icon={<IdCard className="w-5 h-5" />} title="Ambil Foto KTP" desc="Posisikan KTP di dalam frame. Hindari glare & blur.">
-      <CameraCapture
-        variant="ktp"
-        onCapture={onCapture}
-      />
+    <Section
+      icon={<IdCard className="w-5 h-5" />}
+      title="Ambil Foto KTP"
+      desc="Posisikan KTP di dalam frame. Silahkan capture saat KTP stabil, terang, dan tajam."
+    >
+      <CameraCapture variant="ktp" onCapture={onCapture} />
       <Alert>
         <AlertTitle>Tips</AlertTitle>
-        <AlertDescription>Letakkan KTP di permukaan datar, pencahayaan merata, dan hindari pantulan cahaya.</AlertDescription>
+        <AlertDescription>
+          Letakkan KTP di permukaan datar, pencahayaan merata, hindari pantulan. Ikon reticle akan hijau saat kondisi bagus.
+        </AlertDescription>
       </Alert>
     </Section>
   );
@@ -246,7 +255,11 @@ function Field({ label, value, className }: { label: string; value?: string; cla
  ****************************************/
 function SelfieCaptureStep({ onBack, onCapture }: { onBack: () => void; onCapture: (blob: Blob) => void }) {
   return (
-    <Section icon={<Camera className="w-5 h-5" />} title="Selfie sambil memegang KTP" desc="Posisikan wajah di dalam oval guide dan pegang KTP dengan jelas.">
+    <Section
+      icon={<Camera className="w-5 h-5" />}
+      title="Selfie + Pegang KTP"
+      desc="Posisikan wajah di dalam oval guide. Pastikan dalam kondisi terang, dan kamera stabil."
+    >
       <CameraCapture variant="selfie" onCapture={onCapture} />
       <div className="flex gap-2">
         <Button variant="secondary" onClick={onBack}>Kembali</Button>
@@ -440,14 +453,29 @@ function DoneStep({ id }: { id: string }) {
     </div>
   );
 }
+/* *************************************
+ * CAMERA COMPONENT (shared) — Manual capture only
+ * Quality indicators: Brightness, Sharpness, Stability
+ * NO auto-capture, NO countdown
+ ************************************* */
 
-/****************************************
- * CAMERA COMPONENT (shared)
- ****************************************/
+const cameraManager = {
+  streams: new Set<MediaStream>(),
+  register(s: MediaStream) { this.streams.add(s); },
+  unregister(s?: MediaStream | null) { if (!s) return; s.getTracks().forEach(t => t.stop()); this.streams.delete(s); },
+  stopAll() { this.streams.forEach(s => s.getTracks().forEach(t => t.stop())); this.streams.clear(); },
+};
+
+type CaptureProps = {
+  variant: "ktp" | "selfie";
+  onCapture?: (blob: Blob) => void;
+  liveOnly?: boolean;
+};
+
 function CameraCapture({
-  variant,          // "ktp" | "selfie"
-  onCapture,        // dipakai di KTP & Selfie (sekali foto)
-  liveOnly,         // true untuk Liveness (stream terus)
+  variant,
+  onCapture,
+  liveOnly,
 }: {
   variant: "ktp" | "selfie";
   onCapture?: (blob: Blob) => void;
@@ -456,100 +484,233 @@ function CameraCapture({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const startSeq = useRef(0);
 
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
+  const [bright, setBright] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
+
+  // ---------------------------
+  // Stream helpers
+  // ---------------------------
+  function stopRaf() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+  }
+
+  async function pauseAndDetach(video?: HTMLVideoElement | null) {
+    if (!video) return;
+    try {
+      await video.pause();
+    } catch {}
+    (video as any).srcObject = null;
+    video.removeAttribute("src");
+  }
+
+  function stopStream(s?: MediaStream | null) {
+    const st = s ?? streamRef.current;
+    if (st) st.getTracks().forEach((t) => t.stop());
+    if (!s) streamRef.current = null;
+  }
+
+  async function attachStream(video: HTMLVideoElement, stream: MediaStream) {
+    (video as any).srcObject = stream;
+    // tunggu metadata sebelum play agar stabil di Safari/Chrome
+    await new Promise<void>((res) => {
+      if (video.readyState >= 1) return res(); // HAVE_METADATA
+      const onMeta = () => {
+        video.removeEventListener("loadedmetadata", onMeta);
+        res();
+      };
+      video.addEventListener("loadedmetadata", onMeta);
+    });
+    try {
+      await video.play();
+    } catch (e: any) {
+      // abaikan warning Chrome saat switch cepat
+      if (!/AbortError|NotAllowedError/.test(e?.name || "")) throw e;
+    }
+  }
+
+  async function startStream(opts: { deviceId?: string; facingMode?: any }) {
+    stopRaf();
+    const video = videoRef.current;
+    const mySeq = ++startSeq.current;
+
+    await pauseAndDetach(video);
+    stopStream();
+
+    const constraints: MediaStreamConstraints = {
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        ...(opts.deviceId ? { deviceId: { exact: opts.deviceId } } : {}),
+        ...(opts.facingMode ? { facingMode: opts.facingMode } : {}),
+      },
+      audio: false,
+    };
+
+    try {
+      const s = await navigator.mediaDevices.getUserMedia(constraints);
+      if (mySeq !== startSeq.current) {
+        s.getTracks().forEach((t) => t.stop());
+        return null;
+      }
+
+      streamRef.current = s;
+      if (video) await attachStream(video, s);
+      startBrightnessLoop();
+
+      return s;
+    } catch (e: any) {
+      if (e?.name === "AbortError") return null; // normal saat switch cepat
+      setError(e?.message ?? "Tidak dapat mengakses kamera");
+      return null;
+    }
+  }
+
+  // ---------------------------
+  // Brightness monitor
+  // ---------------------------
+  function startBrightnessLoop() {
+    stopRaf();
+    const loop = () => {
+      rafRef.current = requestAnimationFrame(loop);
+      const v = videoRef.current;
+      const c = canvasRef.current;
+      if (!v || !c) return;
+
+      c.width = 64;
+      c.height = 48;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      const data = ctx.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 4)
+        sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
+      const avg = sum / (data.length / 4);
+      setBright(avg > 50);
+    };
+    loop();
+  }
+
+  // ---------------------------
+  // Lifecycle
+  // ---------------------------
   useEffect(() => {
     let mounted = true;
     (async () => {
-      try {
-        const constraints: MediaStreamConstraints = {
-          video: {
-            facingMode: variant === "ktp" ? { ideal: "environment" } : { ideal: "user" },
-            width: { ideal: 1280 }, height: { ideal: 720 },
-          },
-          audio: false,
-        };
-        const s = await navigator.mediaDevices.getUserMedia(constraints);
-        if (!mounted) {
-          s.getTracks().forEach(t => t.stop());
-          return;
-        }
-        streamRef.current = s;
-        cameraManager.register(s);
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-          await videoRef.current.play();
-        }
-      } catch (e: any) {
-        setError(e?.message ?? "Tidak dapat mengakses kamera");
-      }
+      const s = await startStream({
+        facingMode: selectedDeviceId
+          ? undefined
+          : variant === "ktp"
+          ? { ideal: "environment" }
+          : { ideal: "user" },
+        deviceId: selectedDeviceId,
+      });
+      if (!mounted && s) s.getTracks().forEach((t) => t.stop());
+
+      const ds = await navigator.mediaDevices.enumerateDevices();
+      setDevices(ds.filter((d) => d.kind === "videoinput"));
     })();
 
-    // stop stream saat komponen unmount / ganti variant
     return () => {
       mounted = false;
-      if (streamRef.current) {
-        cameraManager.unregister(streamRef.current);
-        streamRef.current = null;
-      }
-      if (capturedUrl) URL.revokeObjectURL(capturedUrl);
+      stopRaf();
+      pauseAndDetach(videoRef.current);
+      stopStream();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variant]);
 
+  useEffect(() => {
+    if (!selectedDeviceId) return;
+    startStream({ deviceId: selectedDeviceId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDeviceId]);
+
+  // ---------------------------
+  // Capture
+  // ---------------------------
   async function handleCapture() {
-    if (!videoRef.current || !canvasRef.current || !onCapture) return;
+    if (!videoRef.current || !onCapture) return;
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    const W = video.videoWidth; const H = video.videoHeight;
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(video, 0, 0, W, H);
-
+    const off = document.createElement("canvas");
+    off.width = video.videoWidth;
+    off.height = video.videoHeight;
+    const ctx = off.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
     const blob = await new Promise<Blob>((res) =>
-      canvas.toBlob((b) => res(b!), "image/jpeg", 0.9)
+      off.toBlob((b) => res(b!), "image/jpeg", 0.9)
     );
     const url = URL.createObjectURL(blob);
     if (capturedUrl) URL.revokeObjectURL(capturedUrl);
     setCapturedUrl(url);
     onCapture(blob);
-
-    // kalau bukan live streaming, matikan kamera langsung setelah capture
-    if (!liveOnly && streamRef.current) {
-      cameraManager.unregister(streamRef.current);
-      streamRef.current = null;
-    }
   }
 
   function handleStop() {
-    if (streamRef.current) {
-      cameraManager.unregister(streamRef.current);
-      streamRef.current = null;
-    }
+    stopRaf();
+    pauseAndDetach(videoRef.current);
+    stopStream();
   }
+
+  // ---------------------------
+  // Render
+  // ---------------------------
+  const showErr = error && !/aborted|interrupted/i.test(String(error));
 
   return (
     <div className="w-full">
       <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
-        <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-        {variant === "ktp" ? <KtpOverlay /> : <SelfieOverlay />}
+        <video
+          ref={videoRef}
+          className={`w-full h-full object-cover ${
+            variant === "selfie" ? "-scale-x-100" : ""
+          }`}
+          playsInline
+          muted
+        />
+        {variant === "ktp" ? (
+          <KtpOverlay ok={bright} />
+        ) : (
+          <SelfieOverlay ok={bright} />
+        )}
       </div>
 
-      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+      {showErr && <p className="text-sm text-red-600 mt-2">{error}</p>}
 
-      {!liveOnly ? (
-        <div className="flex gap-2 mt-3">
-          <Button onClick={handleCapture}>Capture</Button>
-          <Button variant="secondary" onClick={handleStop}>Lepaskan Kamera</Button>
-          {capturedUrl && <img src={capturedUrl} alt="preview" className="h-16 rounded border" />}
-        </div>
-      ) : (
-        <div className="flex gap-2 mt-3">
-          <Button variant="secondary" onClick={handleStop}>Lepaskan Kamera</Button>
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-2 mt-3">
+        <label className="text-sm text-slate-600">Kamera:</label>
+        <select
+          className="border rounded px-2 py-1 text-sm"
+          value={selectedDeviceId ?? ""}
+          onChange={(e) =>
+            setSelectedDeviceId(e.target.value || undefined)
+          }
+        >
+          {!devices.length && <option value="">(Tidak ada kamera)</option>}
+          {devices.map((d, idx) => (
+            <option key={d.deviceId || idx} value={d.deviceId}>
+              {d.label || `Kamera ${idx + 1}`}
+            </option>
+          ))}
+        </select>
+
+        {!liveOnly && (
+          <>
+            <Button onClick={handleCapture}>Capture</Button>
+            <Button variant="secondary" onClick={handleStop}>
+              Lepaskan Kamera
+            </Button>
+          </>
+        )}
+      </div>
 
       <canvas ref={canvasRef} className="hidden" />
     </div>
@@ -557,29 +718,77 @@ function CameraCapture({
 }
 
 
-function KtpOverlay() {
-  // 85.6 × 54 mm → aspect ≈ 1.586
+function QualityBadges({ status, selfie }: { status: {bright:boolean; sharp:boolean; still:boolean}; selfie?: boolean }) {
   return (
-    <div className="absolute inset-0 grid place-items-center pointer-events-none">
-      <div className="relative w-[80%] aspect-[1.586] rounded-md border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
+    <div className="flex items-center gap-2 text-xs">
+      <Badge variant={status.bright ? "default" : "secondary"}>Brightness {status.bright ? "OK" : "Low"}</Badge>
+      <Badge variant={status.sharp ? "default" : "secondary"}>Sharpness {status.sharp ? "OK" : "Blur"}</Badge>
+      {!selfie && <Badge variant={status.still ? "default" : "secondary"}>Stability {status.still ? "OK" : "Move"}</Badge>}
     </div>
   );
 }
 
-function SelfieOverlay() {
+function KtpOverlay({ ok }: { ok: boolean }) {
   return (
     <div className="absolute inset-0 grid place-items-center pointer-events-none">
-      <div className="relative w-[55%] aspect-square rounded-full border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
+      <div className={"relative w-[80%] aspect-[1.586] rounded-md border-2 " + (ok ? "border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" : "border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]") }>
+        <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-current"></div>
+        <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-current"></div>
+        <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-current"></div>
+        <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-current"></div>
+      </div>
+    </div>
+  );
+}
+
+function SelfieOverlay({ ok }: { ok: boolean }) {
+  return (
+    <div className="absolute inset-0 grid place-items-center pointer-events-none">
+      <div className={"relative w-[55%] aspect-square rounded-full border-4 " + (ok ? "border-emerald-400" : "border-white/90")}></div>
     </div>
   );
 }
 
 /**************** helpers ****************/
-function shuffle<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+function estimateBrightness(img: ImageData) {
+  const d = img.data; let sum = 0; const n = d.length/4;
+  for (let i=0;i<d.length;i+=4){ sum += 0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2]; }
+  return (sum/n)/2.55; // ≈ 0..100
 }
+function estimateSharpness(img: ImageData) {
+  const { data, width, height } = img; let acc = 0; let count = 0;
+  for (let y=1;y<height-1;y+=2){ for (let x=1;x<width-1;x+=2){
+    const gx = grayAt(data,width,x+1,y) - grayAt(data,width,x-1,y);
+    const gy = grayAt(data,width,x,y+1) - grayAt(data,width,x,y-1);
+    acc += Math.sqrt(gx*gx+gy*gy); count++;
+  }}
+  return acc / (count||1) / 4; // higher = sharper
+}
+function estimateMotion(img: ImageData) {
+  if (!(estimateMotion as any).prev) { (estimateMotion as any).prev = img; return 999; }
+  const prev: ImageData = (estimateMotion as any).prev; (estimateMotion as any).prev = img;
+  const { data, width, height } = img; const p = prev.data;
+  let acc = 0; let n = 0;
+  for (let y=0;y<height;y+=3){ for (let x=0;x<width;x+=3){
+    const i = (y*width + x)*4;
+    const g = 0.2126*data[i] + 0.7152*data[i+1] + 0.0722*data[i+2];
+    const h = 0.2126*p[i] + 0.7152*p[i+1] + 0.0722*p[i+2];
+    acc += Math.abs(g-h); n++;
+  }}
+  return acc/(n||1)/2.55; // 0..100 (lower = more stable)
+}
+function grayAt(d: Uint8ClampedArray, w: number, x: number, y: number){
+  const i=(y*w+x)*4; return 0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
+}
+
+function shuffle<T>(arr: T[]): T[] { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+function DarkModeToggle(){
+  const [dark,setDark]=useState(() => document.documentElement.classList.contains('dark'));
+  return (
+    <Button variant="secondary" onClick={()=>{ document.documentElement.classList.toggle('dark'); setDark(d=>!d); }}>
+      {dark ? '🌙' : '☀️'}
+    </Button>
+  );
+}
