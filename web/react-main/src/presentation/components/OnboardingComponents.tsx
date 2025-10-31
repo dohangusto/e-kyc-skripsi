@@ -18,7 +18,7 @@ import { CalendarIcon, PencilLine } from "lucide-react"
 
 import { sleep, shuffle } from "@shared/utils";
 
-import { CameraCapture } from "@presentation/components/CameraComponents";
+import { CameraCapture } from "@presentation/components/camera/CameraComponents";
 
 
 function Section({ icon, title, desc, children }: { icon: React.ReactNode; title: string; desc?: string; children: React.ReactNode }) {
@@ -47,6 +47,9 @@ export function KtpCaptureStep({ onCapture }: { onCapture: (blob: Blob) => void 
       desc="Posisikan KTP di dalam frame. Silahkan capture saat KTP stabil, terang, dan tajam."
     >
       <CameraCapture variant="ktp" onCapture={onCapture} />
+      <p className="text-xs text-slate-500">
+        <span className="font-semibold text-slate-600">Keamanan:</span> Foto hanya digunakan untuk verifikasi penerima bantuan sosial dan tidak disimpan di perangkat Anda.
+      </p>
       <Alert>
         <AlertTitle>Tips</AlertTitle>
         <AlertDescription>
@@ -223,6 +226,9 @@ export function SelfieCaptureStep({ onBack, onCapture }: { onBack: () => void; o
       desc="Posisikan wajah di dalam oval guide. Pastikan dalam kondisi terang, dan kamera stabil."
     >
       <CameraCapture variant="selfie" onCapture={onCapture} />
+      <p className="text-xs text-slate-500">
+        <span className="font-semibold text-slate-600">Keamanan:</span> Foto hanya digunakan untuk verifikasi bansos dan tidak disimpan di perangkat Anda.
+      </p>
       <div className="flex gap-2">
         <Button variant="secondary" onClick={onBack}>Kembali</Button>
       </div>
@@ -290,6 +296,9 @@ export function LivenessStep({ onBack, onResult }: { onBack: () => void; onResul
   return (
     <Section icon={<ShieldCheck className="w-5 h-5" />} title="Liveness Detection" desc="Ikuti instruksi gestur secara berurutan.">
       <CameraCapture variant="selfie" liveOnly />
+      <p className="text-xs text-slate-500">
+        <span className="font-semibold text-slate-600">Keamanan:</span> Streaming kamera live hanya dipakai untuk memastikan pemegang KTP adalah Anda sendiri.
+      </p>
       <div className="p-3 rounded bg-slate-50 border">
         <p className="text-sm mb-2"><strong>Instruksi:</strong> {current ?? "—"}</p>
         <div className="flex gap-2 flex-wrap">
@@ -409,14 +418,23 @@ function Verdict({ title, ok, okText, badText }: { title: string; ok: boolean; o
 /****************************************
  * 8) DONE
  ****************************************/
-export function DoneStep({ id }: { id: string }) {
+export function DoneStep({ id, onViewDashboard }: { id: string; onViewDashboard?: () => void }) {
   return (
-    <div className="text-center space-y-2 py-8">
+    <div className="text-center space-y-4 py-8">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100">
         <Check className="w-8 h-8" />
       </div>
       <h3 className="text-2xl font-semibold">Verifikasi Terkirim</h3>
       <p className="text-slate-600">ID Pengajuan: {id}</p>
+      <div className="max-w-md mx-auto space-y-2 text-sm text-slate-500">
+        <p>Data Anda akan diverifikasi oleh petugas dinas sosial dalam waktu 1–2 hari kerja.</p>
+        <p>Pastikan nomor HP Anda aktif untuk menerima konfirmasi lanjutan.</p>
+      </div>
+      {onViewDashboard && (
+        <div className="pt-4">
+          <Button onClick={onViewDashboard}>Lihat Status Pengajuan</Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -213,9 +213,7 @@ export function CameraCapture({
       <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
         <video
           ref={videoRef}
-          className={`w-full h-full object-cover ${
-            variant === "selfie" ? "-scale-x-100" : ""
-          }`}
+          className="w-full h-full object-cover"
           playsInline
           muted
         />
