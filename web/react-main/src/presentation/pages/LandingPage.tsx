@@ -1,13 +1,23 @@
-import { ShieldCheck, Smartphone, Clock, Users } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { ShieldCheck, Smartphone, Clock, Users, MessageCircleMore } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type LandingPageProps = {
   onStart: () => void;
   onViewDashboard?: () => void;
+  onLogin?: (payload: { phone: string; pin: string }) => void;
   hasSubmission?: boolean;
+  pinError?: string | null;
+  canAccessDashboard?: boolean;
+  onRequestOtp?: (phone: string) => { phone: string; code: string } | null;
+  onVerifyOtp?: (payload: { phone: string; code: string }) => void;
+  otpError?: string | null;
+  otpInfo?: { phone: string; code: string } | null;
 };
 
 const highlights = [
@@ -33,7 +43,60 @@ const highlights = [
   },
 ];
 
-export function LandingPage({ onStart, onViewDashboard, hasSubmission }: LandingPageProps) {
+function maskPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 4) return digits || "-";
+  const visible = digits.slice(-4);
+  return `****${visible}`;
+}
+
+export function LandingPage({
+  onStart,
+  onViewDashboard,
+  onLogin,
+  hasSubmission,
+  pinError,
+  canAccessDashboard,
+  onRequestOtp,
+  onVerifyOtp,
+  otpError,
+  otpInfo,
+}: LandingPageProps) {
+  const [pinPhone, setPinPhone] = useState("");
+  const [pinValue, setPinValue] = useState("");
+
+  const [otpPhone, setOtpPhone] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpMessage, setOtpMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (otpInfo) {
+      setOtpMessage(`OTP untuk ${maskPhone(otpInfo.phone)} (simulasi): ${otpInfo.code}`);
+      setOtpCode(otpInfo.code);
+    } else {
+      setOtpMessage(null);
+    }
+  }, [otpInfo]);
+
+  function handlePinLogin(e: FormEvent) {
+    e.preventDefault();
+    onLogin?.({ phone: pinPhone, pin: pinValue });
+  }
+
+  function handleRequestOtp() {
+    if (!onRequestOtp) return;
+    const res = onRequestOtp(otpPhone);
+    if (res) {
+      setOtpMessage(`OTP untuk ${maskPhone(res.phone)} (simulasi): ${res.code}`);
+      setOtpCode(res.code);
+    }
+  }
+
+  function handleOtpSubmit(e: FormEvent) {
+    e.preventDefault();
+    onVerifyOtp?.({ phone: otpPhone, code: otpCode });
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
       <header className="border-b bg-white/80 backdrop-blur">
@@ -51,9 +114,9 @@ export function LandingPage({ onStart, onViewDashboard, hasSubmission }: Landing
             <Button variant="secondary" onClick={onStart}>
               Mulai Verifikasi
             </Button>
-            {hasSubmission && onViewDashboard && (
-              <Button variant="outline" onClick={onViewDashboard}>
-                Lihat Status Pengajuan
+            {onViewDashboard && (
+              <Button variant="outline" onClick={onViewDashboard} disabled={!canAccessDashboard}>
+                {canAccessDashboard ? "Masuk / Lanjut ke Dashboard" : "Sudah punya akun? Login di bawah"}
               </Button>
             )}
           </div>
@@ -88,15 +151,14 @@ export function LandingPage({ onStart, onViewDashboard, hasSubmission }: Landing
               <Button size="lg" onClick={onStart}>
                 Mulai Verifikasi Sekarang
               </Button>
-              {hasSubmission && onViewDashboard ? (
-                <Button size="lg" variant="outline" onClick={onViewDashboard}>
-                  Lihat Status Pengajuan
-                </Button>
-              ) : (
-                <Button size="lg" variant="outline">
-                  Panduan Tahapan
-                </Button>
-              )}
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={onViewDashboard}
+                disabled={!canAccessDashboard}
+              >
+                {canAccessDashboard ? "Masuk / Lanjut ke Dashboard" : "Sudah punya akun? Login di bawah"}
+              </Button>
             </div>
           </motion.div>
           <motion.div
@@ -133,6 +195,122 @@ export function LandingPage({ onStart, onViewDashboard, hasSubmission }: Landing
           </motion.div>
         </section>
 
+        <section className="grid lg:grid-cols-2 gap-8">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+          >
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Login dengan PIN</p>
+              <h3 className="text-lg font-semibold text-slate-900">Gunakan Nomor HP &amp; PIN</h3>
+              <p className="text-sm text-slate-600">
+                Jika sudah menyelesaikan verifikasi dan membuat PIN di dashboard, masukkan nomor HP dan PIN 6 digit untuk melihat status bansos.
+              </p>
+            </div>
+            <form className="space-y-4" onSubmit={handlePinLogin}>
+              <div className="space-y-2">
+                <Label htmlFor="login-phone">Nomor HP</Label>
+                <Input
+                  id="login-phone"
+                  inputMode="tel"
+                  placeholder="08xxxxxxxxxx"
+                  value={pinPhone}
+                  onChange={(e) => setPinPhone(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-pin">PIN (6 digit)</Label>
+                <Input
+                  id="login-pin"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="******"
+                  value={pinValue}
+                  onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
+                  required
+                />
+              </div>
+              {pinError && (
+                <p className="text-sm text-red-600">{pinError}</p>
+              )}
+              <Button type="submit" className="w-full">
+                Masuk dengan PIN
+              </Button>
+            </form>
+            <div className="text-xs text-slate-500">
+              Belum membuat PIN? Masuk dengan opsi OTP di samping, lalu atur PIN dari dashboard.
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+          >
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Login tanpa PIN</p>
+              <h3 className="text-lg font-semibold text-slate-900">Simulasi OTP ke Nomor HP</h3>
+              <p className="text-sm text-slate-600">
+                Gunakan opsi ini bila Anda belum sempat membuat PIN. Masukkan nomor HP untuk menerima kode OTP (ditampilkan sebagai simulasi).
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otp-phone">Nomor HP</Label>
+                <Input
+                  id="otp-phone"
+                  inputMode="tel"
+                  placeholder="08xxxxxxxxxx"
+                  value={otpPhone}
+                  onChange={(e) => setOtpPhone(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={handleRequestOtp}>
+                  Kirim OTP
+                </Button>
+                {otpMessage && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-600">
+                    <MessageCircleMore className="h-3.5 w-3.5" /> {otpMessage}
+                  </div>
+                )}
+              </div>
+              <form className="space-y-3" onSubmit={handleOtpSubmit}>
+                <div className="space-y-2">
+                  <Label htmlFor="otp-code">Masukkan OTP</Label>
+                  <Input
+                    id="otp-code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="******"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    required
+                  />
+                </div>
+                {otpError && <p className="text-sm text-red-600">{otpError}</p>}
+                <Button type="submit" className="w-full">
+                  Masuk dengan OTP
+                </Button>
+              </form>
+            </div>
+          </motion.div>
+
+          {hasSubmission && (
+            <div className="lg:col-span-2 text-xs text-slate-500 px-2">
+              Sistem mendeteksi pengajuan sebelumnya. Anda bisa masuk dengan PIN yang sudah dibuat, atau gunakan OTP di atas bila belum sempat menyetel PIN.
+            </div>
+          )}
+        </section>
+
         <section className="grid md:grid-cols-2 gap-6">
           {highlights.map(({ icon: Icon, title, description }) => (
             <motion.div
@@ -154,29 +332,37 @@ export function LandingPage({ onStart, onViewDashboard, hasSubmission }: Landing
           ))}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-slate-900 text-white px-8 py-12 shadow-lg">
-          <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
-            <div className="space-y-3">
-              <p className="text-sm uppercase tracking-wide text-emerald-200">Transparansi & Akuntabilitas</p>
-              <h3 className="text-2xl font-semibold">Kenapa verifikasi digital ini penting?</h3>
-              <p className="text-sm text-slate-200 leading-relaxed max-w-xl">
-                Digital onboarding membantu memastikan bantuan sosial tepat sasaran,
-                mengurangi duplikasi penerima, dan mempercepat proses evaluasi lapangan.
-                Setiap permohonan tetap diverifikasi manual oleh petugas sebelum pencairan.
-              </p>
+        <section className="grid md:grid-cols-2 gap-6">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-3xl border border-slate-200 bg-slate-900 text-white px-8 py-12 shadow-lg md:col-span-2"
+          >
+            <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
+              <div className="space-y-3">
+                <p className="text-sm uppercase tracking-wide text-emerald-200">Transparansi &amp; Akuntabilitas</p>
+                <h3 className="text-2xl font-semibold">Kenapa verifikasi digital ini penting?</h3>
+                <p className="text-sm text-slate-200 leading-relaxed max-w-xl">
+                  Digital onboarding membantu memastikan bantuan sosial tepat sasaran,
+                  mengurangi duplikasi penerima, dan mempercepat proses evaluasi lapangan.
+                  Setiap permohonan tetap diverifikasi manual oleh petugas sebelum pencairan.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-5 border border-white/10 space-y-3">
+                <h4 className="text-sm font-semibold text-emerald-200">Dokumen Panduan</h4>
+                <ul className="text-xs text-slate-200 space-y-2">
+                  <li>• Pedoman Verifikasi Penerima Bansos 2024</li>
+                  <li>• SOP Perlindungan Data Pribadi Dinas Sosial</li>
+                  <li>• Formulir Pernyataan Keabsahan Data</li>
+                </ul>
+                <Button size="sm" variant="secondary" className="w-full">
+                  Unduh Surat Edaran
+                </Button>
+              </div>
             </div>
-            <div className="rounded-2xl bg-white/10 p-5 border border-white/10 space-y-3">
-              <h4 className="text-sm font-semibold text-emerald-200">Dokumen Panduan</h4>
-              <ul className="text-xs text-slate-200 space-y-2">
-                <li>• Pedoman Verifikasi Penerima Bansos 2024</li>
-                <li>• SOP Perlindungan Data Pribadi Dinas Sosial</li>
-                <li>• Formulir Pernyataan Keabsahan Data</li>
-              </ul>
-              <Button size="sm" variant="secondary" className="w-full">
-                Unduh Surat Edaran
-              </Button>
-            </div>
-          </div>
+          </motion.div>
         </section>
       </main>
 

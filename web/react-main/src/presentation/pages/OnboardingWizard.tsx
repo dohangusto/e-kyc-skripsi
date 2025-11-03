@@ -27,7 +27,11 @@ export type CompletionPayload = {
   livenessPassed: boolean;
 };
 
-export default function OnboardingWizard({ onComplete }: { onComplete?: (payload: CompletionPayload) => void }) {
+type OnboardingWizardProps = {
+  onComplete?: (payload: CompletionPayload) => void;
+};
+
+export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   return (
     <KycFlowProvider>
       <WizardSurface onComplete={onComplete} />
@@ -35,7 +39,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete?: (payload
   );
 }
 
-function WizardSurface({ onComplete }: { onComplete?: (payload: CompletionPayload) => void }) {
+function WizardSurface({ onComplete }: OnboardingWizardProps) {
   const { state, dispatch, uc } = useKycFlow();
   const {
     step,
@@ -152,13 +156,14 @@ function WizardSurface({ onComplete }: { onComplete?: (payload: CompletionPayloa
                 };
                 const res = await uc.submitKyc(applicant, artifacts);
                 dispatch({ type: "SUBMIT_SUCCESS", id: res.id });
-                const payload: CompletionPayload = {
+                const draft: CompletionPayload = {
                   submissionId: res.id,
                   applicant,
                   faceMatchPassed: !!face ? face.score >= (face.threshold ?? 0) : true,
                   livenessPassed: !!live?.passed,
                 };
-                setCompletion(payload);
+                setCompletion(draft);
+                onComplete?.(draft);
               } catch (e: any) {
                 dispatch({ type: "SUBMIT_FAIL", error: e?.message ?? "Unknown error" });
               }
@@ -168,7 +173,12 @@ function WizardSurface({ onComplete }: { onComplete?: (payload: CompletionPayloa
           />
         );
       case "DONE":
-        return <DoneStep id={submissionId!} onViewDashboard={() => completion && onComplete?.(completion)} />;
+        return (
+          <DoneStep
+            id={submissionId!}
+            applicant={completion?.applicant}
+          />
+        );
       default:
         return null;
     }
@@ -182,7 +192,7 @@ function WizardSurface({ onComplete }: { onComplete?: (payload: CompletionPayloa
             <div className="flex items-start justify-between gap-4">
               <div>
                 <CardTitle className="text-2xl">E-KYC Onboarding</CardTitle>
-                <CardDescription>Verify your identity right now beach!</CardDescription>
+                <CardDescription>Verifikasi digital penerima bantuan sosial</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <DarkModeToggle />

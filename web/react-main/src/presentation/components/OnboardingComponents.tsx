@@ -418,7 +418,13 @@ function Verdict({ title, ok, okText, badText }: { title: string; ok: boolean; o
 /****************************************
  * 8) DONE
  ****************************************/
-export function DoneStep({ id, onViewDashboard }: { id: string; onViewDashboard?: () => void }) {
+export function DoneStep({
+  id,
+  applicant,
+}: {
+  id: string;
+  applicant?: { phone?: string; name?: string };
+}) {
   return (
     <div className="text-center space-y-4 py-8">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100">
@@ -429,12 +435,15 @@ export function DoneStep({ id, onViewDashboard }: { id: string; onViewDashboard?
       <div className="max-w-md mx-auto space-y-2 text-sm text-slate-500">
         <p>Data Anda akan diverifikasi oleh petugas dinas sosial dalam waktu 1–2 hari kerja.</p>
         <p>Pastikan nomor HP Anda aktif untuk menerima konfirmasi lanjutan.</p>
+        {applicant?.phone && (
+          <p>
+            Nomor HP terdaftar: <span className="font-semibold text-slate-700">{applicant.phone}</span>
+          </p>
+        )}
+        <p>
+          PIN akses dashboard akan dibuat setelah Anda masuk ke dashboard. Ikuti instruksi yang tampil di sana.
+        </p>
       </div>
-      {onViewDashboard && (
-        <div className="pt-4">
-          <Button onClick={onViewDashboard}>Lihat Status Pengajuan</Button>
-        </div>
-      )}
     </div>
   );
 }

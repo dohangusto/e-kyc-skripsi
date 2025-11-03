@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import { Calendar, CheckCircle2, Clock, Download, MapPin, Phone, ShieldCheck, User } from "lucide-react";
 
@@ -18,11 +20,16 @@ export type DashboardData = {
   faceMatchPassed: boolean;
   livenessPassed: boolean;
   submittedAt?: string;
+  pinSet: boolean;
+  surveyCompleted: boolean;
 };
 
 type DashboardPageProps = {
   data: DashboardData;
   onStartNew?: () => void;
+  onLogout?: () => void;
+  onCreatePin?: (pin: string) => void | Promise<void>;
+  onStartSurvey?: () => void;
 };
 
 const scheduleSamples = [
@@ -74,7 +81,7 @@ function formatStatus(status: VerificationStatus): BadgeStyle & { label: string 
   }
 }
 
-export function DashboardPage({ data, onStartNew }: DashboardPageProps) {
+export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStartSurvey }: DashboardPageProps) {
   const status = useMemo(() => formatStatus(data.verificationStatus), [data.verificationStatus]);
   const completion = useMemo(() => {
     const steps = [
@@ -91,6 +98,52 @@ export function DashboardPage({ data, onStartNew }: DashboardPageProps) {
     return "620001234567";
   }, [data.applicant.phone]);
 
+  const needsPin = !data.pinSet;
+  const needsSurvey = !data.surveyCompleted;
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState(false);
+
+  useEffect(() => {
+    setPinError(null);
+  }, [pin, confirmPin]);
+
+  useEffect(() => {
+    if (needsPin) {
+      setPinSuccess(false);
+    }
+  }, [needsPin]);
+
+  const handlePinSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!needsPin) return;
+    if (!/^\d{6}$/.test(pin)) {
+      setPinError("PIN harus 6 digit angka.");
+      return;
+    }
+    if (pin !== confirmPin) {
+      setPinError("PIN dan konfirmasi PIN tidak sama.");
+      return;
+    }
+    if (!onCreatePin) {
+      setPinError("Fitur set PIN belum tersedia.");
+      return;
+    }
+    try {
+      setPinSubmitting(true);
+      await onCreatePin(pin);
+      setPin("");
+      setConfirmPin("");
+      setPinSuccess(true);
+    } catch (err: any) {
+      setPinError(err?.message ?? "Gagal menyimpan PIN.");
+    } finally {
+      setPinSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
       <header className="border-b bg-white/90 backdrop-blur">
@@ -102,15 +155,116 @@ export function DashboardPage({ data, onStartNew }: DashboardPageProps) {
               ID Pengajuan: <span className="font-mono">{data.submissionId}</span>
             </p>
           </div>
-          {onStartNew && (
-            <Button variant="outline" onClick={onStartNew}>
-              Ajukan Verifikasi Baru
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {onLogout && (
+              <Button variant="ghost" onClick={onLogout}>
+                Keluar
+              </Button>
+            )}
+            {onStartNew && (
+              <Button variant="outline" onClick={onStartNew}>
+                Ajukan Verifikasi Baru
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+        {(needsPin || pinSuccess) && (
+          <section>
+            <div
+              className={`rounded-3xl border p-6 shadow-sm ${
+                needsPin
+                  ? "border-amber-300 bg-amber-50"
+                  : "border-emerald-200 bg-emerald-50"
+              }`}
+            >
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="max-w-xl space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-slate-600">
+                    Keamanan Akun
+                  </p>
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    {needsPin ? "Buat PIN 6 digit untuk mengamankan dashboard Anda" : "PIN berhasil disimpan"}
+                  </h2>
+                  <p className="text-sm text-slate-700">
+                    {needsPin
+                      ? "PIN digunakan bersama nomor HP untuk masuk kembali ke dashboard bansos. Wajib dibuat sebelum Anda keluar dari sesi ini."
+                      : "Nomor HP Anda kini terlindungi PIN. Gunakan kombinasi tersebut untuk masuk kembali ke dashboard kapan pun diperlukan."}
+                  </p>
+                </div>
+                {pinSuccess && !needsPin && (
+                  <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700">
+                    ✅ PIN tersimpan. Simpan secara pribadi dan jangan bagikan kepada pihak lain.
+                  </div>
+                )}
+              </div>
+              {needsPin && (
+                <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handlePinSubmit}>
+                  <div className="space-y-2">
+                    <Label htmlFor="pin-new">PIN (6 digit)</Label>
+                    <Input
+                      id="pin-new"
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="******"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pin-confirm">Konfirmasi PIN</Label>
+                    <Input
+                      id="pin-confirm"
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="******"
+                      value={confirmPin}
+                      onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-3">
+                    {pinError && <p className="text-sm text-red-600">{pinError}</p>}
+                    <Button type="submit" className="w-full md:w-auto" disabled={pinSubmitting}>
+                      {pinSubmitting ? "Menyimpan..." : "Simpan PIN Sekarang"}
+                    </Button>
+                    <p className="text-xs text-slate-600">
+                      Simpan PIN dengan aman. Petugas tidak pernah meminta PIN Anda.
+                    </p>
+                  </div>
+                </form>
+              )}
+            </div>
+          </section>
+        )}
+
+        {needsSurvey && (
+          <section>
+            <div className="rounded-3xl border border-indigo-300 bg-indigo-50 p-6 shadow-sm">
+              <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-indigo-600">Survei Sosial Ekonomi</p>
+                  <h2 className="text-xl font-semibold text-indigo-900">Lengkapi survei keluarga Anda</h2>
+                  <p className="text-sm text-indigo-800">
+                    Mohon isi survei kondisi keluarga, pendidikan, tempat tinggal, aset, dan kesehatan.
+                    Data ini membantu Dinas Sosial menilai prioritas penyaluran bantuan.
+                  </p>
+                </div>
+                {onStartSurvey && (
+                  <Button onClick={onStartSurvey} size="lg" className="bg-indigo-600 hover:bg-indigo-700">
+                    Isi Survei Sekarang
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="grid md:grid-cols-3 gap-6">
           <Card className="md:col-span-2 shadow-sm">
             <CardHeader>
