@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import type { Applicant } from "@domain/types";
-import type { SurveyAnswers } from "@domain/entities/account";
+import type { SurveyAnswers, SurveyStatus } from "@domain/entities/account";
 
 type StepKey = "A_IDENTITAS" | "B_KELUARGA" | "C_PEKERJAAN" | "D_ASET" | "E_KESEHATAN";
 
@@ -63,21 +63,54 @@ function createDefaultAnswers(): SurveyAnswers {
 type SurveyPageProps = {
   applicant: Applicant;
   existingAnswers?: SurveyAnswers;
-  onCancel: () => void;
-  onSubmit: (answers: SurveyAnswers) => void;
+  mode?: "fill" | "review";
+  status?: SurveyStatus;
+  onCancel: (draft?: SurveyAnswers) => void;
+  onSaveDraft?: (answers: SurveyAnswers) => void;
+  onSubmit: (answers: SurveyAnswers, status?: SurveyStatus) => void;
 };
 
-export default function SurveyPage({ applicant, existingAnswers, onCancel, onSubmit }: SurveyPageProps) {
+export default function SurveyPage({
+  applicant,
+  existingAnswers,
+  mode = "fill",
+  status = "antrean",
+  onCancel,
+  onSaveDraft,
+  onSubmit,
+}: SurveyPageProps) {
+  const isReview = mode === "review";
   const [step, setStep] = useState<StepKey>(ALL_STEPS[0]);
-  const [answers, setAnswers] = useState<SurveyAnswers>(() => existingAnswers ? {
-    partB: { ...defaultAnswers.partB, ...existingAnswers.partB },
-    partC: { ...defaultAnswers.partC, ...existingAnswers.partC },
-    partD: { ...defaultAnswers.partD, ...existingAnswers.partD },
-    partE: { ...defaultAnswers.partE, ...existingAnswers.partE },
-  } : createDefaultAnswers());
+  const [answers, setAnswers] = useState<SurveyAnswers>(() =>
+    existingAnswers
+      ? {
+          partB: { ...defaultAnswers.partB, ...existingAnswers.partB },
+          partC: { ...defaultAnswers.partC, ...existingAnswers.partC },
+          partD: { ...defaultAnswers.partD, ...existingAnswers.partD },
+          partE: { ...defaultAnswers.partE, ...existingAnswers.partE },
+        }
+      : createDefaultAnswers(),
+  );
+  const [submitted, setSubmitted] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const stepIndex = ALL_STEPS.indexOf(step);
   const progress = useMemo(() => Math.round(((stepIndex + 1) / ALL_STEPS.length) * 100), [stepIndex]);
+
+  useEffect(() => {
+    if (!submitted || isReview) return;
+    const payload = JSON.parse(JSON.stringify(answers)) as SurveyAnswers;
+    const timer = window.setTimeout(() => onSubmit(payload, "antrean"), 1500);
+    return () => window.clearTimeout(timer);
+  }, [submitted, answers, onSubmit, isReview]);
+
+  if (isReview) {
+    return <SurveySummary applicant={applicant} answers={answers} status={status} onClose={() => onCancel()} />;
+  }
+
+  const disableNav = submitted;
+
+  const snapshot = () => JSON.parse(JSON.stringify(answers)) as SurveyAnswers;
 
   function next() {
     if (stepIndex < ALL_STEPS.length - 1) {
@@ -91,8 +124,19 @@ export default function SurveyPage({ applicant, existingAnswers, onCancel, onSub
     }
   }
 
- function submit() {
-    onSubmit(JSON.parse(JSON.stringify(answers)));
+  function submit() {
+    setSubmitted(true);
+  }
+
+  function handleSaveDraft(stayOnPage: boolean) {
+    const draft = snapshot();
+    if (stayOnPage) {
+      onSaveDraft?.(draft);
+      setDraftSaved(true);
+      window.setTimeout(() => setDraftSaved(false), 2000);
+    } else {
+      onCancel(draft);
+    }
   }
 
   const stepContent = (() => {
@@ -121,7 +165,12 @@ export default function SurveyPage({ applicant, existingAnswers, onCancel, onSub
               <CardTitle className="text-2xl">Survei Kelayakan Bantuan</CardTitle>
               <CardDescription>Lengkapi survei untuk memperbarui data keluarga Anda.</CardDescription>
             </div>
-            <Badge variant="secondary" className="rounded-full">{STEP_LABELS[step]}</Badge>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => onCancel()} disabled={disableNav}>Batal</Button>
+              <Button variant="outline" onClick={() => handleSaveDraft(false)} disabled={disableNav}>
+                Simpan &amp; Keluar
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -133,23 +182,39 @@ export default function SurveyPage({ applicant, existingAnswers, onCancel, onSub
                 </p>
                 <p className="text-2xl font-semibold text-slate-900">{STEP_LABELS[step]}</p>
               </div>
-              <Button variant="ghost" onClick={onCancel}>Kembali ke Dashboard</Button>
             </div>
             <Progress value={progress} aria-label={`Progress ${progress}%`} />
             <Stepper current={step} />
+            {draftSaved && (
+              <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                Draft survei tersimpan. Anda dapat melanjutkan kapan saja melalui dashboard.
+              </div>
+            )}
+            {submitted && (
+              <div className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                Survei berhasil dikirim. Mengarahkan ke dashboard...
+              </div>
+            )}
           </section>
 
           {stepContent}
 
           <div className="flex flex-wrap justify-between gap-2 pt-4">
             <div className="flex gap-2">
-              {stepIndex > 0 && <Button variant="secondary" onClick={back}>Sebelumnya</Button>}
+              <Button variant="outline" onClick={() => handleSaveDraft(true)} disabled={disableNav}>
+                Simpan draft
+              </Button>
+              {stepIndex > 0 && (
+                <Button variant="secondary" onClick={back} disabled={disableNav}>
+                  Sebelumnya
+                </Button>
+              )}
             </div>
             <div className="flex gap-2">
               {stepIndex < ALL_STEPS.length - 1 ? (
-                <Button onClick={next}>Lanjut</Button>
+                <Button onClick={next} disabled={disableNav}>Lanjut</Button>
               ) : (
-                <Button onClick={submit}>Kirim Survei</Button>
+                <Button onClick={submit} disabled={disableNav}>Kirim Survei</Button>
               )}
             </div>
           </div>
@@ -202,9 +267,15 @@ function IdentitasSection({ applicant }: { applicant: Applicant }) {
   );
 }
 
-type PartBValue = SurveyAnswers["partB"];
-function KondisiKeluargaSection({ value, onChange }: { value: PartBValue; onChange: (v: PartBValue) => void }) {
-  const update = (patch: Partial<PartBValue>) => onChange({ ...value, ...patch });
+function KondisiKeluargaSection({ value, onChange }: { value: SurveyAnswers["partB"]; onChange: (v: SurveyAnswers["partB"]) => void }) {
+  const update = (patch: Partial<SurveyAnswers["partB"]>) => onChange({ ...value, ...patch });
+  const countOptions = [
+    { value: "0", label: "Tidak ada" },
+    { value: "1", label: "1" },
+    { value: "2", label: "2" },
+    { value: "3", label: "3" },
+    { value: "10", label: "10" },
+  ];
   return (
     <section className="space-y-4">
       <Card>
@@ -225,36 +296,54 @@ function KondisiKeluargaSection({ value, onChange }: { value: PartBValue; onChan
             </div>
             <div className="space-y-1">
               <Label>Jumlah tanggungan anak sekolah</Label>
-              <Input
+              <select
+                className="w-full rounded border px-3 py-2 text-sm"
                 value={value.schoolChildren}
                 onChange={(e) => update({ schoolChildren: e.target.value })}
-                placeholder="contoh: 2 anak SMP"
-              />
+              >
+                <option value="">Pilih jumlah</option>
+                {countOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
               <Label>Anggota balita / anak usia dini</Label>
-              <Input
+              <select
+                className="w-full rounded border px-3 py-2 text-sm"
                 value={value.toddlers}
                 onChange={(e) => update({ toddlers: e.target.value })}
-                placeholder="Ada / Tidak ada (sebutkan)"
-              />
+              >
+                <option value="">Pilih jumlah</option>
+                {countOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
               <Label>Anggota lansia (&gt;60 tahun)</Label>
-              <Input
+              <select
+                className="w-full rounded border px-3 py-2 text-sm"
                 value={value.elderly}
                 onChange={(e) => update({ elderly: e.target.value })}
-                placeholder="Ada / Tidak ada"
-              />
+              >
+                <option value="">Pilih jumlah</option>
+                {countOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1 md:col-span-2">
               <Label>Anggota dengan disabilitas/penyakit kronis</Label>
-              <Textarea
+              <select
+                className="w-full rounded border px-3 py-2 text-sm"
                 value={value.disability}
                 onChange={(e) => update({ disability: e.target.value })}
-                placeholder="Ya/Tidak, sebutkan jika ada"
-                rows={3}
-              />
+              >
+                <option value="">Pilih jawaban</option>
+                <option value="Tidak ada">Tidak ada</option>
+                <option value="Ada">Ada</option>
+              </select>
             </div>
           </div>
         </CardContent>
@@ -263,9 +352,8 @@ function KondisiKeluargaSection({ value, onChange }: { value: PartBValue; onChan
   );
 }
 
-type PartCValue = SurveyAnswers["partC"];
-function PekerjaanSection({ value, onChange }: { value: PartCValue; onChange: (v: PartCValue) => void }) {
-  const update = (patch: Partial<PartCValue>) => onChange({ ...value, ...patch });
+function PekerjaanSection({ value, onChange }: { value: SurveyAnswers["partC"]; onChange: (v: SurveyAnswers["partC"]) => void }) {
+  const update = (patch: Partial<SurveyAnswers["partC"]>) => onChange({ ...value, ...patch });
   return (
     <section className="space-y-4">
       <Card>
@@ -281,12 +369,12 @@ function PekerjaanSection({ value, onChange }: { value: PartCValue; onChange: (v
               onChange={(e) => update({ education: e.target.value })}
             >
               <option value="">Pilih pendidikan</option>
-              <option value="tidak-sekolah">Tidak sekolah</option>
-              <option value="sd">SD</option>
-              <option value="smp">SMP</option>
-              <option value="sma">SMA / SMK</option>
-              <option value="diploma">D1-D3</option>
-              <option value="sarjana">S1 ke atas</option>
+              <option value="Tidak sekolah">Tidak sekolah</option>
+              <option value="SD">SD</option>
+              <option value="SMP">SMP</option>
+              <option value="SMA / SMK">SMA / SMK</option>
+              <option value="D1-D3">D1-D3</option>
+              <option value="S1 ke atas">S1 ke atas</option>
             </select>
           </div>
           <div className="space-y-1">
@@ -305,10 +393,10 @@ function PekerjaanSection({ value, onChange }: { value: PartCValue; onChange: (v
               onChange={(e) => update({ income: e.target.value })}
             >
               <option value="">Pilih rentang pendapatan</option>
-              <option value="lt1jt">&lt; Rp 1.000.000</option>
-              <option value="1-2jt">Rp1.000.000 – Rp2.000.000</option>
-              <option value="2-3jt">Rp2.000.000 – Rp3.000.000</option>
-              <option value="gt3jt">&gt; Rp3.000.000</option>
+              <option value="< Rp 1.000.000">&lt; Rp 1.000.000</option>
+              <option value="Rp1.000.000 – Rp2.000.000">Rp1.000.000 – Rp2.000.000</option>
+              <option value="Rp2.000.000 – Rp3.000.000">Rp2.000.000 – Rp3.000.000</option>
+              <option value="> Rp3.000.000">&gt; Rp3.000.000</option>
             </select>
           </div>
           <div className="space-y-1">
@@ -326,9 +414,8 @@ function PekerjaanSection({ value, onChange }: { value: PartCValue; onChange: (v
   );
 }
 
-type PartDValue = SurveyAnswers["partD"];
-function AsetSection({ value, onChange }: { value: PartDValue; onChange: (v: PartDValue) => void }) {
-  const update = (patch: Partial<PartDValue>) => onChange({ ...value, ...patch });
+function AsetSection({ value, onChange }: { value: SurveyAnswers["partD"]; onChange: (v: SurveyAnswers["partD"]) => void }) {
+  const update = (patch: Partial<SurveyAnswers["partD"]>) => onChange({ ...value, ...patch });
   return (
     <section className="space-y-4">
       <Card>
@@ -422,9 +509,8 @@ function AsetSection({ value, onChange }: { value: PartDValue; onChange: (v: Par
   );
 }
 
-type PartEValue = SurveyAnswers["partE"];
-function KesehatanSection({ value, onChange }: { value: PartEValue; onChange: (v: PartEValue) => void }) {
-  const update = (patch: Partial<PartEValue>) => onChange({ ...value, ...patch });
+function KesehatanSection({ value, onChange }: { value: SurveyAnswers["partE"]; onChange: (v: SurveyAnswers["partE"]) => void }) {
+  const update = (patch: Partial<SurveyAnswers["partE"]>) => onChange({ ...value, ...patch });
   return (
     <section className="space-y-4">
       <Card>
@@ -439,9 +525,9 @@ function KesehatanSection({ value, onChange }: { value: PartEValue; onChange: (v
             onChange={(e) => update({ healthCheck: e.target.value })}
           >
             <option value="">Pilih jawaban</option>
-            <option value="ya">Ya</option>
-            <option value="kadang">Kadang-kadang</option>
-            <option value="tidak">Tidak</option>
+            <option value="Ya">Ya</option>
+            <option value="Kadang-kadang">Kadang-kadang</option>
+            <option value="Tidak">Tidak</option>
           </select>
         </CardContent>
       </Card>
@@ -465,4 +551,112 @@ function DropdownField({ label, value, onChange, options }: { label: string; val
       </select>
     </div>
   );
+}
+
+function SurveySummary({ applicant, answers, status, onClose }: { applicant: Applicant; answers: SurveyAnswers; status: SurveyStatus; onClose: () => void }) {
+  const statusInfo = formatSurveyStatus(status);
+  return (
+    <main className="max-w-4xl mx-auto p-6">
+      <Card className="rounded-2xl shadow-xl">
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl">Ringkasan Survei Keluarga</CardTitle>
+              <CardDescription>Periksa kembali jawaban yang telah dikirim.</CardDescription>
+            </div>
+            <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <IdentitasSection applicant={applicant} />
+          <SummarySection title="B. Kondisi Keluarga">
+            <SummaryItem
+              label="Jumlah anggota keluarga"
+              value={answers.partB.householdMembers === "" ? "-" : String(answers.partB.householdMembers)}
+            />
+            <SummaryItem label="Tanggungan anak sekolah" value={formatCountValue(answers.partB.schoolChildren)} />
+            <SummaryItem label="Balita / anak usia dini" value={formatCountValue(answers.partB.toddlers)} />
+            <SummaryItem label="Lansia" value={formatCountValue(answers.partB.elderly)} />
+            <SummaryItem label="Disabilitas / penyakit kronis" value={answers.partB.disability || "-"} />
+          </SummarySection>
+          <SummarySection title="C. Pendidikan dan Pekerjaan">
+            <SummaryItem label="Pendidikan terakhir" value={answers.partC.education || "-"} />
+            <SummaryItem label="Pekerjaan kepala keluarga" value={answers.partC.occupation || "-"} />
+            <SummaryItem label="Pendapatan per bulan" value={answers.partC.income || "-"} />
+            <SummaryItem label="Penghasilan tambahan" value={answers.partC.extraIncome || "-"} />
+          </SummarySection>
+          <SummarySection title="D. Kondisi Tempat Tinggal & Aset">
+            <SummaryItem label="Status kepemilikan rumah" value={answers.partD.homeOwnership || "-"} />
+            <SummaryItem label="Jenis lantai" value={answers.partD.floorType || "-"} />
+            <SummaryItem label="Jenis dinding" value={answers.partD.wallType || "-"} />
+            <SummaryItem label="Jenis atap" value={answers.partD.roofType || "-"} />
+            <SummaryItem label="Kepemilikan kendaraan" value={answers.partD.vehicle || "-"} />
+            <SummaryItem label="Tabungan / harta lancar" value={answers.partD.savings || "-"} />
+            <SummaryItem label="Energi penerangan" value={answers.partD.lighting || "-"} />
+            <SummaryItem label="Sumber air minum" value={answers.partD.waterSource || "-"} />
+            <SummaryItem label="Bahan bakar memasak" value={answers.partD.cookingFuel || "-"} />
+            <SummaryItem label="Tempat buang air besar" value={answers.partD.toilet || "-"} />
+            <SummaryItem label="Pembuangan limbah" value={answers.partD.wasteDisposal || "-"} />
+            <SummaryItem label="Kondisi sanitasi" value={answers.partD.sanitation || "-"} />
+          </SummarySection>
+          <SummarySection title="E. Kesehatan dan Kebiasaan">
+            <SummaryItem label="Pemeriksaan kesehatan rutin" value={answers.partE.healthCheck || "-"} />
+          </SummarySection>
+          <div className="flex justify-end">
+            <Button onClick={onClose}>Kembali ke Dashboard</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+function SummarySection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 md:grid-cols-2">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className="rounded border bg-white px-3 py-2 text-sm text-slate-700">{value || "-"}</span>
+    </div>
+  );
+}
+
+function formatSurveyStatus(status: SurveyStatus) {
+  switch (status) {
+    case "antrean":
+      return { label: "Dalam antrean verifikasi", variant: "secondary" as const };
+    case "diperiksa":
+      return { label: "Sedang diperiksa TKSK", variant: "secondary" as const };
+    case "disetujui":
+      return { label: "Disetujui", variant: "default" as const };
+    case "ditolak":
+      return { label: "Ditolak", variant: "destructive" as const };
+    default:
+      return { label: "Belum dikumpulkan", variant: "outline" as const };
+  }
+}
+
+const COUNT_LABELS: Record<string, string> = {
+  "0": "Tidak ada",
+  "1": "1",
+  "2": "2",
+  "3": "3",
+  "10": "10",
+};
+
+function formatCountValue(value: string) {
+  if (!value) return "-";
+  return COUNT_LABELS[value] ?? value;
 }

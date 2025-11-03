@@ -33,7 +33,13 @@ export const LocalAuthRepository: AuthRepository = {
             phone,
             email: "",
           };
-          const survey: SurveyState = acc.survey ?? { completed: false };
+          const survey: SurveyState = acc.survey ?? { completed: false, status: "belum-dikumpulkan" };
+          const normalizedSurvey: SurveyState = {
+            completed: survey.completed ?? false,
+            status: survey.status ?? "belum-dikumpulkan",
+            submittedAt: survey.submittedAt,
+            answers: survey.answers,
+          };
           return {
             ...acc,
             phone,
@@ -43,7 +49,7 @@ export const LocalAuthRepository: AuthRepository = {
             livenessPassed: acc.livenessPassed ?? true,
             createdAt: acc.createdAt ?? new Date().toISOString(),
             pin: acc.pin ?? null,
-            survey,
+            survey: normalizedSurvey,
           };
         });
     } catch {

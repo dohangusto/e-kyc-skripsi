@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar, CheckCircle2, Clock, Download, MapPin, Phone, ShieldCheck, User } from "lucide-react";
 
 import type { Applicant } from "@domain/types";
+import type { SurveyStatus } from "@domain/entities/account";
 
 type VerificationStatus = "SEDANG_DITINJAU" | "DISETUJUI" | "DITOLAK";
 
@@ -22,6 +23,9 @@ export type DashboardData = {
   submittedAt?: string;
   pinSet: boolean;
   surveyCompleted: boolean;
+  surveyStatus: SurveyStatus;
+  surveySubmittedAt?: string;
+  hasSurveyDraft: boolean;
 };
 
 type DashboardPageProps = {
@@ -30,6 +34,8 @@ type DashboardPageProps = {
   onLogout?: () => void;
   onCreatePin?: (pin: string) => void | Promise<void>;
   onStartSurvey?: () => void;
+  onContinueSurvey?: () => void;
+  onViewSurvey?: () => void;
 };
 
 const scheduleSamples = [
@@ -81,7 +87,22 @@ function formatStatus(status: VerificationStatus): BadgeStyle & { label: string 
   }
 }
 
-export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStartSurvey }: DashboardPageProps) {
+function formatSurveyStatus(status: SurveyStatus): { label: string; variant: "outline" | "default" | "secondary" | "destructive" } {
+  switch (status) {
+    case "antrean":
+      return { label: "Dalam antrean verifikasi", variant: "secondary" };
+    case "diperiksa":
+      return { label: "Sedang diperiksa TKSK", variant: "secondary" };
+    case "disetujui":
+      return { label: "Disetujui", variant: "default" };
+    case "ditolak":
+      return { label: "Ditolak", variant: "destructive" };
+    default:
+      return { label: "Belum dikumpulkan", variant: "outline" };
+  }
+}
+
+export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStartSurvey, onContinueSurvey, onViewSurvey }: DashboardPageProps) {
   const status = useMemo(() => formatStatus(data.verificationStatus), [data.verificationStatus]);
   const completion = useMemo(() => {
     const steps = [
@@ -100,6 +121,8 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
 
   const needsPin = !data.pinSet;
   const needsSurvey = !data.surveyCompleted;
+  const hasDraft = data.hasSurveyDraft;
+  const surveyStatus = useMemo(() => formatSurveyStatus(data.surveyStatus), [data.surveyStatus]);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
@@ -249,19 +272,54 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
               <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-wide text-indigo-600">Survei Sosial Ekonomi</p>
-                  <h2 className="text-xl font-semibold text-indigo-900">Lengkapi survei keluarga Anda</h2>
+                  <h2 className="text-xl font-semibold text-indigo-900">
+                    {hasDraft ? "Lanjutkan survei yang belum selesai" : "Lengkapi survei keluarga Anda"}
+                  </h2>
                   <p className="text-sm text-indigo-800">
-                    Mohon isi survei kondisi keluarga, pendidikan, tempat tinggal, aset, dan kesehatan.
-                    Data ini membantu Dinas Sosial menilai prioritas penyaluran bantuan.
+                    {hasDraft
+                      ? "Anda memiliki draft survei. Silakan lanjutkan pengisian agar data keluarga segera diperiksa."
+                      : "Mohon isi survei kondisi keluarga, pendidikan, tempat tinggal, aset, dan kesehatan. Data ini membantu Dinas Sosial menilai prioritas penyaluran bantuan."}
                   </p>
                 </div>
-                {onStartSurvey && (
-                  <Button onClick={onStartSurvey} size="lg" className="bg-indigo-600 hover:bg-indigo-700">
-                    Isi Survei Sekarang
+                {(hasDraft ? onContinueSurvey : onStartSurvey) && (
+                  <Button
+                    onClick={hasDraft ? onContinueSurvey : onStartSurvey}
+                    size="lg"
+                    className="bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    {hasDraft ? "Lanjutkan Survei" : "Isi Survei Sekarang"}
                   </Button>
                 )}
               </div>
             </div>
+          </section>
+        )}
+
+        {data.surveyCompleted && (
+          <section>
+            <Card className="shadow-sm">
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">Status Survei Keluarga</CardTitle>
+                    <CardDescription>
+                      Terakhir dikirim {data.surveySubmittedAt ?? "-"}
+                    </CardDescription>
+                  </div>
+                  <Badge variant={surveyStatus.variant}>{surveyStatus.label}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-slate-600">
+                  Data survei akan digunakan petugas TKSK sebagai dasar evaluasi kelayakan bantuan sosial Anda.
+                </p>
+                {onViewSurvey && (
+                  <Button variant="outline" onClick={onViewSurvey}>
+                    Lihat hasil survei
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           </section>
         )}
 

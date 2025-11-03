@@ -33,10 +33,13 @@ export type SurveyAnswers = {
   };
 };
 
+export type SurveyStatus = "belum-dikumpulkan" | "antrean" | "diperiksa" | "disetujui" | "ditolak";
+
 export type SurveyState = {
   completed: boolean;
   submittedAt?: string;
   answers?: SurveyAnswers;
+  status?: SurveyStatus;
 };
 
 export type Account = {

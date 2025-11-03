@@ -5,8 +5,21 @@ import OnboardingWizard, { type CompletionPayload } from "@presentation/pages/On
 import DashboardPage from "@presentation/pages/DashboardPage";
 import SurveyPage from "@presentation/pages/SurveyPage";
 import { LocalAuthRepository } from "@infrastructure/adapters/local-auth";
-import type { Account, SurveyAnswers } from "@domain/entities/account";
+import type { Account, SurveyAnswers, SurveyStatus } from "@domain/entities/account";
 import { createSession, clearSession, loadSession, type SessionPayload } from "@shared/session";
+
+function ensureSurvey(account: Account): Account {
+  const survey = account.survey ?? { completed: false, status: "belum-dikumpulkan" };
+  return {
+    ...account,
+    survey: {
+      completed: survey.completed ?? false,
+      status: survey.status ?? "belum-dikumpulkan",
+      submittedAt: survey.submittedAt,
+      answers: survey.answers,
+    },
+  };
+}
 
 type ViewState = "landing" | "wizard" | "dashboard" | "survey";
 type OtpContext = {
@@ -23,18 +36,21 @@ const App = () => {
   const [otpContext, setOtpContext] = useState<OtpContext | null>(null);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [session, setSession] = useState<SessionPayload | null>(null);
+  const [surveyMode, setSurveyMode] = useState<"fill" | "review">("fill");
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       const loadedAccounts = await LocalAuthRepository.loadAccounts();
       if (!mounted) return;
-      setAccounts(loadedAccounts);
+
+      const normalizedAccounts = loadedAccounts.map(ensureSurvey);
+      setAccounts(normalizedAccounts);
 
       const storedSession = loadSession();
       if (!storedSession) return;
 
-      const account = loadedAccounts.find(
+      const account = normalizedAccounts.find(
         (acc) => normalizePhone(acc.phone) === normalizePhone(storedSession.phone)
       );
       if (!account) {
@@ -42,17 +58,9 @@ const App = () => {
         return;
       }
 
-      const accountWithSurvey = account.survey ? account : { ...account, survey: { completed: false } };
-      if (!account.survey) {
-        const nextAccounts = loadedAccounts.map((acc) =>
-          normalizePhone(acc.phone) === normalizePhone(accountWithSurvey.phone) ? accountWithSurvey : acc
-        );
-        setAccounts(nextAccounts);
-        LocalAuthRepository.saveAccounts(nextAccounts);
-      }
-
       setSession(storedSession);
-      setCurrentAccount(accountWithSurvey);
+      setCurrentAccount(account);
+      setSurveyMode(account.survey?.completed ? "review" : "fill");
       setView("dashboard");
     })();
 
@@ -78,7 +86,7 @@ const App = () => {
     }
 
     const existing = accounts.find((acc) => normalizePhone(acc.phone) === phone);
-    const account: Account = {
+    const baseAccount: Account = {
       phone,
       pin: existing?.pin ?? null,
       submissionId: payload.submissionId,
@@ -87,12 +95,15 @@ const App = () => {
       faceMatchPassed: payload.faceMatchPassed,
       livenessPassed: payload.livenessPassed,
       verificationStatus: "SEDANG_DITINJAU",
-      survey: existing?.survey ?? { completed: false },
+      survey: existing?.survey,
     };
+    const account = ensureSurvey(baseAccount);
 
     const nextAccounts = [
       account,
-      ...accounts.filter((acc) => normalizePhone(acc.phone) !== phone),
+      ...accounts
+        .filter((acc) => normalizePhone(acc.phone) !== phone)
+        .map(ensureSurvey),
     ];
 
     setAccounts(nextAccounts);
@@ -102,6 +113,7 @@ const App = () => {
     setOtpContext(null);
     const newSession = createSession(phone);
     setSession(newSession);
+    setSurveyMode(account.survey?.completed ? "review" : "fill");
     setView("dashboard");
     LocalAuthRepository.saveAccounts(nextAccounts);
   };
@@ -125,6 +137,7 @@ const App = () => {
         const newSession = createSession(fallback.phone);
         setSession(newSession);
       }
+      setSurveyMode(fallback.survey?.completed ? "review" : "fill");
       setView("dashboard");
     }
   };
@@ -167,6 +180,7 @@ const App = () => {
     setCurrentAccount(accountWithSurvey);
     const newSession = createSession(account.phone);
     setSession(newSession);
+    setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
     setView("dashboard");
     setPinLoginError(null);
     setOtpError(null);
@@ -231,6 +245,7 @@ const App = () => {
     setCurrentAccount(accountWithSurvey);
     const newSession = createSession(account.phone);
     setSession(newSession);
+    setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
     setView("dashboard");
     setPinLoginError(null);
     setOtpError(null);
@@ -245,6 +260,7 @@ const App = () => {
     setOtpError(null);
     setSession(null);
     clearSession();
+    setSurveyMode("fill");
   };
 
   const handlePinSetup = async (pin: string) => {
@@ -269,23 +285,28 @@ const App = () => {
     setOtpError(null);
     const newSession = createSession(updatedAccount.phone);
     setSession(newSession);
+    setSurveyMode(updatedAccount.survey?.completed ? "review" : "fill");
   };
 
   const handleStartSurvey = () => {
     if (!currentAccount) return;
     if (!currentAccount.survey) {
-      const updatedAccount = { ...currentAccount, survey: { completed: false } } as Account;
+      const updatedAccount = ensureSurvey({ ...currentAccount, survey: { completed: false } } as Account);
       const nextAccounts = accounts.map((acc) =>
         normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone) ? updatedAccount : acc
       );
       setAccounts(nextAccounts);
       setCurrentAccount(updatedAccount);
       LocalAuthRepository.saveAccounts(nextAccounts);
+      setSurveyMode("fill");
+      setView("survey");
+      return;
     }
+    setSurveyMode(currentAccount.survey?.completed ? "review" : "fill");
     setView("survey");
   };
 
-  const handleSurveyComplete = async (answers: SurveyAnswers) => {
+  const handleSurveyComplete = async (answers: SurveyAnswers, status: SurveyStatus = "antrean") => {
     if (!currentAccount) return;
     const updatedAccount: Account = {
       ...currentAccount,
@@ -293,6 +314,7 @@ const App = () => {
         completed: true,
         submittedAt: new Date().toISOString(),
         answers,
+        status,
       },
     };
     const nextAccounts = accounts.map((acc) =>
@@ -301,9 +323,39 @@ const App = () => {
     setAccounts(nextAccounts);
     setCurrentAccount(updatedAccount);
     await LocalAuthRepository.saveAccounts(nextAccounts);
+    setSurveyMode("review");
     setView("dashboard");
     const newSession = createSession(updatedAccount.phone);
     setSession(newSession);
+  };
+
+  const handleSurveyDraft = async (answers: SurveyAnswers, stayOnSurvey = false) => {
+    if (!currentAccount) return;
+    const updatedAccount: Account = ensureSurvey({
+      ...currentAccount,
+      survey: {
+        completed: false,
+        submittedAt: currentAccount.survey?.submittedAt,
+        answers,
+        status: currentAccount.survey?.status ?? "belum-dikumpulkan",
+      },
+    });
+    const nextAccounts = accounts.map((acc) =>
+      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone) ? updatedAccount : ensureSurvey(acc)
+    );
+    setAccounts(nextAccounts);
+    setCurrentAccount(updatedAccount);
+    await LocalAuthRepository.saveAccounts(nextAccounts);
+    setSurveyMode("fill");
+    if (!stayOnSurvey) {
+      setView("dashboard");
+    }
+  };
+
+  const handleViewSurvey = () => {
+    if (!currentAccount?.survey?.answers) return;
+    setSurveyMode("review");
+    setView("survey");
   };
 
   const otpInfo = otpContext ? { phone: otpContext.phone, code: otpContext.code } : null;
@@ -343,18 +395,40 @@ const App = () => {
             }),
             pinSet: !!currentAccount.pin,
             surveyCompleted: currentAccount.survey?.completed ?? false,
+            surveyStatus: currentAccount.survey?.status ?? "belum-dikumpulkan",
+            surveySubmittedAt: currentAccount.survey?.submittedAt
+              ? new Date(currentAccount.survey.submittedAt).toLocaleString("id-ID", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : undefined,
+            hasSurveyDraft: !!currentAccount.survey?.answers && !currentAccount.survey?.completed,
           }}
           onStartNew={handleStartNew}
           onLogout={handleLogout}
           onCreatePin={handlePinSetup}
           onStartSurvey={handleStartSurvey}
+          onContinueSurvey={handleStartSurvey}
+          onViewSurvey={currentAccount.survey?.completed ? handleViewSurvey : undefined}
         />
       )}
       {view === "survey" && currentAccount && (
         <SurveyPage
           applicant={currentAccount.applicant}
           existingAnswers={currentAccount.survey?.answers}
-          onCancel={() => setView("dashboard")}
+          mode={surveyMode}
+          status={currentAccount.survey?.status ?? "belum-dikumpulkan"}
+          onCancel={(draft) => {
+            if (draft) {
+              handleSurveyDraft(draft);
+            } else {
+              setView("dashboard");
+            }
+          }}
+          onSaveDraft={(draft) => handleSurveyDraft(draft, true)}
           onSubmit={handleSurveyComplete}
         />
       )}
