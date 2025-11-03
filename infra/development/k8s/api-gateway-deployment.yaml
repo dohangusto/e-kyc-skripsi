@@ -16,7 +16,7 @@ spec:
         - name: api-gateway
           image: e-kyc/api-gateway
           ports:
-            - containerPort: 8081
+            - containerPort: 8080
           resources:
             requests:
               memory: "128Mi"
@@ -39,7 +39,7 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    - port: 8081
-      targetPort: 8081
+    - port: 8080
+      targetPort: 8080
   selector:
     app: api-gateway

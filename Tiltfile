@@ -11,7 +11,8 @@ k8s_yaml('./infra/development/k8s/app-config.yaml')
 ### End of K8s Config ###
 ### API Gateway ###
 
-gateway_compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api-gateway ./services/api-gateway'
+# Build the API Gateway binary from the cmd package (contains main.go)
+gateway_compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api-gateway ./services/api-gateway/cmd'
 if os.name == 'nt':
   gateway_compile_cmd = './infra/development/docker/api-gateway-build.bat'
 
@@ -37,6 +38,26 @@ docker_build_with_restart(
 )
 
 k8s_yaml('./infra/development/k8s/api-gateway-deployment.yaml')
-k8s_resource('api-gateway', port_forwards=8081,
+k8s_resource('api-gateway', port_forwards=8080,
              resource_deps=['api-gateway-compile'], labels="services")
 ### End of API Gateway ###
+
+### Web (React) ###
+
+# Build the React dev image and run the dev server
+docker_build_with_restart(
+  'react-main/web',
+  '.',
+  dockerfile='./infra/development/docker/web.Dockerfile',
+  only=[
+    './web/react-main',
+  ],
+  live_update=[
+    sync('./web/react-main', '/app'),
+  ],
+  entrypoint=['sh','-lc','npm run dev -- --host 0.0.0.0 --port 3000']
+)
+
+k8s_yaml('./infra/development/k8s/web-deployment.yaml')
+k8s_resource('web', port_forwards=3000, labels="web")
+### End of Web (React) ###
