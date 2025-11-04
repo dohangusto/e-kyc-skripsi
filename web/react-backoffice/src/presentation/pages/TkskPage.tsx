@@ -6,17 +6,23 @@ import type { Application, Visit } from '@domain/types'
 
 export default function TkskPage() {
   const session = getSession()
+  if (!session || session.role !== 'TKSK') {
+    return <div className="text-sm text-slate-600">Halaman ini hanya untuk pengguna TKSK.</div>
+  }
   const [snapshot, setSnapshot] = useState(Data.get())
   const queue = useMemo(
     () => snapshot.applications.filter(app =>
-      (app.status === 'DESK_REVIEW' || app.status === 'FIELD_VISIT') &&
-      (session?.regionScope?.some(scope => app.region.kec.includes(scope) || app.region.kab.includes(scope)) ?? true)
+      app.assigned_to === session.userId &&
+      ['DESK_REVIEW', 'FIELD_VISIT', 'RETURNED_FOR_REVISION'].includes(app.status)
     ),
     [snapshot, session],
   )
   const [selectedId, setSelectedId] = useState<string | null>(queue[0]?.id ?? null)
   const selected = queue.find(a => a.id === selectedId) ?? queue[0] ?? null
-  const calendar = useMemo(() => buildCalendar(snapshot.applications), [snapshot])
+  const calendar = useMemo(
+    () => buildCalendar(snapshot.applications.filter(app => app.assigned_to === session.userId)),
+    [snapshot, session.userId],
+  )
 
   function refresh() {
     setSnapshot(Data.refresh())

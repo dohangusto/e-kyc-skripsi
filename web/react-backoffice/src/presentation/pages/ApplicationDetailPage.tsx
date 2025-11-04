@@ -34,6 +34,9 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
   const session = getSession()
 
   if (!application) return <div className="text-sm text-slate-600">Data tidak ditemukan.</div>
+  if (session?.role === 'TKSK' && application.assigned_to !== session.userId) {
+    return <div className="text-sm text-slate-600">Anda tidak memiliki akses ke aplikasi ini.</div>
+  }
 
   function refresh() {
     setSnapshot(Data.refresh())

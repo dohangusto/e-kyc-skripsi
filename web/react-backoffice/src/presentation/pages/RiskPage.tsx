@@ -18,6 +18,10 @@ export default function RiskPage() {
   const config = snapshot.config
   const session = getSession()
 
+  if (session && session.role !== 'RISK' && session.role !== 'ADMIN') {
+    return <div className="text-sm text-slate-600">Anda tidak memiliki akses ke halaman Risk Desk.</div>
+  }
+
   function refresh() {
     setSnapshot(Data.refresh())
   }

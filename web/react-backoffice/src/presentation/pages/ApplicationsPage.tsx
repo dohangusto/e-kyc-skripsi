@@ -4,6 +4,7 @@ import { AppRouter } from '@app/router'
 import { StatusPill } from '@presentation/components/StatusPill'
 import { ScoreBadge } from '@presentation/components/ScoreBadge'
 import { SavedViews } from '@shared/saved-views'
+import { getSession } from '@shared/session'
 
 type Filters = {
   statuses: string[]
@@ -55,6 +56,7 @@ export default function ApplicationsPage() {
   const [simulate, setSimulate] = useState<'normal'|'empty'|'error'>('normal')
   const [views, setViews] = useState(SavedViews.all())
   const [viewName, setViewName] = useState('')
+  const session = getSession()
 
   useEffect(() => {
     const q = toParams(filters)
@@ -63,20 +65,31 @@ export default function ApplicationsPage() {
   }, [filters])
 
   const db = Data.get()
+  const accessibleApps = useMemo(() => {
+    let apps = db.applications.slice()
+    if (!session) return apps
+    if (session.role === 'TKSK') {
+      apps = apps.filter(a => a.assigned_to === session.userId)
+    } else if (session.role === 'RISK') {
+      apps = apps.filter(a => a.flags.duplicate_face || a.flags.duplicate_nik || a.flags.device_anomaly)
+    }
+    return apps
+  }, [db, session])
+
   const regions = useMemo(() => {
     const set = new Set<string>()
-    db.applications.forEach(a => set.add(`${a.region.kab} / ${a.region.kec}`))
+    accessibleApps.forEach(a => set.add(`${a.region.kab} / ${a.region.kec}`))
     return Array.from(set).sort()
-  }, [db])
+  }, [accessibleApps])
   const assignees = useMemo(() => {
     const set = new Set<string>()
-    db.applications.forEach(a => a.assigned_to && set.add(a.assigned_to))
+    accessibleApps.forEach(a => a.assigned_to && set.add(a.assigned_to))
     return Array.from(set).sort()
-  }, [db])
+  }, [accessibleApps])
 
   const rows = useMemo(() => {
     if (simulate === 'error') return null
-    let r = db.applications.slice()
+    let r = accessibleApps.slice()
     if (filters.statuses.length) r = r.filter(a => filters.statuses.includes(a.status))
     if (filters.region) {
       r = r.filter(a => `${a.region.kab} / ${a.region.kec}` === filters.region)
@@ -104,7 +117,7 @@ export default function ApplicationsPage() {
     }
     if (simulate === 'empty') return []
     return r.slice(0, 200)
-  }, [db, filters, simulate])
+  }, [accessibleApps, filters, simulate])
 
   function toggleStatus(status: string) {
     setFilters(f => {

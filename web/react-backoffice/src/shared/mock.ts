@@ -1,76 +1,117 @@
 import seed from './seed.json'
-import type { Application, Batch, ClusteringRun, Config, Db, User } from '@domain/types'
+import { beneficiaries, type BeneficiarySeed } from './beneficiaries'
+import type {
+  Application,
+  Batch,
+  ClusteringCandidate,
+  ClusteringRun,
+  Config,
+  Db,
+  TimelineItem,
+  User,
+  Visit,
+} from '@domain/types'
 
-function rand(min: number, max: number) {
-  return Math.random() * (max - min) + min
-}
+const maskNik = (nik: string) => nik.replace(/\d(?=\d{4})/g, '*')
+const maskPhone = (phone: string) => phone.replace(/\d(?=\d{4})/g, '*')
 
-function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
+const cloneVisit = (visit: Visit): Visit => ({
+  ...visit,
+  geotag: visit.geotag ? { ...visit.geotag } : null,
+  photos: [...visit.photos],
+  checklist: { ...visit.checklist },
+})
 
-function id(prefix: string, n = 5) {
-  const s = Math.floor(Math.random() * 10 ** n).toString().padStart(n, '0')
-  return `${prefix}${s}`
-}
+const cloneTimeline = (timeline: TimelineItem[]): TimelineItem[] => timeline.map(entry => ({ ...entry }))
 
-export function generate(extra = 25): Db {
-  const base = seed as unknown as Db
-  const regions = [
-    { prov: 'Kepri', kab: 'Batam', kec: 'Sekupang', kel: 'Tg Riau' },
-    { prov: 'Kepri', kab: 'Batam', kec: 'Nongsa', kel: 'Kabil' },
-    { prov: 'Kepri', kab: 'Batam', kec: 'Batam Kota', kel: 'Belian' },
-  ]
-  const names = ['Siti', 'Budi', 'Andi', 'Aisyah', 'Putri', 'Rizal']
-
-  const apps: Application[] = [...base.applications]
-  for (let i = 0; i < extra; i++) {
-    const reg = pick(regions)
-    const ocr = Math.round(rand(0.7, 0.99) * 100) / 100
-    const face = Math.round(rand(0.6, 0.98) * 100) / 100
-    const dupFace = Math.random() < 0.2
-    const status: Application['status'] = pick([
-      'DESK_REVIEW', 'FIELD_VISIT', 'FINAL_APPROVED', 'FINAL_REJECTED', 'RETURNED_FOR_REVISION', 'SUBMITTED'
-    ])
-    const idv = `APP-2025-${(10000 + i).toString().padStart(5, '0')}`
-    apps.push({
-      id: idv,
-      applicant: {
-        name: `${pick(names)} ${pick(['Aminah','Saputra','Nurhaliza','Hartono'])}`,
-        nik_mask: '************' + Math.floor(rand(1000, 9999)),
-        dob: `198${Math.floor(rand(0,9))}-0${Math.floor(rand(1,9))}-${(10+Math.floor(rand(0,19))).toString()}`,
-        phone_mask: '08****' + Math.floor(rand(1000, 9999)),
-      },
-      region: reg,
-      status,
-      scores: { ocr, face, liveness: 'OK' },
-      flags: {
-        duplicate_nik: Math.random() < 0.05,
-        duplicate_face: dupFace,
-        device_anomaly: Math.random() < 0.05,
-        similarity: Math.round(rand(0.6, 0.99) * 100) / 100,
-        candidates: dupFace ? [
-          { id: id('APP-'), name: pick(names), similarity: Math.round(rand(0.7, 0.95)*100)/100 },
-          { id: id('APP-'), name: pick(names), similarity: Math.round(rand(0.7, 0.95)*100)/100 }
-        ] : []
-      },
-      assigned_to: Math.random() < 0.5 ? 'TKSK-1002' : 'UNASSIGNED',
-      aging_days: Math.floor(rand(0, 10)),
-      created_at: new Date(Date.now() - rand(0, 15)*86400000).toISOString(),
-      documents: [
-        { id: id('DOC'), type: 'KTP', url: '/mock/ktp1.jpg', sha256: 'sha' },
-        { id: id('DOC'), type: 'SELFIE', url: '/mock/selfie1.jpg', sha256: 'sha' }
-      ],
-      visits: [],
-      timeline: [ { at: new Date().toISOString(), by: 'system', action: 'SEEDED' } ]
-    })
+function toApplication(seedBeneficiary: BeneficiarySeed): Application {
+  return {
+    id: seedBeneficiary.applicationId,
+    applicant: {
+      name: seedBeneficiary.name,
+      nik_mask: maskNik(seedBeneficiary.nik),
+      dob: seedBeneficiary.dob,
+      phone_mask: maskPhone(seedBeneficiary.phone),
+    },
+    region: seedBeneficiary.region,
+    status: seedBeneficiary.status,
+    scores: { ...seedBeneficiary.scores },
+    flags: {
+      duplicate_nik: seedBeneficiary.flags.duplicate_nik,
+      duplicate_face: seedBeneficiary.flags.duplicate_face,
+      device_anomaly: seedBeneficiary.flags.device_anomaly,
+      similarity: seedBeneficiary.flags.similarity,
+      candidates: seedBeneficiary.flags.candidates?.map(candidate => ({ ...candidate })),
+    },
+    assigned_to: seedBeneficiary.assignedTo ?? 'UNASSIGNED',
+    aging_days: seedBeneficiary.agingDays,
+    created_at: seedBeneficiary.createdAt,
+    documents: seedBeneficiary.documents.map(doc => ({ ...doc })),
+    visits: seedBeneficiary.visits.map(cloneVisit),
+    timeline: cloneTimeline(seedBeneficiary.timeline),
   }
+}
+
+function toCandidate(seedBeneficiary: BeneficiarySeed): ClusteringCandidate {
+  return {
+    id: seedBeneficiary.applicationId,
+    name: seedBeneficiary.name,
+    nik_mask: maskNik(seedBeneficiary.nik),
+    region: seedBeneficiary.region,
+    cluster: seedBeneficiary.recommendedCluster,
+    priority: seedBeneficiary.recommendedPriority,
+    score: seedBeneficiary.clusterScore,
+    beneficiaries: seedBeneficiary.householdSize,
+    status: seedBeneficiary.clusterStatus,
+    assignedTo: seedBeneficiary.assignedTo ?? null,
+    reviewer: seedBeneficiary.reviewer,
+    reviewedAt: seedBeneficiary.reviewedAt,
+    notes: seedBeneficiary.clusterNotes,
+  }
+}
+
+function createInitialClusteringRun(): ClusteringRun {
+  const results = beneficiaries.map(toCandidate).sort((a, b) => b.score - a.score)
+  const summary = results.reduce(
+    (acc, candidate) => {
+      acc.total += 1
+      if (candidate.priority === 'TINGGI') acc.tinggi += 1
+      else if (candidate.priority === 'SEDANG') acc.sedang += 1
+      else acc.rendah += 1
+      return acc
+    },
+    { total: 0, tinggi: 0, sedang: 0, rendah: 0 },
+  )
+
+  return {
+    id: 'CLUST-SEED',
+    operator: 'seed',
+    startedAt: '2025-10-18T06:00:00Z',
+    finishedAt: '2025-10-18T06:00:05Z',
+    parameters: { dataset: '2025-Q4-Seeding', window: 'Rolling 90 hari', algorithm: 'k-means-v2' },
+    summary,
+    results,
+  }
+}
+
+export function generate(): Db {
+  const base = seed as unknown as Db
+  const applications = beneficiaries.map(toApplication)
+  const initialRun = createInitialClusteringRun()
+
+  const batches = (base.batches as Batch[] | undefined)?.map(batch => ({
+    ...batch,
+    items: batch.items.filter(item => applications.some(app => app.id === item)),
+  })) ?? []
 
   const db: Db = {
-    applications: apps,
+    applications,
     users: base.users as User[],
     config: base.config as Config,
-    batches: base.batches as Batch[],
+    batches,
     audit: [],
-    clusteringRuns: (base.clusteringRuns as ClusteringRun[] | undefined) ?? [],
+    clusteringRuns: [initialRun, ...((base.clusteringRuns as ClusteringRun[] | undefined) ?? [])],
   }
+
   return db
 }
