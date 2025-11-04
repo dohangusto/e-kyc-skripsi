@@ -17,6 +17,7 @@ export function Navbar({ session }: { session: Session | null }) {
           <Item to="/applications" label="Applications" />
           <Item to="/tksk" label="TKSK" />
           <Item to="/risk" label="Risk" />
+          <Item to="/clustering" label="Clustering" />
           <Item to="/batches" label="Batches" />
           <Item to="/config" label="Config" />
           <Item to="/users" label="Users" />
@@ -36,4 +37,3 @@ export function Navbar({ session }: { session: Session | null }) {
     </header>
   )
 }
-

@@ -1,7 +1,7 @@
 # Backoffice (React + TS + Vite)
 
 Sitemap (routes):
-- /login, /overview, /applications, /applications/:id, /tksk, /risk, /batches, /config, /users, /audit
+- /login, /overview, /applications, /applications/:id, /tksk, /risk, /clustering, /batches, /config, /users, /audit
 
 Fitur utama:
 - Seed data lokal (`localStorage`) dari `src/shared/seed.json` + generator (`src/shared/mock.ts`)
@@ -9,6 +9,7 @@ Fitur utama:
 - State dan persistensi via `application/services/data-service.ts`
 - Komponen UI: `StatusPill`, `ScoreBadge`, `ConfirmModal`, `Toast`, `RoleGate`
 - Router ringan tanpa dependency di `src/app/router.ts`
+- Clustering console (`/clustering`) untuk trigerring job rekomendasi, assign ke TKSK, dan approval TKSK
 
 Menjalankan:
 - cd web/react-backoffice

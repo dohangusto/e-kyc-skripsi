@@ -1,4 +1,12 @@
-import type { Application, Batch, Db, Visit, VisitStatus } from '@domain/types'
+import type {
+  Application,
+  Batch,
+  ClusteringCandidate,
+  ClusteringRun,
+  Db,
+  Visit,
+  VisitStatus,
+} from '@domain/types'
 import { loadDb, saveDb } from '@shared/storage'
 import { simulateRequest } from '@shared/simulate'
 
@@ -18,6 +26,8 @@ export const Data = {
   getConfig() { return db.config },
   setConfig(cfg: Db['config']) { db.config = cfg; commit() },
   listBatches() { return db.batches },
+  listClusteringRuns() { return db.clusteringRuns },
+  getClusteringRun(id: string) { return db.clusteringRuns.find(r => r.id === id) ?? null },
 
   // Mutations with simulateRequest
   async updateStatus(id: string, next: Application['status'], by: string, reason?: string) {
@@ -121,5 +131,46 @@ export const Data = {
       db.audit.push({ at: new Date().toISOString(), actor: by, entity: appId, action: 'DUPLICATE_IGNORED', reason: note })
       commit(); return a
     })
+  },
+
+  recordClusteringRun(run: ClusteringRun) {
+    db.clusteringRuns = [run, ...db.clusteringRuns].slice(0, 10)
+    db.audit.push({
+      at: new Date().toISOString(),
+      actor: run.operator,
+      entity: run.id,
+      action: 'CLUSTERING:COMPLETED',
+      reason: `${run.parameters.dataset} · ${run.parameters.algorithm}`,
+    })
+    commit()
+    return run
+  },
+
+  assignClusteringCandidate(runId: string, candidateId: string, tkskId: string, by: string) {
+    const run = this.getClusteringRun(runId)
+    if (!run) throw new Error('run not found')
+    const candidate = run.results.find(c => c.id === candidateId)
+    if (!candidate) throw new Error('candidate not found')
+    candidate.assignedTo = tkskId
+    if (candidate.status === 'PENDING_REVIEW') {
+      candidate.status = 'IN_REVIEW'
+    }
+    db.audit.push({ at: new Date().toISOString(), actor: by, entity: `${runId}:${candidateId}`, action: `CLUSTER_ASSIGN:${tkskId}` })
+    commit()
+    return candidate
+  },
+
+  setClusteringCandidateStatus(runId: string, candidateId: string, status: ClusteringCandidate['status'], by: string, notes?: string) {
+    const run = this.getClusteringRun(runId)
+    if (!run) throw new Error('run not found')
+    const candidate = run.results.find(c => c.id === candidateId)
+    if (!candidate) throw new Error('candidate not found')
+    candidate.status = status
+    candidate.reviewer = by
+    candidate.reviewedAt = new Date().toISOString()
+    candidate.notes = notes
+    db.audit.push({ at: new Date().toISOString(), actor: by, entity: `${runId}:${candidateId}`, action: `CLUSTER_STATUS:${status}`, reason: notes })
+    commit()
+    return candidate
   },
 }

@@ -1,5 +1,5 @@
 import seed from './seed.json'
-import type { Application, Batch, Config, Db, User } from '@domain/types'
+import type { Application, Batch, ClusteringRun, Config, Db, User } from '@domain/types'
 
 function rand(min: number, max: number) {
   return Math.random() * (max - min) + min
@@ -70,7 +70,7 @@ export function generate(extra = 25): Db {
     config: base.config as Config,
     batches: base.batches as Batch[],
     audit: [],
+    clusteringRuns: (base.clusteringRuns as ClusteringRun[] | undefined) ?? [],
   }
   return db
 }
-

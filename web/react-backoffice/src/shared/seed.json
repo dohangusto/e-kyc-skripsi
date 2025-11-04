@@ -33,6 +33,6 @@
   "batches": [
     { "id": "BATCH-001", "code": "BAT-2025Q4-001", "status": "DRAFT", "items": ["APP-2025-00123"], "checksum": "mock-checksum" }
   ],
-  "audit": []
+  "audit": [],
+  "clusteringRuns": []
 }
-

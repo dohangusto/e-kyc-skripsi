@@ -68,11 +68,41 @@ export type Config = {
 
 export type Batch = { id: string; code: string; status: 'DRAFT' | 'SIGNED' | 'EXPORTED' | 'SENT'; items: string[]; checksum: string }
 
+export type ClusteringPriority = 'RENDAH' | 'SEDANG' | 'TINGGI'
+
+export type ClusteringStatus = 'PENDING_REVIEW' | 'IN_REVIEW' | 'APPROVED'
+
+export type ClusteringCandidate = {
+  id: string
+  name: string
+  nik_mask: string
+  region: Region
+  cluster: 'PKH' | 'BPNT' | 'PBI' | 'LAINNYA'
+  priority: ClusteringPriority
+  score: number
+  beneficiaries: number
+  status: ClusteringStatus
+  assignedTo?: string
+  reviewer?: string
+  reviewedAt?: string
+  notes?: string
+}
+
+export type ClusteringRun = {
+  id: string
+  operator: string
+  startedAt: string
+  finishedAt: string
+  parameters: { dataset: string; window: string; algorithm: string }
+  summary: { total: number; tinggi: number; sedang: number; rendah: number }
+  results: ClusteringCandidate[]
+}
+
 export type Db = {
   applications: Application[]
   users: User[]
   config: Config
   batches: Batch[]
   audit: Array<{ at: string; actor: string; entity: string; action: string; reason?: string }>
+  clusteringRuns: ClusteringRun[]
 }
-
