@@ -1,0 +1,122 @@
+import { useMemo, useState } from 'react'
+import { Data } from '@application/services/data-service'
+import { getSession } from '@shared/session'
+import { Toast } from '@presentation/components/Toast'
+import { RoleGate } from '@presentation/components/RoleGate'
+
+const STATUS_FLOW: Array<{ from: string; to: 'SIGNED' | 'EXPORTED' | 'SENT'; label: string }> = [
+  { from: 'DRAFT', to: 'SIGNED', label: 'Mark Signed' },
+  { from: 'SIGNED', to: 'EXPORTED', label: 'Mark Exported' },
+  { from: 'EXPORTED', to: 'SENT', label: 'Mark Sent' },
+]
+
+export default function BatchesPage() {
+  const [snapshot, setSnapshot] = useState(Data.get())
+  const session = getSession()
+  const ready = useMemo(() => snapshot.applications.filter(a => a.status === 'FINAL_APPROVED').map(a => a.id), [snapshot])
+  const [selected, setSelected] = useState<string[]>([])
+  const [code, setCode] = useState(`BAT-${snapshot.config.period}-NEW`)
+
+  async function create() {
+    try {
+      if (!session) throw new Error('no-session')
+      if (selected.length === 0) throw new Error('Pilih minimal satu aplikasi')
+      await Data.createBatch(code, selected, session.userId)
+      setSnapshot(Data.refresh())
+      setSelected([])
+      Toast.show('Batch created')
+    } catch (e) {
+      Toast.show('Gagal: ' + (e as Error).message, 'error')
+    }
+  }
+
+  async function step(batchId: string, next: 'SIGNED' | 'EXPORTED' | 'SENT') {
+    try {
+      if (!session) throw new Error('no-session')
+      await Data.setBatchStatus(batchId, next, session.userId)
+      setSnapshot(Data.refresh())
+      Toast.show(`Batch ${next}`)
+    } catch (e) {
+      Toast.show('Gagal: ' + (e as Error).message, 'error')
+    }
+  }
+
+  function exportBatch(batchId: string, type: 'csv' | 'json') {
+    const batch = snapshot.batches.find(b => b.id === batchId)
+    if (!batch) return
+    const data = batch.items.map(id => snapshot.applications.find(a => a.id === id))
+    const fileName = `${batch.code}.${type}`
+    let blob: Blob
+    if (type === 'json') {
+      blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    } else {
+      const header = 'id,name,status,assigned_to\n'
+      const rows = data.map(a => a ? `${a.id},"${a.applicant.name}",${a.status},${a.assigned_to}` : '').join('\n')
+      blob = new Blob([header + rows], { type: 'text/csv' })
+    }
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.click()
+    URL.revokeObjectURL(url)
+    Toast.show(`Exported ${fileName}`)
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Batches</h2>
+      <section className="bg-white border rounded p-3 space-y-3" aria-label="Create batch">
+        <div className="text-sm">Pilih FINAL_APPROVED untuk buat batch simulasi.</div>
+        <input className="border rounded p-2" value={code} onChange={e => setCode(e.target.value)} />
+        <div className="flex flex-wrap gap-2">
+          {ready.map(id => (
+            <label key={id} className="text-xs border rounded px-2 py-1 flex items-center gap-1">
+              <input type="checkbox" checked={selected.includes(id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, id] : prev.filter(x => x !== id))} />
+              {id}
+            </label>
+          ))}
+          {ready.length === 0 && <p className="text-xs text-slate-500">Belum ada FINAL_APPROVED.</p>}
+        </div>
+        <RoleGate allow={['ADMIN']}>
+          <button className="px-3 py-1 border rounded" onClick={create}>Generate Batch</button>
+        </RoleGate>
+      </section>
+
+      <section className="bg-white border rounded p-3 space-y-3" aria-label="Batch list">
+        <h3 className="font-medium">Daftar Batch</h3>
+        <div className="space-y-3">
+          {snapshot.batches.map(batch => {
+            const flow = STATUS_FLOW.find(step => step.from === batch.status)
+            return (
+              <div key={batch.id} className="border rounded p-3 text-sm space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <div className="font-semibold">{batch.code}</div>
+                    <div className="text-xs text-slate-500">ID {batch.id} · {batch.items.length} items</div>
+                  </div>
+                  <span className="px-2 py-1 bg-slate-100 rounded text-xs">{batch.status}</span>
+                </div>
+                <div className="text-xs">Checksum: {batch.checksum}</div>
+                <div className="flex flex-wrap gap-2">
+                  <RoleGate allow={['ADMIN']}>
+                    <button className="px-3 py-1 border rounded" onClick={() => exportBatch(batch.id, 'json')}>Export JSON</button>
+                  </RoleGate>
+                  <RoleGate allow={['ADMIN']}>
+                    <button className="px-3 py-1 border rounded" onClick={() => exportBatch(batch.id, 'csv')}>Export CSV</button>
+                  </RoleGate>
+                  {flow && (
+                    <RoleGate allow={['ADMIN']}>
+                      <button className="px-3 py-1 border rounded" onClick={() => step(batch.id, flow.to)}>{flow.label}</button>
+                    </RoleGate>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {snapshot.batches.length === 0 && <p className="text-sm text-slate-500">Belum ada batch dibuat.</p>}
+        </div>
+      </section>
+    </div>
+  )
+}

@@ -1,0 +1,38 @@
+{
+  "applications": [
+    {
+      "id": "APP-2025-00123",
+      "applicant": { "name": "Siti Aminah", "nik_mask": "************1234", "dob": "1987-04-12", "phone_mask": "08****4321" },
+      "region": { "prov": "Kepri", "kab": "Batam", "kec": "Sekupang", "kel": "Tg Riau" },
+      "status": "DESK_REVIEW",
+      "scores": { "ocr": 0.91, "face": 0.86, "liveness": "OK" },
+      "flags": { "duplicate_nik": false, "duplicate_face": true, "device_anomaly": false, "similarity": 0.88 },
+      "assigned_to": "TKSK-1002",
+      "aging_days": 2,
+      "created_at": "2025-10-21T10:22:00Z",
+      "documents": [
+        { "id": "DOC1", "type": "KTP", "url": "/mock/ktp1.jpg", "sha256": "sha-ktp-1" },
+        { "id": "DOC2", "type": "SELFIE", "url": "/mock/selfie1.jpg", "sha256": "sha-selfie-1" }
+      ],
+      "visits": [
+        { "id": "VST-332", "scheduled_at": "2025-10-25T03:00:00Z", "geotag": null, "photos": [], "checklist": {}, "status": "PLANNED", "tksk_id": "TKSK-1002" }
+      ],
+      "timeline": [
+        { "at": "2025-10-21T10:22:00Z", "by": "system", "action": "SUBMITTED" },
+        { "at": "2025-10-21T10:23:00Z", "by": "scoring", "action": "SCORED" }
+      ]
+    }
+  ],
+  "users": [
+    { "id": "ADM-1", "name": "Admin Dinsos", "role": "ADMIN", "region_scope": ["Batam"] },
+    { "id": "RSK-1", "name": "Risk Ops", "role": "RISK", "region_scope": ["Batam"] },
+    { "id": "TKSK-1002", "name": "Budi (TKSK Sekupang)", "role": "TKSK", "region_scope": ["Sekupang"] },
+    { "id": "AUD-1", "name": "Inspektorat", "role": "AUDITOR", "region_scope": ["Batam"] }
+  ],
+  "config": { "period": "2025-Q4", "thresholds": { "ocr_min": 0.8, "face_min": 0.8 }, "features": { "enableAppeal": true, "enableOfflineTKSK": true } },
+  "batches": [
+    { "id": "BATCH-001", "code": "BAT-2025Q4-001", "status": "DRAFT", "items": ["APP-2025-00123"], "checksum": "mock-checksum" }
+  ],
+  "audit": []
+}
+

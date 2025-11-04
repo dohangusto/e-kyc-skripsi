@@ -1,12 +1,19 @@
-# React TKSK
+# Backoffice (React + TS + Vite)
 
-Frontend React (Vite + TypeScript + Tailwind v4) untuk modul TKSK.
+Sitemap (routes):
+- /login, /overview, /applications, /applications/:id, /tksk, /risk, /batches, /config, /users, /audit
 
-Perintah umum:
+Fitur utama:
+- Seed data lokal (`localStorage`) dari `src/shared/seed.json` + generator (`src/shared/mock.ts`)
+- Simulasi network `simulateRequest()` untuk aksi (delay + 5% gagal)
+- State dan persistensi via `application/services/data-service.ts`
+- Komponen UI: `StatusPill`, `ScoreBadge`, `ConfirmModal`, `Toast`, `RoleGate`
+- Router ringan tanpa dependency di `src/app/router.ts`
 
-- `pnpm dev` / `npm run dev` – Menjalankan dev server
-- `pnpm build` – Build produksi
-- `pnpm preview` – Preview hasil build
+Menjalankan:
+- cd web/react-backoffice
+- npm i
+- npm run dev
 
-Struktur folder mengikuti `web/react-main` agar konsisten dengan alias dan modularisasi (domain/application/infrastructure/presentation, dll).
-
+Catatan TypeScript:
+- Jika IDE error `vite/client`, pastikan dependencies sudah di-install dan VS Code memakai Workspace TypeScript.
