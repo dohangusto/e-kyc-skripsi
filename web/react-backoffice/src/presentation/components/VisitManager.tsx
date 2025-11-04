@@ -119,6 +119,8 @@ export function VisitManager({ app, onChange }: { app: Application; onChange: ()
   )
 }
 
+type StepStatus = 'done' | 'current' | 'pending'
+
 function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit: Visit; appId: string; onChange: () => void; uploading: boolean; setUploading: (id: string | null) => void }) {
   const session = getSession()
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
@@ -127,15 +129,53 @@ function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit:
   const captureDisabled = !isInProgress
   const submitDisabled = !isInProgress || !checklistReady
 
-  const steps: Array<{ key: string; label: string; status: 'done' | 'current' | 'pending' }> = [
-    { key: 'start', label: 'Mulai kunjungan', status: visit.status === 'PLANNED' ? 'current' : visit.status !== 'PLANNED' ? 'done' : 'pending' },
-    { key: 'photo', label: 'Unggah foto', status: visit.photos.length > 0 ? 'done' : isInProgress ? 'current' : 'pending' },
-    { key: 'geotag', label: 'Geotag', status: visit.geotag ? 'done' : (isInProgress && visit.photos.length > 0 ? 'current' : 'pending') },
-    { key: 'submit', label: 'Kirim laporan', status: ['SUBMITTED', 'VERIFIED'].includes(visit.status) ? 'done' : (isInProgress && checklistReady ? 'current' : 'pending') },
-    { key: 'verify', label: 'Verifikasi', status: visit.status === 'VERIFIED' ? 'done' : (visit.status === 'SUBMITTED' ? 'current' : 'pending') },
+  const steps: Array<{ key: string; label: string; status: StepStatus }> = [
+    { key: 'start', label: 'Mulai kunjungan', status: visit.status === 'PLANNED' ? 'current' : 'done' },
+    {
+      key: 'photo',
+      label: 'Unggah foto',
+      status:
+        visit.photos.length > 0
+          ? 'done'
+          : visit.status === 'PLANNED'
+            ? 'pending'
+            : isInProgress
+              ? 'current'
+              : 'pending',
+    },
+    {
+      key: 'geotag',
+      label: 'Geotag',
+      status:
+        visit.geotag
+          ? 'done'
+          : isInProgress && visit.photos.length > 0
+            ? 'current'
+            : 'pending',
+    },
+    {
+      key: 'submit',
+      label: 'Kirim laporan',
+      status:
+        visit.status === 'VERIFIED' || visit.status === 'SUBMITTED'
+          ? 'done'
+          : isInProgress && checklistReady
+            ? 'current'
+            : 'pending',
+    },
+    {
+      key: 'verify',
+      label: 'Verifikasi',
+      status:
+        visit.status === 'VERIFIED'
+          ? 'done'
+          : visit.status === 'SUBMITTED'
+            ? 'current'
+            : 'pending',
+    },
   ]
 
-  const stepClass = (status: 'done' | 'current' | 'pending') => {
+  const stepClass = (status: StepStatus) => {
     if (status === 'done') return 'bg-emerald-100 border-emerald-200 text-emerald-700'
     if (status === 'current') return 'bg-blue-100 border-blue-300 text-blue-700'
     return 'bg-slate-100 border-slate-200 text-slate-500'
