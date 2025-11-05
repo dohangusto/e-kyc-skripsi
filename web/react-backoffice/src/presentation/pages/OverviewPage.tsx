@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Data } from '@application/services/data-service'
 import { AppRouter } from '@app/router'
 import { getSession } from '@shared/session'
-import type { Batch, Distribution, User } from '@domain/types'
+import type { Batch, Distribution } from '@domain/types'
 
 const BATCH_FILTERS = ['ALL', 'DRAFT', 'SIGNED', 'EXPORTED', 'SENT'] as const
 type BatchFilter = (typeof BATCH_FILTERS)[number]
@@ -18,46 +18,11 @@ type VisitItem = {
   status: string
   scheduledAt: string
 }
-type PresenceSnapshot = Array<{
-  id: string
-  name: string
-  role: string
-  region: string
-  isOnline: boolean
-  lastActive: number | null
-}>
-
 export default function OverviewPage() {
   const session = getSession()
   const [snapshot, setSnapshot] = useState(() => Data.get())
-  const [presence, setPresence] = useState<Record<string, number>>({})
   const [batchFilter, setBatchFilter] = useState<BatchFilter>('ALL')
   const [distributionFilter, setDistributionFilter] = useState<DistributionFilter>('ALL')
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const raw = localStorage.getItem('backoffice.presence.v1')
-      const parsed = raw ? (JSON.parse(raw) as Record<string, number>) : {}
-      setPresence(parsed)
-    } catch {}
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !session) return
-    const update = () => {
-      try {
-        const raw = localStorage.getItem('backoffice.presence.v1')
-        const parsed = raw ? (JSON.parse(raw) as Record<string, number>) : {}
-        parsed[session.userId] = Date.now()
-        localStorage.setItem('backoffice.presence.v1', JSON.stringify(parsed))
-        setPresence(parsed)
-      } catch {}
-    }
-    update()
-    const id = window.setInterval(update, 60_000)
-    return () => window.clearInterval(id)
-  }, [session?.userId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -136,7 +101,6 @@ export default function OverviewPage() {
       .slice(0, 5)
   }, [accessible])
 
-  const presenceSnapshot = useMemo(() => buildPresence(snapshot.users, presence), [snapshot.users, presence])
   const funnelChartData = useMemo(() => {
     const colors = ['#2563eb', '#7c3aed', '#f97316', '#0ea5e9']
     return funnelData.map((stage, idx) => ({
@@ -201,10 +165,7 @@ export default function OverviewPage() {
           emptyLabel="Belum ada data aging."
         />
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4">
-        <UpcomingVisitsCard visits={upcomingVisits} />
-        <UserPresenceCard snapshot={presenceSnapshot} />
-      </div>
+      <UpcomingVisitsCard visits={upcomingVisits} />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <BatchListCard
           filter={batchFilter}
@@ -337,42 +298,6 @@ function UpcomingVisitsCard({ visits }: { visits: VisitItem[] }) {
   )
 }
 
-function UserPresenceCard({ snapshot }: { snapshot: PresenceSnapshot }) {
-  const online = snapshot.filter(item => item.isOnline)
-  const offline = snapshot.filter(item => !item.isOnline)
-  return (
-    <div className="bg-white border rounded p-4 space-y-3">
-      <h3 className="font-medium">Status Pengguna Backoffice</h3>
-      <p className="text-xs text-slate-500">Monitoring sederhana pengguna yang aktif dalam 5 menit terakhir.</p>
-      <div className="flex items-center gap-4 text-sm">
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs">
-          Online {online.length}
-        </span>
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs">
-          Offline {offline.length}
-        </span>
-      </div>
-      <ul className="space-y-2 text-sm">
-        {snapshot.map(item => (
-          <li key={item.id} className="flex items-start justify-between border rounded px-3 py-2 gap-3">
-            <div>
-              <div className="font-medium">{item.name}</div>
-              <div className="text-xs text-slate-500">{item.id} · {item.role} · {item.region}</div>
-            </div>
-            <div className="text-xs text-right">
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${item.isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: item.isOnline ? '#16a34a' : '#94a3b8' }} />
-                {item.isOnline ? 'Online' : 'Offline'}
-              </span>
-              <div className="mt-1 text-slate-500">{item.lastActive ? formatRelativeTime(item.lastActive) : 'Belum pernah masuk'}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
 function BatchListCard({
   filter,
   onFilterChange,
@@ -482,31 +407,6 @@ function DistributionListCard({
   )
 }
 
-function buildPresence(users: User[], presMap: Record<string, number>): PresenceSnapshot {
-  const cutoff = Date.now() - 5 * 60 * 1000
-  return users
-    .map(user => {
-      const lastActive = presMap[user.id] ?? null
-      const isOnline = lastActive !== null && lastActive >= cutoff
-      return {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        region: user.region_scope.join(', '),
-        isOnline,
-        lastActive,
-      }
-    })
-    .sort((a, b) => {
-      if (a.isOnline === b.isOnline) {
-        const aTime = a.lastActive ?? 0
-        const bTime = b.lastActive ?? 0
-        return bTime - aTime
-      }
-      return a.isOnline ? -1 : 1
-    })
-}
-
 function computeStatusCount<T extends string>(values: T[], filters: readonly (T | 'ALL')[]): Record<T | 'ALL', number> {
   const counts = {} as Record<T | 'ALL', number>
   counts.ALL = values.length
@@ -517,15 +417,4 @@ function computeStatusCount<T extends string>(values: T[], filters: readonly (T 
     if (!(filter in counts)) counts[filter as T] = 0
   })
   return counts
-}
-
-function formatRelativeTime(value: number) {
-  const diff = Date.now() - value
-  if (diff < 30_000) return 'Baru saja'
-  const mins = Math.round(diff / 60_000)
-  if (mins < 60) return `${mins} menit lalu`
-  const hours = Math.round(mins / 60)
-  if (hours < 24) return `${hours} jam lalu`
-  const days = Math.round(hours / 24)
-  return `${days} hari lalu`
 }
