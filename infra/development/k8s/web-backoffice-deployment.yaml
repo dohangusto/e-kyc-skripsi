@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-backoffice
+  labels:
+    app: web-backoffice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-backoffice
+  template:
+    metadata:
+      labels:
+        app: web-backoffice
+    spec:
+      containers:
+      - name: web-backoffice
+        image: react-backoffice/web
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3001
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: NODE_ENV
+          value: "development"
+        - name: VITE_API_URL
+          value: "http://api-gateway:8080"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 10
+          failureThreshold: 3

@@ -16,6 +16,14 @@ export default function BatchesPage() {
   const ready = useMemo(() => snapshot.applications.filter(a => a.status === 'FINAL_APPROVED').map(a => a.id), [snapshot])
   const [selected, setSelected] = useState<string[]>([])
   const [code, setCode] = useState(`BAT-${snapshot.config.period}-NEW`)
+  const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null)
+  const appsMap = useMemo(() => {
+    const map = new Map<string, { name: string; region: string; status: string }>()
+    snapshot.applications.forEach(app => {
+      map.set(app.id, { name: app.applicant.name, region: `${app.region.kab} / ${app.region.kec}`, status: app.status })
+    })
+    return map
+  }, [snapshot.applications])
 
   async function create() {
     try {
@@ -88,8 +96,27 @@ export default function BatchesPage() {
         <div className="space-y-3">
           {snapshot.batches.map(batch => {
             const flow = STATUS_FLOW.find(step => step.from === batch.status)
+            const expanded = expandedBatchId === batch.id
             return (
-              <div key={batch.id} className="border rounded p-3 text-sm space-y-2">
+              <div
+                key={batch.id}
+                className={`border rounded p-3 text-sm space-y-2 ${expanded ? 'bg-slate-50' : 'bg-white'}`}
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded}
+                onClick={event => {
+                  const target = event.target as HTMLElement
+                  if (target.closest('button, a, input')) return
+                  setExpandedBatchId(prev => (prev === batch.id ? null : batch.id))
+                }}
+                onKeyDown={event => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  const target = event.target as HTMLElement
+                  if (target.closest('button, a, input')) return
+                  event.preventDefault()
+                  setExpandedBatchId(prev => (prev === batch.id ? null : batch.id))
+                }}
+              >
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <div className="font-semibold">{batch.code}</div>
@@ -111,6 +138,26 @@ export default function BatchesPage() {
                     </RoleGate>
                   )}
                 </div>
+                {expanded && (
+                  <div className="border-t pt-2 mt-2 space-y-2">
+                    <h4 className="font-medium text-xs uppercase tracking-wide text-slate-500">Daftar Penerima</h4>
+                    <ul className="space-y-1 text-xs">
+                      {batch.items.map(itemId => {
+                        const info = appsMap.get(itemId)
+                        return (
+                          <li key={itemId} className="border rounded p-2 bg-white flex justify-between gap-2">
+                            <span>
+                              <span className="font-semibold text-slate-700">{info?.name ?? 'Tidak ditemukan'}</span>
+                              <span className="block text-slate-500">{itemId}{info ? ` · ${info.region}` : ''}</span>
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600">{info?.status ?? 'UNKNOWN'}</span>
+                          </li>
+                        )
+                      })}
+                      {batch.items.length === 0 && <li className="italic text-slate-500">Belum ada penerima di batch ini.</li>}
+                    </ul>
+                  </div>
+                )}
               </div>
             )
           })}

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-backoffice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-backoffice
+  template:
+    metadata:
+      labels:
+        app: web-backoffice
+    spec:
+      containers:
+        - name: web-backoffice
+          image: europe-west1-docker.pkg.dev/{{PROJECT_ID}}/ride-sharing/web-backoffice
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-backoffice
+spec:
+  type: LoadBalancer
+  selector:
+    app: web-backoffice
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http

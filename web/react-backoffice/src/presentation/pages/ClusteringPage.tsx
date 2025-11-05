@@ -219,8 +219,8 @@ export default function ClusteringPage() {
         </section>
       )}
 
-      <section className="grid lg:grid-cols-5 gap-4">
-        <aside className="lg:col-span-2 bg-white border rounded p-3 space-y-3" aria-label="Riwayat clustering">
+      <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="bg-white border rounded p-3 space-y-3" aria-label="Riwayat clustering">
           <h3 className="font-medium">Riwayat Eksekusi</h3>
           <div className="space-y-2 max-h-[320px] overflow-auto" role="list">
             {runs.map(run => (
@@ -239,7 +239,7 @@ export default function ClusteringPage() {
           </div>
         </aside>
 
-        <section className="lg:col-span-3 space-y-3" aria-label="Detil clustering">
+        <section className="space-y-3" aria-label="Detil clustering">
           {!selectedRun ? (
             <p className="text-sm text-slate-500">Pilih salah satu run untuk melihat detail.</p>
           ) : (
@@ -294,7 +294,7 @@ export default function ClusteringPage() {
                         <th className="text-left p-2">Nama</th>
                         <th className="text-left p-2">Cluster</th>
                         <th className="text-left p-2">Skor</th>
-                        <th className="text-left p-2">Beneficiaries</th>
+                        <th className="text-left p-2">Tanggungan</th>
                         <th className="text-left p-2">Wilayah</th>
                         <th className="text-left p-2">Status</th>
                         <th className="text-left p-2">Assigned</th>
@@ -310,7 +310,7 @@ export default function ClusteringPage() {
                           </td>
                           <td className="p-2">
                             <span className="block text-xs text-slate-500">{candidate.cluster}</span>
-                            <PriorityBadge priority={candidate.priority} />
+                            {/* <PriorityBadge priority={candidate.priority} /> */}
                           </td>
                           <td className="p-2">{candidate.score}</td>
                           <td className="p-2">{candidate.beneficiaries}</td>

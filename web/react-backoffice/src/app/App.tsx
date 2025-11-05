@@ -12,6 +12,7 @@ import ConfigPage from "@presentation/pages/ConfigPage";
 import UsersPage from "@presentation/pages/UsersPage";
 import AuditPage from "@presentation/pages/AuditPage";
 import ClusteringPage from "@presentation/pages/ClusteringPage";
+import DistributionPage from "@presentation/pages/DistributionPage";
 import { ToastHost } from "@presentation/components/Toast";
 import { getSession } from "@shared/session";
 
@@ -34,6 +35,7 @@ const App = () => {
         {route.path === "/tksk" && <TkskPage />}
         {route.path === "/risk" && <RiskPage />}
         {route.path === "/clustering" && <ClusteringPage />}
+        {route.path === "/distribution" && <DistributionPage />}
         {route.path === "/batches" && <BatchesPage />}
         {route.path === "/config" && <ConfigPage />}
         {route.path === "/users" && <UsersPage />}

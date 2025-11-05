@@ -7,6 +7,8 @@ import type {
   ClusteringRun,
   Config,
   Db,
+  Distribution,
+  SurveyAnswers,
   TimelineItem,
   User,
   Visit,
@@ -23,6 +25,20 @@ const cloneVisit = (visit: Visit): Visit => ({
 })
 
 const cloneTimeline = (timeline: TimelineItem[]): TimelineItem[] => timeline.map(entry => ({ ...entry }))
+
+const cloneSurveyAnswers = (answers: SurveyAnswers): SurveyAnswers => ({
+  partB: { ...answers.partB },
+  partC: { ...answers.partC },
+  partD: { ...answers.partD },
+  partE: { ...answers.partE },
+})
+
+const cloneDistribution = (distribution: Distribution): Distribution => ({
+  ...distribution,
+  batch_codes: [...distribution.batch_codes],
+  beneficiaries: [...distribution.beneficiaries],
+  notified: [...distribution.notified],
+})
 
 function toApplication(seedBeneficiary: BeneficiarySeed): Application {
   return {
@@ -49,6 +65,14 @@ function toApplication(seedBeneficiary: BeneficiarySeed): Application {
     documents: seedBeneficiary.documents.map(doc => ({ ...doc })),
     visits: seedBeneficiary.visits.map(cloneVisit),
     timeline: cloneTimeline(seedBeneficiary.timeline),
+    survey: seedBeneficiary.survey
+      ? {
+          completed: seedBeneficiary.survey.completed,
+          submitted_at: seedBeneficiary.survey.submittedAt,
+          status: seedBeneficiary.survey.status,
+          answers: seedBeneficiary.survey.answers ? cloneSurveyAnswers(seedBeneficiary.survey.answers) : undefined,
+        }
+      : undefined,
   }
 }
 
@@ -99,6 +123,8 @@ export function generate(): Db {
   const applications = beneficiaries.map(toApplication)
   const initialRun = createInitialClusteringRun()
 
+  const distributions = (base.distributions as Distribution[] | undefined)?.map(cloneDistribution) ?? []
+
   const batches = (base.batches as Batch[] | undefined)?.map(batch => ({
     ...batch,
     items: batch.items.filter(item => applications.some(app => app.id === item)),
@@ -110,6 +136,7 @@ export function generate(): Db {
     config: base.config as Config,
     batches,
     audit: [],
+    distributions,
     clusteringRuns: [initialRun, ...((base.clusteringRuns as ClusteringRun[] | undefined) ?? [])],
   }
 

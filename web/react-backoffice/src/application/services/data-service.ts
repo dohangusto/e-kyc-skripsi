@@ -4,6 +4,7 @@ import type {
   ClusteringCandidate,
   ClusteringRun,
   Db,
+  Distribution,
   Visit,
   VisitStatus,
 } from '@domain/types'
@@ -27,6 +28,7 @@ export const Data = {
   setConfig(cfg: Db['config']) { db.config = cfg; commit() },
   listBatches() { return db.batches },
   listClusteringRuns() { return db.clusteringRuns },
+  listDistributions() { return db.distributions },
   getClusteringRun(id: string) { return db.clusteringRuns.find(r => r.id === id) ?? null },
 
   // Mutations with simulateRequest
@@ -172,5 +174,71 @@ export const Data = {
     db.audit.push({ at: new Date().toISOString(), actor: by, entity: `${runId}:${candidateId}`, action: `CLUSTER_STATUS:${status}`, reason: notes })
     commit()
     return candidate
+  },
+
+  async createDistribution(payload: Pick<Distribution, 'name' | 'scheduled_at' | 'channel' | 'location' | 'batch_codes' | 'beneficiaries' | 'notes'>, by: string) {
+    return simulateRequest(() => {
+      const now = new Date().toISOString()
+      const distribution: Distribution = {
+        id: `DIST-${Math.floor(Math.random() * 100000)}`,
+        name: payload.name,
+        scheduled_at: payload.scheduled_at,
+        channel: payload.channel,
+        location: payload.location,
+        batch_codes: [...payload.batch_codes],
+        beneficiaries: [...payload.beneficiaries],
+        notified: [],
+        status: 'PLANNED',
+        notes: payload.notes,
+        created_by: by,
+        created_at: now,
+        updated_by: by,
+        updated_at: now,
+      }
+      db.distributions.push(distribution)
+      db.audit.push({ at: now, actor: by, entity: distribution.id, action: 'DISTRIBUTION:CREATED' })
+      commit()
+      return distribution
+    })
+  },
+
+  async updateDistributionStatus(id: string, status: Distribution['status'], by: string) {
+    return simulateRequest(() => {
+      const distribution = db.distributions.find(d => d.id === id)
+      if (!distribution) throw new Error('distribution not found')
+      distribution.status = status
+      distribution.updated_at = new Date().toISOString()
+      distribution.updated_by = by
+      db.audit.push({ at: distribution.updated_at, actor: by, entity: id, action: `DISTRIBUTION:${status}` })
+      commit()
+      return distribution
+    })
+  },
+
+  async notifyDistribution(id: string, beneficiaries: string[], by: string) {
+    return simulateRequest(() => {
+      const distribution = db.distributions.find(d => d.id === id)
+      if (!distribution) throw new Error('distribution not found')
+      const now = new Date().toISOString()
+      const actual: string[] = []
+      beneficiaries.forEach(beneficiaryId => {
+        if (!distribution.beneficiaries.includes(beneficiaryId)) return
+        if (!distribution.notified.includes(beneficiaryId)) {
+          distribution.notified.push(beneficiaryId)
+          actual.push(beneficiaryId)
+        }
+        const app = db.applications.find(a => a.id === beneficiaryId)
+        if (app && app.status !== 'DISBURSED') {
+          app.status = 'DISBURSED'
+          app.timeline.push({ at: now, by, action: 'STATUS:DISBURSED', reason: `Notifikasi ${distribution.channel}` })
+        }
+      })
+      if (!actual.length) return distribution
+      distribution.updated_at = now
+      distribution.updated_by = by
+      db.audit.push({ at: now, actor: by, entity: id, action: 'DISTRIBUTION:NOTIFIED', reason: actual.join(',') })
+      commit()
+      return distribution
+    })
   },
 }

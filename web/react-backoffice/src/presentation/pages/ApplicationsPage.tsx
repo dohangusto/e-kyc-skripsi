@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Data } from '@application/services/data-service'
 import { AppRouter } from '@app/router'
 import { StatusPill } from '@presentation/components/StatusPill'
-import { ScoreBadge } from '@presentation/components/ScoreBadge'
 import { SavedViews } from '@shared/saved-views'
 import { getSession } from '@shared/session'
 
@@ -65,6 +64,17 @@ export default function ApplicationsPage() {
   }, [filters])
 
   const db = Data.get()
+  const batchLookup = useMemo(() => {
+    const map = new Map<string, string[]>()
+    db.batches.forEach(batch => {
+      batch.items.forEach(item => {
+        const arr = map.get(item) ?? []
+        arr.push(batch.code)
+        map.set(item, arr)
+      })
+    })
+    return map
+  }, [db.batches])
   const accessibleApps = useMemo(() => {
     let apps = db.applications.slice()
     if (!session) return apps
@@ -240,7 +250,7 @@ export default function ApplicationsPage() {
                 <th scope="col" className="text-left p-2">Nama</th>
                 <th scope="col" className="text-left p-2">Wilayah</th>
                 <th scope="col" className="text-left p-2">Status</th>
-                <th scope="col" className="text-left p-2">Score</th>
+                <th scope="col" className="text-left p-2">Batch</th>
                 <th scope="col" className="text-left p-2">Flags</th>
                 <th scope="col" className="text-left p-2">Assigned</th>
                 <th scope="col" className="text-left p-2">Aging</th>
@@ -253,7 +263,9 @@ export default function ApplicationsPage() {
                   <td className="p-2">{a.applicant.name}</td>
                   <td className="p-2">{a.region.kab} / {a.region.kec}</td>
                   <td className="p-2"><StatusPill status={a.status} /></td>
-                  <td className="p-2"><ScoreBadge ocr={a.scores.ocr} face={a.scores.face} /></td>
+                  <td className="p-2 text-xs text-slate-600">
+                    {batchLookup.get(a.id)?.join(', ') ?? '—'}
+                  </td>
                   <td className="p-2 text-xs">{a.flags.duplicate_face? '👤dup ' : ''}{a.flags.duplicate_nik? '🆔dup ' : ''}{a.flags.device_anomaly? '📱anom' : ''}</td>
                   <td className="p-2">{a.assigned_to}</td>
                   <td className="p-2">{a.aging_days}d</td>

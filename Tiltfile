@@ -61,3 +61,23 @@ docker_build_with_restart(
 k8s_yaml('./infra/development/k8s/web-deployment.yaml')
 k8s_resource('web', port_forwards=3000, labels="web")
 ### End of Web (React) ###
+
+
+### Web Backoffice (React) ###
+
+docker_build_with_restart(
+  'react-backoffice/web',
+  '.',
+  dockerfile='./infra/development/docker/web-backoffice.Dockerfile',
+  only=[
+    './web/react-backoffice',
+  ],
+  live_update=[
+    sync('./web/react-backoffice', '/app'),
+  ],
+  entrypoint=['sh','-lc','npm run dev -- --host 0.0.0.0 --port 3001']
+)
+
+k8s_yaml('./infra/development/k8s/web-backoffice-deployment.yaml')
+k8s_resource('web-backoffice', port_forwards=3001, labels="web")
+### End of Web Backoffice (React) ###

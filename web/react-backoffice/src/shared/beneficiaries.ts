@@ -3,6 +3,8 @@ import type {
   ClusteringCandidate,
   ClusteringPriority,
   Region,
+  SurveyAnswers,
+  SurveyStatus,
   Visit,
 } from '@domain/types'
 
@@ -53,6 +55,12 @@ export type BeneficiarySeed = {
   clusterNotes?: string
   reviewer?: string
   reviewedAt?: string
+  survey?: {
+    completed: boolean
+    submittedAt?: string
+    status?: SurveyStatus
+    answers?: SurveyAnswers
+  }
 }
 
 const docs = (appId: string): DocumentSeed[] => [
@@ -97,6 +105,10 @@ export const beneficiaries: BeneficiarySeed[] = [
     recommendedPriority: 'TINGGI',
     clusterScore: 0.86,
     clusterStatus: 'IN_REVIEW',
+    survey: {
+      completed: false,
+      status: 'belum-dikumpulkan',
+    },
   },
   {
     personId: 'BEN-002',
@@ -135,6 +147,43 @@ export const beneficiaries: BeneficiarySeed[] = [
     recommendedPriority: 'SEDANG',
     clusterScore: 0.73,
     clusterStatus: 'IN_REVIEW',
+    survey: {
+      completed: true,
+      status: 'disetujui',
+      submittedAt: '2025-10-19T08:45:00Z',
+      answers: {
+        partB: {
+          householdMembers: 3,
+          schoolChildren: 'Ada (1 SD)',
+          toddlers: 'Tidak ada',
+          elderly: 'Ada (1 lansia)',
+          disability: 'Tidak ada',
+        },
+        partC: {
+          education: 'SMA/SMK',
+          occupation: 'Pekerja lepas',
+          income: 'Rp1.000.000 – Rp2.000.000',
+          extraIncome: 'Tidak ada',
+        },
+        partD: {
+          homeOwnership: 'Milik sendiri',
+          floorType: 'Keramik',
+          wallType: 'Tembok plester',
+          roofType: 'Genteng/Beton',
+          vehicle: 'Motor',
+          savings: 'Tidak',
+          lighting: 'Listrik PLN subsidi',
+          waterSource: 'PDAM',
+          cookingFuel: 'Gas LPG',
+          toilet: 'Toilet sendiri di rumah',
+          wasteDisposal: 'Got tertutup/tanki',
+          sanitation: 'Sehat',
+        },
+        partE: {
+          healthCheck: 'Ya',
+        },
+      },
+    },
   },
   {
     personId: 'BEN-003',
@@ -168,6 +217,43 @@ export const beneficiaries: BeneficiarySeed[] = [
     reviewer: 'TKSK-1002',
     reviewedAt: '2025-10-13T04:00:00Z',
     clusterNotes: 'Telah diverifikasi lapangan dan layak menerima PKH.',
+    survey: {
+      completed: true,
+      status: 'diperiksa',
+      submittedAt: '2025-10-11T09:20:00Z',
+      answers: {
+        partB: {
+          householdMembers: 5,
+          schoolChildren: 'Ada (2 SD)',
+          toddlers: 'Ada (1 balita)',
+          elderly: 'Tidak ada',
+          disability: 'Tidak ada',
+        },
+        partC: {
+          education: 'SMP',
+          occupation: 'Buruh harian',
+          income: '< Rp 1.000.000',
+          extraIncome: 'Istri jualan kue',
+        },
+        partD: {
+          homeOwnership: 'Kontrak',
+          floorType: 'Semen',
+          wallType: 'Kayu',
+          roofType: 'Seng',
+          vehicle: 'Tidak punya',
+          savings: 'Tidak',
+          lighting: 'Listrik PLN non-subsidi',
+          waterSource: 'Sumur gali',
+          cookingFuel: 'Kayu bakar',
+          toilet: 'Toilet bersama',
+          wasteDisposal: 'Dibiarkan mengalir',
+          sanitation: 'Kurang sehat',
+        },
+        partE: {
+          healthCheck: 'Kadang-kadang',
+        },
+      },
+    },
   },
   {
     personId: 'BEN-004',
@@ -195,6 +281,11 @@ export const beneficiaries: BeneficiarySeed[] = [
     recommendedPriority: 'SEDANG',
     clusterScore: 0.65,
     clusterStatus: 'PENDING_REVIEW',
+    survey: {
+      completed: false,
+      status: 'antrean',
+      submittedAt: '2025-10-16T04:00:00Z',
+    },
   },
   {
     personId: 'BEN-005',

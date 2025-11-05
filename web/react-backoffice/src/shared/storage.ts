@@ -8,6 +8,7 @@ function hydrate(db: Db): Db {
     ...db,
     audit: db.audit ?? [],
     clusteringRuns: db.clusteringRuns ?? [],
+    distributions: db.distributions ?? [],
   }
 }
 

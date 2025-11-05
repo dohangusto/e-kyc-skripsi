@@ -9,7 +9,7 @@ import { getSession } from '@shared/session'
 import { DocumentGallery } from '@presentation/components/DocumentGallery'
 import { VisitManager } from '@presentation/components/VisitManager'
 import { RoleGate } from '@presentation/components/RoleGate'
-import type { Application } from '@domain/types'
+import type { Application, SurveyStatus } from '@domain/types'
 
 type ActionModal = 'APPROVE' | 'ESCALATE' | 'READY' | 'REJECT' | 'RETURN' | 'LINK_DUP' | 'IGNORE_DUP'
 
@@ -101,7 +101,7 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
       </nav>
 
       {tab === 'summary' && <SummaryTab application={application} />}
-      {tab === 'documents' && <DocumentGallery documents={application.documents} />}
+      {tab === 'documents' && <DocumentsTab application={application} />}
       {tab === 'tksk' && <VisitManager app={application} onChange={refresh} />}
       {tab === 'risk' && <RiskTab application={application} onLink={(candidateId) => setModal({ type: 'LINK_DUP', candidate: candidateId })} onIgnore={() => setModal({ type: 'IGNORE_DUP' })} />}
       {tab === 'audit' && <AuditTab appId={application.id} />}
@@ -184,6 +184,168 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
       )}
     </div>
   )
+}
+
+function DocumentsTab({ application }: { application: Application }) {
+  return (
+    <section className="space-y-4" role="tabpanel">
+      <DocumentGallery documents={application.documents} />
+      <SurveyPanel survey={application.survey} />
+    </section>
+  )
+}
+
+function SurveyPanel({ survey }: { survey?: Application['survey'] }) {
+  if (!survey) {
+    return (
+      <aside className="bg-white border rounded p-4 text-sm space-y-2" aria-label="Survey keluarga">
+        <header>
+          <h3 className="text-base font-semibold">Survey Keluarga</h3>
+          <p className="text-xs text-slate-500">Belum ada data survey yang dikumpulkan.</p>
+        </header>
+      </aside>
+    )
+  }
+
+  const statusLabel = survey.status ? formatSurveyStatus(survey.status) : 'Status belum tersedia'
+  const submitted = survey.submitted_at ? formatSurveyDate(survey.submitted_at) : 'Belum pernah'
+  const statusTone = survey.status ? getSurveyStatusTone(survey.status) : 'bg-slate-200 text-slate-700'
+
+  return (
+    <aside className="bg-white border rounded p-4 text-sm space-y-4" aria-label="Survey keluarga">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-base font-semibold">Survey Keluarga</h3>
+          <p className="text-xs text-slate-500">Rekap jawaban survey kesejahteraan keluarga.</p>
+        </div>
+        <span className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full ${statusTone}`}>
+          {statusLabel}
+        </span>
+      </header>
+
+      <div className="grid gap-3 sm:grid-cols-3 text-xs">
+        <MetadataItem label="Terakhir dikirim" value={submitted} />
+        <MetadataItem label="Survey selesai" value={survey.completed ? 'Ya' : 'Belum'} />
+        <MetadataItem label="Jumlah bagian terisi" value={survey.answers ? 'Lengkap' : 'Belum lengkap'} />
+      </div>
+
+      {survey.answers ? (
+        <div className="space-y-4">
+          <SurveySection
+            title="B. Kondisi Keluarga"
+            fields={[
+              { label: 'Jumlah anggota keluarga dalam KK', value: survey.answers.partB.householdMembers },
+              { label: 'Tanggungan anak sekolah', value: survey.answers.partB.schoolChildren },
+              { label: 'Anak balita', value: survey.answers.partB.toddlers },
+              { label: 'Anggota lansia', value: survey.answers.partB.elderly },
+              { label: 'Disabilitas / penyakit kronis', value: survey.answers.partB.disability },
+            ]}
+          />
+          <SurveySection
+            title="C. Pendidikan & Pekerjaan"
+            fields={[
+              { label: 'Pendidikan terakhir', value: survey.answers.partC.education },
+              { label: 'Pekerjaan kepala keluarga', value: survey.answers.partC.occupation },
+              { label: 'Penghasilan per bulan', value: survey.answers.partC.income },
+              { label: 'Penghasilan tambahan', value: survey.answers.partC.extraIncome },
+            ]}
+          />
+          <SurveySection
+            title="D. Kondisi Tempat Tinggal & Aset"
+            fields={[
+              { label: 'Status kepemilikan rumah', value: survey.answers.partD.homeOwnership },
+              { label: 'Jenis lantai rumah', value: survey.answers.partD.floorType },
+              { label: 'Jenis dinding rumah', value: survey.answers.partD.wallType },
+              { label: 'Jenis atap rumah', value: survey.answers.partD.roofType },
+              { label: 'Kepemilikan kendaraan', value: survey.answers.partD.vehicle },
+              { label: 'Kepemilikan tabungan', value: survey.answers.partD.savings },
+              { label: 'Sumber energi listrik', value: survey.answers.partD.lighting },
+              { label: 'Sumber air minum', value: survey.answers.partD.waterSource },
+              { label: 'Bahan bakar memasak', value: survey.answers.partD.cookingFuel },
+              { label: 'Sarana MCK', value: survey.answers.partD.toilet },
+              { label: 'Pembuangan limbah', value: survey.answers.partD.wasteDisposal },
+              { label: 'Kondisi sanitasi', value: survey.answers.partD.sanitation },
+            ]}
+          />
+          <SurveySection
+            title="E. Kesehatan & Kebiasaan"
+            fields={[
+              { label: 'Pemeriksaan kesehatan rutin', value: survey.answers.partE.healthCheck },
+            ]}
+          />
+        </div>
+      ) : (
+        <div className="rounded border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+          Survey sudah tercatat namun jawaban detail belum lengkap.
+        </div>
+      )}
+    </aside>
+  )
+}
+
+function MetadataItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-slate-200 bg-slate-50 p-3">
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-1 font-medium text-slate-700">{value}</div>
+    </div>
+  )
+}
+
+function SurveySection({ title, fields }: { title: string; fields: Array<{ label: string; value: string | number | '' | undefined }> }) {
+  return (
+    <section className="space-y-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h4>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {fields.map(field => (
+          <div key={field.label} className="rounded border border-slate-200 bg-slate-50 p-3 text-xs">
+            <div className="text-[11px] uppercase tracking-wide text-slate-500">{field.label}</div>
+            <div className="mt-1 font-medium text-slate-700">{formatSurveyValue(field.value)}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function formatSurveyValue(value: string | number | '' | undefined) {
+  if (value === '' || value === undefined || value === null) return '—'
+  return typeof value === 'number' ? value.toString() : value
+}
+
+function formatSurveyStatus(status: SurveyStatus) {
+  if (!status) return 'Status belum tersedia'
+  const map: Record<string, string> = {
+    'belum-dikumpulkan': 'Belum dikumpulkan',
+    antrean: 'Dalam antrean',
+    diperiksa: 'Sedang diperiksa',
+    disetujui: 'Disetujui',
+    ditolak: 'Ditolak',
+  }
+  return map[status] ?? status
+}
+
+function formatSurveyDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function getSurveyStatusTone(status: SurveyStatus) {
+  switch (status) {
+    case 'belum-dikumpulkan':
+      return 'bg-slate-200 text-slate-700'
+    case 'antrean':
+      return 'bg-amber-100 text-amber-600'
+    case 'diperiksa':
+      return 'bg-blue-100 text-blue-600'
+    case 'disetujui':
+      return 'bg-emerald-100 text-emerald-700'
+    case 'ditolak':
+      return 'bg-rose-100 text-rose-600'
+    default:
+      return 'bg-slate-200 text-slate-700'
+  }
 }
 
 function SummaryTab({ application }: { application: Application }) {

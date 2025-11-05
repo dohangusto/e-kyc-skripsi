@@ -35,6 +35,48 @@ export type Visit = {
 
 export type TimelineItem = { at: string; by: string; action: string; reason?: string }
 
+export type SurveyAnswers = {
+  partB: {
+    householdMembers: number | ''
+    schoolChildren: string
+    toddlers: string
+    elderly: string
+    disability: string
+  }
+  partC: {
+    education: string
+    occupation: string
+    income: string
+    extraIncome: string
+  }
+  partD: {
+    homeOwnership: string
+    floorType: string
+    wallType: string
+    roofType: string
+    vehicle: string
+    savings: string
+    lighting: string
+    waterSource: string
+    cookingFuel: string
+    toilet: string
+    wasteDisposal: string
+    sanitation: string
+  }
+  partE: {
+    healthCheck: string
+  }
+}
+
+export type SurveyStatus = 'belum-dikumpulkan' | 'antrean' | 'diperiksa' | 'disetujui' | 'ditolak'
+
+export type SurveyState = {
+  completed: boolean
+  submitted_at?: string
+  answers?: SurveyAnswers
+  status?: SurveyStatus
+}
+
 export type Application = {
   id: string
   applicant: Applicant
@@ -56,6 +98,7 @@ export type Application = {
   documents: Doc[]
   visits: Visit[]
   timeline: TimelineItem[]
+  survey?: SurveyState
 }
 
 export type User = { id: string; name: string; role: 'ADMIN' | 'RISK' | 'TKSK' | 'AUDITOR'; region_scope: string[] }
@@ -71,6 +114,27 @@ export type Batch = { id: string; code: string; status: 'DRAFT' | 'SIGNED' | 'EX
 export type ClusteringPriority = 'RENDAH' | 'SEDANG' | 'TINGGI'
 
 export type ClusteringStatus = 'PENDING_REVIEW' | 'IN_REVIEW' | 'APPROVED'
+
+export type DistributionChannel = 'BANK_TRANSFER' | 'POSPAY' | 'TUNAI'
+
+export type DistributionStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED'
+
+export type Distribution = {
+  id: string
+  name: string
+  scheduled_at: string
+  channel: DistributionChannel
+  location: string
+  batch_codes: string[]
+  beneficiaries: string[]
+  notified: string[]
+  status: DistributionStatus
+  notes?: string
+  created_by: string
+  created_at: string
+  updated_by: string
+  updated_at: string
+}
 
 export type ClusteringCandidate = {
   id: string
@@ -105,4 +169,5 @@ export type Db = {
   batches: Batch[]
   audit: Array<{ at: string; actor: string; entity: string; action: string; reason?: string }>
   clusteringRuns: ClusteringRun[]
+  distributions: Distribution[]
 }
