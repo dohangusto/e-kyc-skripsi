@@ -13,7 +13,19 @@ import { simulateRequest } from '@shared/simulate'
 
 let db: Db = loadDb()
 
-function commit() { saveDb(db) }
+function emitChange() {
+  try {
+    if (typeof window !== 'undefined') {
+      const evt = new CustomEvent('backoffice:data:changed', { detail: Date.now() })
+      window.dispatchEvent(evt)
+    }
+  } catch {}
+}
+
+function commit() {
+  saveDb(db)
+  emitChange()
+}
 
 export const Data = {
   get: () => db,

@@ -29,7 +29,7 @@ type PresenceSnapshot = Array<{
 
 export default function OverviewPage() {
   const session = getSession()
-  const db = Data.get()
+  const [snapshot, setSnapshot] = useState(() => Data.get())
   const [presence, setPresence] = useState<Record<string, number>>({})
   const [batchFilter, setBatchFilter] = useState<BatchFilter>('ALL')
   const [distributionFilter, setDistributionFilter] = useState<DistributionFilter>('ALL')
@@ -59,8 +59,15 @@ export default function OverviewPage() {
     return () => window.clearInterval(id)
   }, [session?.userId])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = () => setSnapshot(Data.refresh())
+    window.addEventListener('backoffice:data:changed', handler)
+    return () => window.removeEventListener('backoffice:data:changed', handler)
+  }, [])
+
   const accessible = useMemo(() => {
-    let apps = db.applications.slice()
+    let apps = snapshot.applications.slice()
     if (!session) return apps
     if (session.role === 'TKSK') {
       apps = apps.filter(app => app.assigned_to === session.userId)
@@ -68,7 +75,7 @@ export default function OverviewPage() {
       apps = apps.filter(app => app.flags.duplicate_face || app.flags.duplicate_nik || app.flags.device_anomaly)
     }
     return apps
-  }, [db, session])
+  }, [snapshot.applications, session])
 
   const total = accessible.length
   const inReview = accessible.filter(a => a.status === 'DESK_REVIEW' || a.status === 'FIELD_VISIT').length
@@ -129,7 +136,7 @@ export default function OverviewPage() {
       .slice(0, 5)
   }, [accessible])
 
-  const presenceSnapshot = useMemo(() => buildPresence(db.users, presence), [db.users, presence])
+  const presenceSnapshot = useMemo(() => buildPresence(snapshot.users, presence), [snapshot.users, presence])
   const funnelChartData = useMemo(() => {
     const colors = ['#2563eb', '#7c3aed', '#f97316', '#0ea5e9']
     return funnelData.map((stage, idx) => ({
@@ -144,21 +151,21 @@ export default function OverviewPage() {
       color: colors[idx % colors.length],
     }))
   }, [agingBuckets])
-  const batchCounts = useMemo(() => computeStatusCount(db.batches.map(b => b.status), BATCH_FILTERS), [db.batches])
+  const batchCounts = useMemo(() => computeStatusCount(snapshot.batches.map(b => b.status), BATCH_FILTERS), [snapshot.batches])
   const distributionCounts = useMemo(
-    () => computeStatusCount(db.distributions.map(d => d.status), DISTRIBUTION_FILTERS),
-    [db.distributions],
+    () => computeStatusCount(snapshot.distributions.map(d => d.status), DISTRIBUTION_FILTERS),
+    [snapshot.distributions],
   )
   const filteredBatches = useMemo(() => {
-    let items = db.batches.slice()
+    let items = snapshot.batches.slice()
     if (batchFilter !== 'ALL') items = items.filter(batch => batch.status === batchFilter)
     return items.slice(0, 6)
-  }, [batchFilter, db.batches])
+  }, [batchFilter, snapshot.batches])
   const filteredDistributions = useMemo(() => {
-    let items = db.distributions.slice()
+    let items = snapshot.distributions.slice()
     if (distributionFilter !== 'ALL') items = items.filter(dist => dist.status === distributionFilter)
     return items.slice(0, 6)
-  }, [distributionFilter, db.distributions])
+  }, [distributionFilter, snapshot.distributions])
 
   return (
     <div className="space-y-4">
