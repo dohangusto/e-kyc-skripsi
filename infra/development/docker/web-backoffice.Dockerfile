@@ -10,6 +10,7 @@ RUN if [ -f package-lock.json ]; then npm ci; else echo "No lockfile yet"; fi
 
 # Copy source (live_update will sync during dev)
 COPY web/react-backoffice ./
+COPY shared/dummies /shared/dummies
 
 ENV HOST=0.0.0.0
 ENV PORT=3001

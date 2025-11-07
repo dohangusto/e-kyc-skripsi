@@ -2,11 +2,12 @@ import type {
   AppStatus,
   ClusteringCandidate,
   ClusteringPriority,
+  PortalInfo,
   Region,
   SurveyAnswers,
   SurveyStatus,
   Visit,
-} from '@domain/types'
+} from './schema'
 
 type ClusterStatus = ClusteringCandidate['status']
 
@@ -61,6 +62,7 @@ export type BeneficiarySeed = {
     status?: SurveyStatus
     answers?: SurveyAnswers
   }
+  portal?: PortalInfo
 }
 
 const docs = (appId: string): DocumentSeed[] => [

@@ -1,5 +1,5 @@
 import { simulateRequest } from '@shared/simulate'
-import { beneficiaries } from '@shared/beneficiaries'
+import { beneficiaries } from '@dummies/beneficiaries'
 import type { ClusteringCandidate, ClusteringRun } from '@domain/types'
 
 export type ClusteringParams = {

@@ -8,7 +8,7 @@ import type {
   Visit,
   VisitStatus,
 } from '@domain/types'
-import { loadDb, saveDb } from '@shared/storage'
+import { loadDb, saveDb, SHARED_DB_KEY } from '@shared/storage'
 import { simulateRequest } from '@shared/simulate'
 
 let db: Db = loadDb()
@@ -25,6 +25,15 @@ function emitChange() {
 function commit() {
   saveDb(db)
   emitChange()
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', event => {
+    if (event.key === SHARED_DB_KEY) {
+      db = loadDb()
+      emitChange()
+    }
+  })
 }
 
 export const Data = {

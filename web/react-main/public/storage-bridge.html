@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Storage Bridge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; }
+    </style>
+  </head>
+  <body>
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const allowedOrigins = params.getAll("origin").map(decodeURIComponent);
+        const isAllowed = (origin) => !allowedOrigins.length || allowedOrigins.includes(origin);
+
+        try {
+          if (window.parent) {
+            window.parent.postMessage({ type: "storage-bridge:ready" }, "*");
+          }
+        } catch (err) {
+          console.warn("storage-bridge: unable to post ready message", err);
+        }
+
+        window.addEventListener("message", (event) => {
+          const data = event.data;
+          if (!data || typeof data.type !== "string") return;
+          if (!isAllowed(event.origin)) return;
+
+          if (data.type === "storage-bridge:push") {
+            const { key, value } = data;
+            if (typeof key !== "string") return;
+            try {
+              if (value === null) {
+                localStorage.removeItem(key);
+              } else {
+                localStorage.setItem(key, value);
+              }
+              event.source && event.source.postMessage({ type: "storage-bridge:ack", key }, event.origin);
+            } catch (err) {
+              console.warn("storage-bridge: failed to write", err);
+            }
+          } else if (data.type === "storage-bridge:pull") {
+            if (typeof data.key !== "string") return;
+            try {
+              const value = localStorage.getItem(data.key);
+              event.source && event.source.postMessage({ type: "storage-bridge:pull-response", key: data.key, value }, event.origin);
+            } catch (err) {
+              console.warn("storage-bridge: failed to read", err);
+            }
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

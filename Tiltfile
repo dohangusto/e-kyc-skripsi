@@ -51,9 +51,11 @@ docker_build_with_restart(
   dockerfile='./infra/development/docker/web.Dockerfile',
   only=[
     './web/react-main',
+    './shared/dummies',
   ],
   live_update=[
     sync('./web/react-main', '/app'),
+    sync('./shared/dummies', '/shared/dummies'),
   ],
   entrypoint=['sh','-lc','npm run dev -- --host 0.0.0.0 --port 3000']
 )
@@ -71,9 +73,11 @@ docker_build_with_restart(
   dockerfile='./infra/development/docker/web-backoffice.Dockerfile',
   only=[
     './web/react-backoffice',
+    './shared/dummies',
   ],
   live_update=[
     sync('./web/react-backoffice', '/app'),
+    sync('./shared/dummies', '/shared/dummies'),
   ],
   entrypoint=['sh','-lc','npm run dev -- --host 0.0.0.0 --port 3001']
 )

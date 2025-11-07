@@ -7,6 +7,13 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     allowedHosts: ['.ngrok-free.dev'],
+    fs: {
+      allow: [
+        path.resolve(__dirname, '..', '..', '..'),
+        path.resolve(__dirname, '../../shared'),
+        path.resolve(__dirname, 'src'),
+      ],
+    },
   },
   resolve: {
     alias: {
@@ -17,6 +24,7 @@ export default defineConfig({
       "@presentation": path.resolve(__dirname, "src/presentation"),
       "@shared": path.resolve(__dirname, "src/shared"),
       "@app": path.resolve(__dirname, "src/app"),
+      "@dummies": path.resolve(__dirname, "../../shared/dummies"),
     },
   },
 })

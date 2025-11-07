@@ -4,7 +4,7 @@ Sitemap (routes):
 - /login, /overview, /applications, /applications/:id, /tksk, /risk, /clustering, /batches, /config, /users, /audit
 
 Fitur utama:
-- Seed data lokal (`localStorage`) dari `src/shared/seed.json` + generator (`src/shared/mock.ts`)
+- Seed data lokal (`localStorage`) dari `@dummies/seed.json` & `@dummies/beneficiaries` + generator (`src/shared/mock.ts`)
 - Simulasi network `simulateRequest()` untuk aksi (delay + 5% gagal)
 - State dan persistensi via `application/services/data-service.ts`
 - Komponen UI: `StatusPill`, `ScoreBadge`, `ConfirmModal`, `Toast`, `RoleGate`

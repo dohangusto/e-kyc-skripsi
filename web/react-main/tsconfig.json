@@ -20,7 +20,8 @@
       "@infrastructure/*": ["src/infrastructure/*"],
       "@presentation/*": ["src/presentation/*"],
       "@shared/*": ["src/shared/*"],
-      "@app/*": ["src/app/*"]
+      "@app/*": ["src/app/*"],
+      "@dummies/*": ["../../shared/dummies/*"]
     },
 
     "types": ["vite/client"]
