@@ -121,7 +121,7 @@ function toCandidate(seedBeneficiary: BeneficiarySeed): ClusteringCandidate {
     score: seedBeneficiary.clusterScore,
     beneficiaries: seedBeneficiary.householdSize,
     status: seedBeneficiary.clusterStatus,
-    assignedTo: seedBeneficiary.assignedTo ?? null,
+    assignedTo: seedBeneficiary.assignedTo ?? undefined,
     reviewer: seedBeneficiary.reviewer,
     reviewedAt: seedBeneficiary.reviewedAt,
     notes: seedBeneficiary.clusterNotes,
