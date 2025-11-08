@@ -32,9 +32,45 @@ func NewApplicationRepository(seed []types.ApplicationSummary, pool *pgxpool.Poo
 }
 
 func (repo *applicationRepository) ListApplications(ctx context.Context) ([]types.ApplicationSummary, error) {
-	_ = ctx // placeholder for tracing/timeouts when persistence is added
+	if repo.db == nil {
+		out := make([]types.ApplicationSummary, len(repo.seed))
+		copy(out, repo.seed)
+		return out, nil
+	}
 
-	out := make([]types.ApplicationSummary, len(repo.seed))
-	copy(out, repo.seed)
-	return out, nil
+	rows, err := repo.db.Query(ctx, `
+		SELECT a.id, u.name, a.status
+		FROM applications a
+		JOIN users u ON u.id = a.beneficiary_user_id
+		ORDER BY a.created_at DESC
+		LIMIT 200`,
+	)
+	if err != nil {
+		if len(repo.seed) > 0 {
+			out := make([]types.ApplicationSummary, len(repo.seed))
+			copy(out, repo.seed)
+			return out, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	results := make([]types.ApplicationSummary, 0)
+	for rows.Next() {
+		var item types.ApplicationSummary
+		if err := rows.Scan(&item.ID, &item.ApplicantName, &item.Status); err != nil {
+			return nil, err
+		}
+		results = append(results, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(results) == 0 && len(repo.seed) > 0 {
+		out := make([]types.ApplicationSummary, len(repo.seed))
+		copy(out, repo.seed)
+		return out, nil
+	}
+	return results, nil
 }

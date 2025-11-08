@@ -29,6 +29,10 @@ func main() {
 	}
 	defer pool.Close()
 
+	if err := db.SetupSchemaAndSeed(ctx, pool); err != nil {
+		log.Fatalf("api-backoffice: setup schema: %v", err)
+	}
+
 	repo := repository.NewApplicationRepository(nil, pool)
 	applicationService := service.NewApplicationService(repo)
 	handler := httpWire.NewApplicationHandler(applicationService)
