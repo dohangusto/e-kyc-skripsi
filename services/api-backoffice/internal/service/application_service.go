@@ -7,8 +7,6 @@ import (
 	types "e-kyc/services/api-backoffice/pkg/types"
 )
 
-// applicationService is a thin wrapper that can grow with validations and
-// cross-repository operations.
 type applicationService struct {
 	repo domain.ApplicationRepository
 }

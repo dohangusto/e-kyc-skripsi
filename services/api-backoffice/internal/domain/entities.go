@@ -2,7 +2,6 @@ package domain
 
 import "time"
 
-// Beneficiary represents a citizen record shared between react-main and backoffice.
 type Beneficiary struct {
 	User
 	HouseholdSize   int
@@ -11,7 +10,6 @@ type Beneficiary struct {
 	PortalFlags     map[string]any
 }
 
-// Application aggregates applicant, region, and scoring information used across the backoffice UI.
 type Application struct {
 	ID               string
 	ApplicantName    string

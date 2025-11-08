@@ -113,7 +113,15 @@ export type Application = {
   portal?: PortalInfo
 }
 
-export type User = { id: string; name: string; role: 'ADMIN' | 'RISK' | 'TKSK' | 'AUDITOR'; region_scope: string[] }
+export type User = {
+  id: string
+  name: string
+  role: 'ADMIN' | 'RISK' | 'TKSK' | 'AUDITOR'
+  region_scope: string[]
+  nik: string
+  phone?: string
+  pin: string
+}
 
 export type Config = {
   period: string

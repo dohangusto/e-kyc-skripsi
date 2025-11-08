@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	domain "e-kyc/services/api-backoffice/internal/domain"
+
 	"github.com/labstack/echo/v4"
 )
 
-// ApplicationHTTPHandler wires ApplicationService to net/http.
 type ApplicationHTTPHandler struct {
 	Service domain.ApplicationService
 }

@@ -9,8 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// applicationRepository currently keeps seed data in-memory for quick API
-// prototyping. Swap it with a database-backed implementation later on.
 type applicationRepository struct {
 	seed []types.ApplicationSummary
 	db   *pgxpool.Pool

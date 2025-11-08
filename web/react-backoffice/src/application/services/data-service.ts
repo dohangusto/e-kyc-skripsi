@@ -40,6 +40,17 @@ export const Data = {
   get: () => db,
   refresh() { db = loadDb(); return db },
   reset() { localStorage.removeItem('backoffice.db.v1'); db = loadDb(); return db },
+  async loginWithCredential(nik: string, pin: string) {
+    return simulateRequest(() => {
+      const normalizedNik = nik.trim()
+      const normalizedPin = pin.trim()
+      const user = db.users.find(u => u.nik === normalizedNik && u.pin === normalizedPin)
+      if (!user) {
+        throw new Error('NIK atau PIN tidak dikenali')
+      }
+      return user
+    })
+  },
 
   // Queries
   listApplications() { return db.applications },

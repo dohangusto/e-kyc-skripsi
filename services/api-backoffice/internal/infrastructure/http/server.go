@@ -8,15 +8,13 @@ import (
 	gommonLog "github.com/labstack/gommon/log"
 )
 
-// NewServer configures an Echo instance with middleware and routes but leaves lifecycle
-// management to the caller (typically cmd/main.go).
-func NewServer(handler *ApplicationHTTPHandler) *echo.Echo {
+func NewServer(appHandler *ApplicationHTTPHandler, backofficeHandler *BackofficeHTTPHandler, authHandler *AuthHTTPHandler) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.Logger.SetLevel(gommonLog.INFO)
 
 	configureMiddleware(e)
-	RegisterRoutes(e, handler)
+	RegisterRoutes(e, appHandler, backofficeHandler, authHandler)
 
 	return e
 }
@@ -31,7 +29,6 @@ func configureMiddleware(e *echo.Echo) {
 	}
 
 	e.Use(middleware.Logger())
-	// Recover keeps the server alive even if a handler panics.
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(config))
 

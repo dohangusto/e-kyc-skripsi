@@ -35,8 +35,12 @@ func main() {
 
 	repo := repository.NewApplicationRepository(nil, pool)
 	applicationService := service.NewApplicationService(repo)
-	handler := httpWire.NewApplicationHandler(applicationService)
-	server := httpWire.NewServer(handler)
+	appHandler := httpWire.NewApplicationHandler(applicationService)
+	backofficeSvc := service.NewBackofficeService(pool)
+	backofficeHandler := httpWire.NewBackofficeHTTPHandler(backofficeSvc)
+	authSvc := service.NewAuthService(pool)
+	authHandler := httpWire.NewAuthHTTPHandler(authSvc)
+	server := httpWire.NewServer(appHandler, backofficeHandler, authHandler)
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -67,7 +71,6 @@ func resolveAddr() string {
 	if fromEnv := os.Getenv("BACKOFFICE_HTTP_ADDR"); fromEnv != "" {
 		addr = fromEnv
 	} else if legacy := os.Getenv("API_BACKOFFICE_PORT"); legacy != "" {
-		// Kubernetes injects API_BACKOFFICE_PORT like tcp://IP:PORT. Strip the scheme for compatibility.
 		addr = legacy
 	}
 
