@@ -15,10 +15,15 @@ services/api-backoffice/
 │   ├── service/            # Application use-cases
 │   └── infrastructure/     # Framework / IO implementations
 │       ├── http/           # HTTP handlers
-│       └── repository/     # Persistence adapters (stubbed for now)
+│       ├── repository/     # Persistence adapters (currently seed backed)
+│       └── database/       # Database connectivity helpers
 ├── pkg/
 │   └── types/              # Shared DTOs/models
 └── README.md
 ```
 
-For now the repository is an in-memory stub so we can wire the layers end-to-end. Replace it with a real persistence implementation when ready.
+### Local development
+
+- `BACKOFFICE_HTTP_ADDR` defaults to `:8081` but can be overridden via ConfigMap/env.
+- `BACKOFFICE_DB_DSN` defaults to `postgres://postgres:postgres@localhost:5432/ekyc_backoffice?sslmode=disable`. Tilt now provisions a local Postgres (`database-postgres`) reachable via the same DSN when running the dev cluster.
+- The PostgreSQL pool is created in `cmd/main.go` and injected into repositories, paving the way for replacing the current seed-based repository with real queries.

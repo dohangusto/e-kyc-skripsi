@@ -6,3 +6,4 @@ data:
   ENVIRONMENT: "development"
   GATEWAY_HTTP_ADDR: ":8080"
   BACKOFFICE_HTTP_ADDR: ":8081"
+  BACKOFFICE_DB_DSN: "postgres://postgres:postgres@database-postgres:5432/ekyc_backoffice?sslmode=disable"

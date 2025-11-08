@@ -5,15 +5,18 @@ import (
 
 	domain "e-kyc/services/api-backoffice/internal/domain"
 	types "e-kyc/services/api-backoffice/pkg/types"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // applicationRepository currently keeps seed data in-memory for quick API
 // prototyping. Swap it with a database-backed implementation later on.
 type applicationRepository struct {
 	seed []types.ApplicationSummary
+	db   *pgxpool.Pool
 }
 
-func NewApplicationRepository(seed []types.ApplicationSummary) domain.ApplicationRepository {
+func NewApplicationRepository(seed []types.ApplicationSummary, pool *pgxpool.Pool) domain.ApplicationRepository {
 	if len(seed) == 0 {
 		seed = []types.ApplicationSummary{
 			{ID: "APP-2024-0001", ApplicantName: "Siti Rahma", Status: "SUBMITTED"},
@@ -22,7 +25,10 @@ func NewApplicationRepository(seed []types.ApplicationSummary) domain.Applicatio
 		}
 	}
 
-	return &applicationRepository{seed: seed}
+	return &applicationRepository{
+		seed: seed,
+		db:   pool,
+	}
 }
 
 func (repo *applicationRepository) ListApplications(ctx context.Context) ([]types.ApplicationSummary, error) {
