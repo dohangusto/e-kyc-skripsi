@@ -42,6 +42,37 @@ k8s_resource('api-gateway', port_forwards=8080,
              resource_deps=['api-gateway-compile'], labels="services")
 ### End of API Gateway ###
 
+### API Backoffice ###
+
+backoffice_compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api-backoffice ./services/api-backoffice/cmd'
+if os.name == 'nt':
+  backoffice_compile_cmd = './infra/development/docker/api-backoffice-build.bat'
+
+local_resource(
+  'api-backoffice-compile',
+  backoffice_compile_cmd,
+  deps=['./services/api-backoffice', './shared'], labels="compiles")
+
+docker_build_with_restart(
+  'e-kyc/api-backoffice',
+  '.',
+  entrypoint=['/app/build/api-backoffice'],
+  dockerfile='./infra/development/docker/api-backoffice.Dockerfile',
+  only=[
+    './build/api-backoffice',
+    './shared',
+  ],
+  live_update=[
+    sync('./build', '/app/build'),
+    sync('./shared', '/app/shared'),
+  ],
+)
+
+k8s_yaml('./infra/development/k8s/api-backoffice-deployment.yaml')
+k8s_resource('api-backoffice', port_forwards=8081,
+             resource_deps=['api-backoffice-compile'], labels="services")
+### End of API Backoffice ###
+
 ### Web (React) ###
 
 # Build the React dev image and run the dev server

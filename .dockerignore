@@ -5,6 +5,8 @@ dist/
 *.log
 web/.next/
 web/node_modules/
+.gocache/
+**/.gocache/
 
 # Exclude editor and OS files
 .idea/
