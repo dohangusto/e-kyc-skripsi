@@ -1,7 +1,7 @@
 import { isValidElement, cloneElement, type ReactNode } from 'react'
 import { getSession } from '@shared/session'
 
-export function RoleGate({ allow, children }: { allow: Array<'ADMIN'|'RISK'|'TKSK'|'AUDITOR'>; children: ReactNode }) {
+export function RoleGate({ allow, children }: { allow: Array<'ADMIN'|'TKSK'|'AUDITOR'>; children: ReactNode }) {
   const s = getSession()
   const ok = !!s && allow.includes(s.role)
   if (ok) return <>{children}</>

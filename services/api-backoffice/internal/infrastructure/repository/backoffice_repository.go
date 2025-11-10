@@ -53,24 +53,6 @@ func (repo *backofficeRepository) insertAudit(ctx context.Context, tx pgx.Tx, en
 	return err
 }
 
-func (repo *backofficeRepository) patchFlags(ctx context.Context, tx pgx.Tx, appID string, patch map[string]any) error {
-	row := tx.QueryRow(ctx, `SELECT flags FROM applications WHERE id=$1`, appID)
-	var flagsBytes []byte
-	if err := row.Scan(&flagsBytes); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ErrNotFound
-		}
-		return err
-	}
-	flags := decodeJSON(flagsBytes)
-	for k, v := range patch {
-		flags[k] = v
-	}
-	bytes, _ := json.Marshal(flags)
-	_, err := tx.Exec(ctx, `UPDATE applications SET flags=$2::jsonb WHERE id=$1`, appID, bytes)
-	return err
-}
-
 func decodeJSON(data []byte) map[string]any {
 	if len(data) == 0 {
 		return map[string]any{}
@@ -368,18 +350,6 @@ func (repo *backofficeRepository) UpdateApplicationStatus(ctx context.Context, p
 		}
 		if tag.RowsAffected() == 0 {
 			return domain.ErrNotFound
-		}
-		if err := repo.insertTimeline(ctx, tx, params.Timeline); err != nil {
-			return err
-		}
-		return repo.insertAudit(ctx, tx, params.Audit)
-	})
-}
-
-func (repo *backofficeRepository) PatchApplicationFlags(ctx context.Context, params domain.PatchApplicationFlagsParams) error {
-	return repo.withTx(ctx, func(tx pgx.Tx) error {
-		if err := repo.patchFlags(ctx, tx, params.AppID, params.Flags); err != nil {
-			return err
 		}
 		if err := repo.insertTimeline(ctx, tx, params.Timeline); err != nil {
 			return err
@@ -715,7 +685,7 @@ func (repo *backofficeRepository) GetClusteringRun(ctx context.Context, runID st
 
 func (repo *backofficeRepository) fetchClusteringCandidates(ctx context.Context, runID string) ([]domain.ClusteringCandidate, error) {
 	rows, err := repo.db.Query(ctx, `
-        SELECT c.id, c.run_id, u.name, COALESCE(u.nik, ''), c.region, c.cluster, c.priority, c.score, c.household_size, c.status,
+        SELECT c.id, c.user_id, c.run_id, u.name, COALESCE(u.nik, ''), c.region, c.cluster, c.priority, c.score, c.household_size, c.status,
                c.assigned_to, c.reviewer, c.reviewed_at, c.notes
         FROM clustering_candidates c
         JOIN users u ON u.id = c.user_id
@@ -732,7 +702,7 @@ func (repo *backofficeRepository) fetchClusteringCandidates(ctx context.Context,
 			regionBytes []byte
 		)
 		var nik string
-		if err := rows.Scan(&candidate.ID, &candidate.RunID, &candidate.Name, &nik, &regionBytes, &candidate.Cluster, &candidate.Priority,
+		if err := rows.Scan(&candidate.ID, &candidate.UserID, &candidate.RunID, &candidate.Name, &nik, &regionBytes, &candidate.Cluster, &candidate.Priority,
 			&candidate.Score, &candidate.HouseholdSize, &candidate.Status, &candidate.AssignedTo, &candidate.Reviewer, &candidate.ReviewedAt, &candidate.Notes); err != nil {
 			return nil, err
 		}
@@ -760,7 +730,7 @@ func (repo *backofficeRepository) CreateClusteringRun(ctx context.Context, run *
                     id, run_id, user_id, region, cluster, priority, score, household_size,
                     status, assigned_to, reviewer, reviewed_at, notes)
                 VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-				candidate.ID, candidate.RunID, candidate.ID, regionJSON, candidate.Cluster, candidate.Priority,
+				candidate.ID, candidate.RunID, candidate.UserID, regionJSON, candidate.Cluster, candidate.Priority,
 				candidate.Score, candidate.HouseholdSize, candidate.Status, candidate.AssignedTo, candidate.Reviewer,
 				candidate.ReviewedAt, candidate.Notes); err != nil {
 				return err

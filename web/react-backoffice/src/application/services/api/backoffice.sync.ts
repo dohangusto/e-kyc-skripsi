@@ -1,4 +1,5 @@
 import type { Db } from '@domain/types'
+import type { ListEnvelope } from './backoffice.types'
 
 import { BackofficeAPI } from './backoffice'
 import {
@@ -10,6 +11,17 @@ import {
   mapDistributionResponse,
   mapUserResponse,
 } from './backoffice.mappers'
+
+const mapListResponse = <TResponse, TMapped>(
+  response: ListEnvelope<TResponse[]> | null | undefined,
+  mapper: (item: TResponse) => TMapped,
+) => {
+  const data = response?.data
+  if (!Array.isArray(data)) {
+    return []
+  }
+  return data.map(mapper)
+}
 
 export async function fetchBackofficeSnapshot(): Promise<Db> {
   const [
@@ -31,12 +43,12 @@ export async function fetchBackofficeSnapshot(): Promise<Db> {
   ])
 
   return {
-    applications: applicationsRes.data.map(mapApplicationResponse),
-    users: usersRes.data.map(mapUserResponse),
+    applications: mapListResponse(applicationsRes, mapApplicationResponse),
+    users: mapListResponse(usersRes, mapUserResponse),
     config: mapConfigResponse(configRes),
-    batches: batchesRes.data.map(mapBatchResponse),
-    distributions: distributionsRes.data.map(mapDistributionResponse),
-    clusteringRuns: clusteringRunsRes.data.map(mapClusteringRunResponse),
-    audit: auditRes.data.map(mapAuditLogResponse),
+    batches: mapListResponse(batchesRes, mapBatchResponse),
+    distributions: mapListResponse(distributionsRes, mapDistributionResponse),
+    clusteringRuns: mapListResponse(clusteringRunsRes, mapClusteringRunResponse),
+    audit: mapListResponse(auditRes, mapAuditLogResponse),
   }
 }

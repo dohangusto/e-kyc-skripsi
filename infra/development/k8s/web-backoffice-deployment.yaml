@@ -31,8 +31,16 @@ spec:
         env:
         - name: NODE_ENV
           value: "development"
-        - name: VITE_API_URL
-          value: "http://api-gateway:8080"
+        - name: VITE_API_BACKOFFICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: VITE_API_BACKOFFICE_URL
+        - name: VITE_API_GATEWAY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: VITE_API_GATEWAY_URL
         readinessProbe:
           httpGet:
             path: /

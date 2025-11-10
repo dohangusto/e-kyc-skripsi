@@ -32,7 +32,10 @@ spec:
         - name: NODE_ENV
           value: "development"
         - name: NEXT_PUBLIC_API_URL
-          value: "http://api-gateway:8080"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: NEXT_PUBLIC_API_URL
         readinessProbe:
           httpGet:
             path: /

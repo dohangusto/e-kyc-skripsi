@@ -26,7 +26,7 @@ services/api-backoffice/
 
 The shared Postgres instance contains citizen (beneficiary) records and the resulting submissions:
 
-- `users`: single canonical roster for both backoffice operators (ADMIN/RISK/TKSK/AUDITOR) and beneficiaries (citizens). Stores shared attributes such as NIK, phone, email, hashed PIN, and regional scope. All user IDs are UUIDs so both apps can reference the same entities consistently.
+- `users`: single canonical roster for both backoffice operators (ADMIN/TKSK/AUDITOR) and beneficiaries (citizens). Stores shared attributes such as NIK, phone, email, hashed PIN, and regional scope. All user IDs are UUIDs so both apps can reference the same entities consistently.
 - `beneficiaries`: extends `users` when the role is beneficiary (household size, clustering priority, portal flags).
 - `applications` (KYC submissions) reference beneficiaries and keep snapshots of scores, documents, visits, surveys, and timeline events.
 - `users`, `batches`, `distributions`, `clustering_runs/candidates`, and `audit_logs` power the management workflows in `react-backoffice`.

@@ -27,7 +27,6 @@ export function VisitManager({ app, onChange }: { app: Application; onChange: ()
   const [uploading, setUploading] = useState<string | null>(null)
   const canSchedule = !!session && (
     session.role === 'ADMIN' ||
-    session.role === 'RISK' ||
     (session.role === 'TKSK' && app.assigned_to === session.userId)
   )
   const scheduleDisabled = !canSchedule || busy || !form.datetime || !form.tksk
@@ -78,12 +77,12 @@ export function VisitManager({ app, onChange }: { app: Application; onChange: ()
       <div className="bg-slate-100 rounded p-3 space-y-2">
         <h4 className="font-medium">Jadwalkan Kunjungan</h4>
         {session?.role === 'TKSK' && !canSchedule && (
-          <p className="text-xs text-amber-600">Penjadwalan dilakukan oleh ADMIN/RISK. Hubungi admin jika butuh kunjungan baru.</p>
+          <p className="text-xs text-amber-600">Penjadwalan dilakukan oleh ADMIN. Hubungi admin jika butuh kunjungan baru.</p>
         )}
         {session?.role === 'TKSK' && canSchedule && (
           <p className="text-xs text-slate-500">Anda dapat menjadwalkan kunjungan untuk kasus ini. Pastikan memilih waktu yang realistis.</p>
         )}
-        {(session?.role === 'ADMIN' || session?.role === 'RISK') && (
+        {session?.role === 'ADMIN' && (
           <p className="text-xs text-slate-500">Pilih TKSK dan waktu kunjungan lapangan. TKSK akan mendapat daftar tugas begitu Anda jadwalkan.</p>
         )}
         <div className="grid md:grid-cols-3 gap-3">
@@ -107,7 +106,7 @@ export function VisitManager({ app, onChange }: { app: Application; onChange: ()
         {tkss.length === 0 && (
           <p className="text-xs text-rose-600">Belum ada TKSK terdaftar. Tambahkan user TKSK sebelum menjadwalkan.</p>
         )}
-        <RoleGate allow={['ADMIN','RISK','TKSK']}>
+        <RoleGate allow={['ADMIN','TKSK']}>
           <button className="px-3 py-1 border rounded" onClick={submit} disabled={scheduleDisabled}>
             {busy ? 'Menjadwalkan…' : 'Jadwalkan'}
           </button>
@@ -294,7 +293,7 @@ function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit:
               <input type="file" accept="image/*" multiple className="hidden" onChange={e => handleFiles(e.target.files)} disabled={!isInProgress} />
             </label>
           </RoleGate>
-          <RoleGate allow={['TKSK','ADMIN','RISK']}>
+          <RoleGate allow={['TKSK','ADMIN']}>
             <button className="px-3 py-1 border rounded" onClick={captureGeotag} disabled={captureDisabled || loadingAction === 'geotag'}>
               {loadingAction === 'geotag' ? 'Menangkap…' : 'Capture Geotag'}
             </button>
@@ -304,7 +303,7 @@ function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit:
               {loadingAction === 'submit' ? 'Mengirim…' : 'Submit Visit'}
             </button>
           </RoleGate>
-          <RoleGate allow={['ADMIN','RISK']}>
+          <RoleGate allow={['ADMIN']}>
             <button className="px-3 py-1 border rounded" disabled={verifyDisabled} onClick={() => handleAction('verify', () => Data.setVisitStatus(appId, visit.id, 'VERIFIED', session?.userId || 'system'), 'Visit diverifikasi')}>
               {loadingAction === 'verify' ? 'Memverifikasi…' : 'Verify Visit'}
             </button>

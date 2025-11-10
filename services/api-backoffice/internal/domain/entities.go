@@ -144,6 +144,7 @@ type ClusteringRun struct {
 
 type ClusteringCandidate struct {
 	ID            string
+	UserID        string `json:"-"`
 	RunID         string
 	Name          string
 	NikMask       string

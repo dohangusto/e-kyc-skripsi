@@ -33,13 +33,6 @@ type UpdateApplicationStatusParams struct {
 	Audit    AuditEntry
 }
 
-type PatchApplicationFlagsParams struct {
-	AppID    string
-	Flags    map[string]any
-	Timeline TimelineEntry
-	Audit    AuditEntry
-}
-
 type UpdateVisitParams struct {
 	AppID     string
 	VisitID   string
@@ -114,7 +107,6 @@ type BackofficeRepository interface {
 	UpsertConfig(ctx context.Context, cfg SystemConfig) (*SystemConfig, error)
 
 	UpdateApplicationStatus(ctx context.Context, params UpdateApplicationStatusParams) error
-	PatchApplicationFlags(ctx context.Context, params PatchApplicationFlagsParams) error
 	CreateVisit(ctx context.Context, visit *Visit, timeline TimelineEntry) error
 	UpdateVisit(ctx context.Context, params UpdateVisitParams) error
 
@@ -148,9 +140,6 @@ type BackofficeService interface {
 	UpdateConfig(ctx context.Context, cfg SystemConfig) (*SystemConfig, error)
 
 	UpdateApplicationStatus(ctx context.Context, appID, status, actor, reason string) error
-	EscalateApplication(ctx context.Context, appID, actor, reason string) error
-	ConfirmDuplicate(ctx context.Context, appID, candidateID, actor, note string) error
-	IgnoreDuplicate(ctx context.Context, appID, actor, note string) error
 
 	CreateVisit(ctx context.Context, appID, actor string, scheduledAt time.Time, tkskID string) (*Visit, error)
 	UpdateVisit(ctx context.Context, appID, visitID, actor string, payload UpdateVisitPayload) error
@@ -179,9 +168,6 @@ type BackofficeHTTPHandler interface {
 	ListApplications(ctx echo.Context) error
 	GetApplication(ctx echo.Context) error
 	UpdateApplicationStatus(ctx echo.Context) error
-	EscalateApplication(ctx echo.Context) error
-	ConfirmDuplicate(ctx echo.Context) error
-	IgnoreDuplicate(ctx echo.Context) error
 	CreateVisit(ctx echo.Context) error
 	UpdateVisit(ctx echo.Context) error
 	ListUsers(ctx echo.Context) error

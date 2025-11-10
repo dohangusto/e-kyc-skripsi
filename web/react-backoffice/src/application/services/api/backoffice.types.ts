@@ -184,22 +184,6 @@ export type UpdateApplicationStatusPayload = {
   reason?: string
 }
 
-export type EscalateApplicationPayload = {
-  actor: string
-  reason?: string
-}
-
-export type ConfirmDuplicatePayload = {
-  candidateId: string
-  actor: string
-  note?: string
-}
-
-export type IgnoreDuplicatePayload = {
-  actor: string
-  note?: string
-}
-
 export type CreateVisitPayload = {
   actor: string
   scheduledAt: string

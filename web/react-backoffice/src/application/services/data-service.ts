@@ -91,10 +91,6 @@ export const Data = {
     )
   },
 
-  async escalateToRisk(id: string, by: string, reason?: string) {
-    await runWithSync(() => BackofficeAPI.escalateApplication(id, { actor: by, reason }))
-  },
-
   async createVisit(appId: string, payload: Pick<Visit, 'scheduled_at' | 'tksk_id'>, by: string) {
     const visit = await runWithSync(() =>
       BackofficeAPI.createVisit(appId, {
@@ -129,16 +125,6 @@ export const Data = {
 
   async setBatchStatus(id: string, status: Batch['status'], by: string) {
     await runWithSync(() => BackofficeAPI.updateBatchStatus(id, { status, actor: by }))
-  },
-
-  async linkDuplicate(appId: string, candidateId: string, by: string, note?: string) {
-    await runWithSync(() =>
-      BackofficeAPI.confirmDuplicate(appId, { candidateId, actor: by, note }),
-    )
-  },
-
-  async ignoreDuplicate(appId: string, by: string, note?: string) {
-    await runWithSync(() => BackofficeAPI.ignoreDuplicate(appId, { actor: by, note }))
   },
 
   async createDistribution(payload: Pick<Distribution, 'name' | 'scheduled_at' | 'channel' | 'location' | 'batch_codes' | 'beneficiaries' | 'notes'>, by: string) {

@@ -72,7 +72,6 @@ type portalSeed struct {
 
 const (
 	operatorAdminID = "00000000-0000-0000-0000-000000000001"
-	operatorRiskID  = "00000000-0000-0000-0000-000000000002"
 	operatorTkskID  = "00000000-0000-0000-0000-000000000003"
 	operatorAudID   = "00000000-0000-0000-0000-000000000004"
 )
@@ -353,17 +352,6 @@ var operatorSeeds = []operatorSeed{
 		Phone:       "081100000001",
 		Email:       "admin@dinsos.local",
 		PIN:         "111111",
-		Region:      regionSeed{"Kepri", "Batam", "Batam Kota", "Belian"},
-		RegionScope: []string{"Batam"},
-	},
-	{
-		ID:          operatorRiskID,
-		Name:        "Risk Ops",
-		Role:        "RISK",
-		NIK:         "3171010000000002",
-		Phone:       "081100000002",
-		Email:       "risk.ops@dinsos.local",
-		PIN:         "222222",
 		Region:      regionSeed{"Kepri", "Batam", "Batam Kota", "Belian"},
 		RegionScope: []string{"Batam"},
 	},

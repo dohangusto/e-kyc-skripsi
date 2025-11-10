@@ -80,8 +80,6 @@ export default function ApplicationsPage() {
     if (!session) return apps
     if (session.role === 'TKSK') {
       apps = apps.filter(a => a.assigned_to === session.userId)
-    } else if (session.role === 'RISK') {
-      apps = apps.filter(a => a.flags.duplicate_face || a.flags.duplicate_nik || a.flags.device_anomaly)
     }
     return apps
   }, [db, session])

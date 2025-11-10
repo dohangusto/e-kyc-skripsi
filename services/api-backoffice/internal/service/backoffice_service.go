@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	domain "e-kyc/services/api-backoffice/internal/domain"
 )
 
@@ -62,40 +64,6 @@ func (s *BackofficeService) UpdateApplicationStatus(ctx context.Context, appID, 
 		Audit:    auditEntry(actor, appID, action, reason, nil),
 	}
 	return s.repo.UpdateApplicationStatus(ctx, params)
-}
-
-func (s *BackofficeService) EscalateApplication(ctx context.Context, appID, actor, reason string) error {
-	params := domain.PatchApplicationFlagsParams{
-		AppID:    appID,
-		Flags:    map[string]any{"escalated": true},
-		Timeline: timelineEntry(appID, actor, "ESCALATED", reason, nil),
-		Audit:    auditEntry(actor, appID, "ESCALATED", reason, nil),
-	}
-	return s.repo.PatchApplicationFlags(ctx, params)
-}
-
-func (s *BackofficeService) ConfirmDuplicate(ctx context.Context, appID, candidateID, actor, note string) error {
-	action := fmt.Sprintf("DUPLICATE_CONFIRMED:%s", candidateID)
-	params := domain.PatchApplicationFlagsParams{
-		AppID:    appID,
-		Flags:    map[string]any{"duplicate_confirmed": true},
-		Timeline: timelineEntry(appID, actor, action, note, nil),
-		Audit:    auditEntry(actor, appID, "DUPLICATE_CONFIRMED", note, nil),
-	}
-	return s.repo.PatchApplicationFlags(ctx, params)
-}
-
-func (s *BackofficeService) IgnoreDuplicate(ctx context.Context, appID, actor, note string) error {
-	params := domain.PatchApplicationFlagsParams{
-		AppID: appID,
-		Flags: map[string]any{
-			"duplicate_face": false,
-			"duplicate_nik":  false,
-		},
-		Timeline: timelineEntry(appID, actor, "DUPLICATE_IGNORED", note, nil),
-		Audit:    auditEntry(actor, appID, "DUPLICATE_IGNORED", note, nil),
-	}
-	return s.repo.PatchApplicationFlags(ctx, params)
 }
 
 func (s *BackofficeService) CreateVisit(ctx context.Context, appID, actor string, scheduledAt time.Time, tkskID string) (*domain.Visit, error) {
@@ -300,7 +268,8 @@ func (s *BackofficeService) TriggerClusteringRun(ctx context.Context, operator s
 			household = 1
 		}
 		candidate := domain.ClusteringCandidate{
-			ID:            bene.User.ID,
+			ID:            uuid.NewString(),
+			UserID:        bene.User.ID,
 			RunID:         runID,
 			Name:          bene.User.Name,
 			NikMask:       maskNikPointer(bene.User.NIK),

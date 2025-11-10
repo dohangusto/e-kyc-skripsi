@@ -8,7 +8,6 @@ import OverviewPage from "@presentation/pages/OverviewPage";
 import ApplicationsPage from "@presentation/pages/ApplicationsPage";
 import ApplicationDetailPage from "@presentation/pages/ApplicationDetailPage";
 import TkskPage from "@presentation/pages/TkskPage";
-import RiskPage from "@presentation/pages/RiskPage";
 import BatchesPage from "@presentation/pages/BatchesPage";
 import ConfigPage from "@presentation/pages/ConfigPage";
 import UsersPage from "@presentation/pages/UsersPage";
@@ -55,7 +54,6 @@ const App = () => {
           <ApplicationDetailPage id={route.params.id as string} />
         )}
         {route.path === "/tksk" && <TkskPage />}
-        {route.path === "/risk" && <RiskPage />}
         {route.path === "/clustering" && <ClusteringPage />}
         {route.path === "/distribution" && <DistributionPage />}
         {route.path === "/batches" && <BatchesPage />}

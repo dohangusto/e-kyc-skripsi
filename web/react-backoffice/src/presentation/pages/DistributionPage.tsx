@@ -81,7 +81,7 @@ export default function DistributionPage() {
 
   async function createSchedule() {
     try {
-      if (!session) throw new Error('Harus login sebagai admin atau risk')
+      if (!session) throw new Error('Harus login sebagai admin')
       if (!form.name.trim()) throw new Error('Nama penyaluran wajib diisi')
       if (!form.scheduledAt) throw new Error('Tanggal penyaluran wajib diisi')
       if (effectiveBeneficiaries.length === 0) throw new Error('Pilih minimal satu penerima atau batch')
@@ -116,7 +116,7 @@ export default function DistributionPage() {
 
   async function advanceStatus(distribution: Distribution, next: Distribution['status']) {
     try {
-      if (!session) throw new Error('Harus login sebagai admin atau risk')
+      if (!session) throw new Error('Harus login sebagai admin')
       await Data.updateDistributionStatus(distribution.id, next, session.userId)
       Toast.show(`Status diperbarui ke ${STATUS_LABEL[next]}`)
     } catch (e) {
@@ -126,7 +126,7 @@ export default function DistributionPage() {
 
   async function notify(distribution: Distribution, ids: string[]) {
     try {
-      if (!session) throw new Error('Harus login sebagai admin atau risk')
+      if (!session) throw new Error('Harus login sebagai admin')
       if (!ids.length) throw new Error('Tidak ada penerima yang dipilih')
       const pending = ids.filter(id => !distribution.notified.includes(id))
       if (!pending.length) throw new Error('Semua penerima sudah diberi tahu')
@@ -281,7 +281,7 @@ export default function DistributionPage() {
         )}
 
         <div className="flex justify-end">
-          <RoleGate allow={['ADMIN', 'RISK']}>
+          <RoleGate allow={['ADMIN']}>
             <button className="px-4 py-2 border rounded bg-slate-900 text-white text-sm" onClick={createSchedule}>
               Simpan Jadwal
             </button>
@@ -344,7 +344,7 @@ export default function DistributionPage() {
                     ))}
                   </ul>
                   <div className="flex flex-wrap gap-2">
-                    <RoleGate allow={['ADMIN', 'RISK']}>
+                    <RoleGate allow={['ADMIN']}>
                       <button
                         className="px-3 py-1 border rounded text-xs"
                         onClick={() => notify(distribution, pending)}
@@ -354,7 +354,7 @@ export default function DistributionPage() {
                       </button>
                     </RoleGate>
                     {NEXT_STATUS[distribution.status] && (
-                      <RoleGate allow={['ADMIN', 'RISK']}>
+                      <RoleGate allow={['ADMIN']}>
                         <button
                           className="px-3 py-1 border rounded text-xs bg-emerald-600 text-white"
                           onClick={() => advanceStatus(distribution, NEXT_STATUS[distribution.status] as Distribution['status'])}
@@ -396,7 +396,7 @@ function BeneficiaryRow({ app, id, notified, onNotify }: { app: Application | nu
           {id} {app ? `· ${app.region.kec}` : ''} {app ? `· Status ${app.status}` : ''}
         </div>
       </div>
-      <RoleGate allow={['ADMIN', 'RISK']}>
+      <RoleGate allow={['ADMIN']}>
         <button
           className="px-3 py-1 border rounded text-xs"
           onClick={onNotify}

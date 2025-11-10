@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+//go:embed migrations/001_schema.sql
 var schemaSQL string
 
 func SetupSchemaAndSeed(ctx context.Context, pool *pgxpool.Pool) error {

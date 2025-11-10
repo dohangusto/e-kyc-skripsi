@@ -29,8 +29,6 @@ export default function OverviewPage() {
     if (!session) return apps
     if (session.role === 'TKSK') {
       apps = apps.filter(app => app.assigned_to === session.userId)
-    } else if (session.role === 'RISK') {
-      apps = apps.filter(app => app.flags.duplicate_face || app.flags.duplicate_nik || app.flags.device_anomaly)
     }
     return apps
   }, [snapshot.applications, session])

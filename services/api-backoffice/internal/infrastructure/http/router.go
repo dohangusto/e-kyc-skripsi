@@ -26,9 +26,6 @@ func RegisterRoutes(
 	e.GET("/api/backoffice/applications", backofficeHandler.ListApplications)
 	app := e.Group("/api/applications/:id")
 	app.POST("/status", backofficeHandler.UpdateApplicationStatus)
-	app.POST("/escalate", backofficeHandler.EscalateApplication)
-	app.POST("/duplicate/confirm", backofficeHandler.ConfirmDuplicate)
-	app.POST("/duplicate/ignore", backofficeHandler.IgnoreDuplicate)
 	app.POST("/visits", backofficeHandler.CreateVisit)
 	app.PATCH("/visits/:visitId", backofficeHandler.UpdateVisit)
 

@@ -12,7 +12,7 @@ import { VisitManager } from '@presentation/components/VisitManager'
 import { RoleGate } from '@presentation/components/RoleGate'
 import type { Application, AuditEntry, SurveyStatus } from '@domain/types'
 
-type ActionModal = 'APPROVE' | 'ESCALATE' | 'READY' | 'REJECT' | 'RETURN' | 'LINK_DUP' | 'IGNORE_DUP'
+type ActionModal = 'APPROVE' | 'READY' | 'REJECT' | 'RETURN'
 
 const returnSchema = z.object({ reason: z.string().min(10, 'Minimal 10 karakter'), fields: z.array(z.string()).min(1, 'Pilih minimal 1 field') })
 const rejectSchema = z.object({ reason: z.string().min(10, 'Minimal 10 karakter'), code: z.string().min(3, 'Kode minimal 3 karakter') })
@@ -21,7 +21,6 @@ const TABS = [
   { key: 'summary', label: 'Summary' },
   { key: 'documents', label: 'Documents' },
   { key: 'tksk', label: 'TKSK' },
-  { key: 'risk', label: 'Risk' },
   { key: 'audit', label: 'Audit' },
 ]
 
@@ -31,7 +30,7 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
     () => snapshot.applications.find(app => app.id === id) ?? null,
     [snapshot.applications, id],
   )
-  const [tab, setTab] = useState<'summary'|'documents'|'tksk'|'risk'|'audit'>('summary')
+  const [tab, setTab] = useState<'summary'|'documents'|'tksk'|'audit'>('summary')
   const [modal, setModal] = useState<{ type: ActionModal; candidate?: string } | null>(null)
   const [returnForm, setReturnForm] = useState({ reason: '', fields: [] as string[] })
   const [rejectForm, setRejectForm] = useState({ reason: '', code: '' })
@@ -68,10 +67,7 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
       </header>
 
       <div className="flex flex-wrap gap-2">
-        <RoleGate allow={['ADMIN','TKSK']}>
-          <button className="px-3 py-1 border rounded" disabled={application.status !== 'DESK_REVIEW'} onClick={() => setModal({ type: 'ESCALATE' })}>Escalate to Risk</button>
-        </RoleGate>
-        <RoleGate allow={['ADMIN','RISK']}>
+        <RoleGate allow={['ADMIN']}>
           <button className="px-3 py-1 border rounded" disabled={!['DESK_REVIEW','FIELD_VISIT'].includes(application.status)} onClick={() => setModal({ type: 'RETURN' })}>Return</button>
         </RoleGate>
         <RoleGate allow={['ADMIN']}>
@@ -109,7 +105,6 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
           }}
         />
       )}
-      {tab === 'risk' && <RiskTab application={application} onLink={(candidateId) => setModal({ type: 'LINK_DUP', candidate: candidateId })} onIgnore={() => setModal({ type: 'IGNORE_DUP' })} />}
       {tab === 'audit' && <AuditTab appId={application.id} rows={snapshot.audit} />}
 
       {modal?.type === 'APPROVE' && (
@@ -120,36 +115,12 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
           onConfirm={reason => run(() => Data.updateStatus(application.id, 'FINAL_APPROVED', session?.userId || 'system', reason), 'Disetujui')}
         />
       )}
-      {modal?.type === 'ESCALATE' && (
-        <ConfirmModal
-          title="Escalate to Risk"
-          min={5}
-          onCancel={() => setModal(null)}
-          onConfirm={reason => run(() => Data.escalateToRisk(application.id, session?.userId || 'system', reason), 'Di-escalate ke risk')}
-        />
-      )}
       {modal?.type === 'READY' && (
         <ConfirmModal
           title="Set Disbursement Ready"
           min={5}
           onCancel={() => setModal(null)}
           onConfirm={reason => run(() => Data.updateStatus(application.id, 'DISBURSEMENT_READY', session?.userId || 'system', reason), 'Siap disbursement')}
-        />
-      )}
-      {modal?.type === 'LINK_DUP' && (
-        <ConfirmModal
-          title="Link as Duplicate"
-          min={5}
-          onCancel={() => setModal(null)}
-          onConfirm={reason => run(() => Data.linkDuplicate(application.id, modal.candidate!, session?.userId || 'system', reason), 'Duplicate ditautkan')}
-        />
-      )}
-      {modal?.type === 'IGNORE_DUP' && (
-        <ConfirmModal
-          title="Ignore Duplicate"
-          min={5}
-          onCancel={() => setModal(null)}
-          onConfirm={reason => run(() => Data.ignoreDuplicate(application.id, session?.userId || 'system', reason), 'Flag duplicate ditutup')}
         />
       )}
 
@@ -387,41 +358,6 @@ function SummaryTab({ application }: { application: Application }) {
         <p className="text-sm">Liveness: {application.scores.liveness}</p>
         <p className="text-sm">Aging: {application.aging_days} hari</p>
       </aside>
-    </section>
-  )
-}
-
-function RiskTab({ application, onLink, onIgnore }: { application: Application; onLink: (id: string) => void; onIgnore: () => void }) {
-  const candidates = application.flags.candidates || []
-  return (
-    <section role="tabpanel" className="space-y-4">
-      <div className="bg-white border rounded p-3">
-        <h4 className="font-medium">Flag Summary</h4>
-        <p className="text-sm">duplicate_face: {String(application.flags.duplicate_face)} · duplicate_nik: {String(application.flags.duplicate_nik)} · device_anomaly: {String(application.flags.device_anomaly)}</p>
-        <p className="text-sm">similarity score: {application.flags.similarity}</p>
-      </div>
-      <div className="grid md:grid-cols-2 gap-3">
-        {candidates.length === 0 && <p className="text-sm text-slate-500">Tidak ada kandidat duplicate.</p>}
-        {candidates.map(c => (
-          <div key={c.id} className="border rounded p-3 bg-white space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">{c.name}</p>
-                <p className="text-xs text-slate-500">Similarity {c.similarity}</p>
-              </div>
-              {c.selfie_url && <img src={c.selfie_url} alt={`${c.name} selfie`} className="w-16 h-16 object-cover rounded" loading="lazy" />}
-            </div>
-            <div className="flex gap-2">
-              <RoleGate allow={['RISK','ADMIN']}>
-                <button className="px-3 py-1 border rounded" onClick={() => onLink(c.id)}>Link as Dup</button>
-              </RoleGate>
-              <RoleGate allow={['RISK','ADMIN']}>
-                <button className="px-3 py-1 border rounded" onClick={onIgnore}>Ignore</button>
-              </RoleGate>
-            </div>
-          </div>
-        ))}
-      </div>
     </section>
   )
 }

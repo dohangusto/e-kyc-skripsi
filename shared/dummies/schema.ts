@@ -116,7 +116,7 @@ export type Application = {
 export type User = {
   id: string
   name: string
-  role: 'ADMIN' | 'RISK' | 'TKSK' | 'AUDITOR'
+  role: 'ADMIN' | 'TKSK' | 'AUDITOR'
   region_scope: string[]
   nik: string
   phone?: string

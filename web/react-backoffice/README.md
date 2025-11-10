@@ -1,7 +1,7 @@
 # Backoffice (React + TS + Vite)
 
 Sitemap (routes):
-- /login, /overview, /applications, /applications/:id, /tksk, /risk, /clustering, /batches, /config, /users, /audit
+- /login, /overview, /applications, /applications/:id, /tksk, /clustering, /batches, /config, /users, /audit
 
 Fitur utama:
 - Seed data lokal (`localStorage`) dari `@dummies/seed.json` & `@dummies/beneficiaries` + generator (`src/shared/mock.ts`)

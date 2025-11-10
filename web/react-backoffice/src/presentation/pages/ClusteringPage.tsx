@@ -74,8 +74,8 @@ export default function ClusteringPage() {
 
   const selectedRun = runs.find(r => r.id === selectedRunId) ?? runs[0] ?? null
   const tkss = useMemo(() => snapshot.users.filter(u => u.role === 'TKSK'), [snapshot.users])
-  const canTrigger = session?.role === 'ADMIN' || session?.role === 'RISK'
-  const canAssign = session?.role === 'ADMIN' || session?.role === 'RISK'
+  const canTrigger = session?.role === 'ADMIN'
+  const canAssign = session?.role === 'ADMIN'
   const canApprove = session?.role === 'TKSK'
 
   const filteredCandidates = useMemo(() => {
@@ -193,7 +193,7 @@ export default function ClusteringPage() {
         </p>
       </header>
 
-      {(session?.role === 'ADMIN' || session?.role === 'RISK') && (
+      {session?.role === 'ADMIN' && (
         <section className="bg-white border rounded p-4 space-y-4" aria-label="Trigger clustering">
           <div className="grid md:grid-cols-3 gap-3 text-sm">
           <label className="flex flex-col gap-1">
@@ -344,7 +344,7 @@ export default function ClusteringPage() {
                           <td className="p-2 text-xs text-slate-500">{candidate.assignedTo ?? '-'}</td>
                           <td className="p-2">
                             <div className="flex flex-col gap-2">
-                              {(session?.role === 'ADMIN' || session?.role === 'RISK') && (
+                              {session?.role === 'ADMIN' && (
                                 <AssignControl
                                   disabled={!canAssign}
                                   candidate={candidate}

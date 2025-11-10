@@ -17,7 +17,6 @@ export function Navbar({ session }: { session: Session | null }) {
           <Item to="/overview" label="Overview" />
           <Item to="/applications" label="Applications" />
           <Item to="/tksk" label="TKSK" />
-          <Item to="/risk" label="Risk" />
           <Item to="/clustering" label="Clustering" />
           <Item to="/batches" label="Batches" />
           <Item to="/distribution" label="Penyaluran" />

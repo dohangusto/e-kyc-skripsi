@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'RISK' | 'TKSK' | 'AUDITOR'
+export type Role = 'ADMIN' | 'TKSK' | 'AUDITOR'
 
 export type Session = {
   token: string

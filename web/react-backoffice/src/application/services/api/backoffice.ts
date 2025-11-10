@@ -6,12 +6,9 @@ import type {
   BackofficeApplicationResponse,
   BatchResponse,
   ClusteringRunResponse,
-  ConfirmDuplicatePayload,
   CreateBatchPayload,
   CreateDistributionPayload,
   CreateVisitPayload,
-  EscalateApplicationPayload,
-  IgnoreDuplicatePayload,
   ListEnvelope,
   NotifyDistributionPayload,
   OverviewResponse,
@@ -33,9 +30,6 @@ const routes = {
   backofficeApplications: '/api/backoffice/applications',
   applicationDetail: (id: string) => `/api/applications/${id}`,
   applicationStatus: (id: string) => `/api/applications/${id}/status`,
-  applicationEscalate: (id: string) => `/api/applications/${id}/escalate`,
-  applicationConfirmDuplicate: (id: string) => `/api/applications/${id}/duplicate/confirm`,
-  applicationIgnoreDuplicate: (id: string) => `/api/applications/${id}/duplicate/ignore`,
   applicationCreateVisit: (id: string) => `/api/applications/${id}/visits`,
   applicationVisitDetail: (id: string, visitId: string) => `/api/applications/${id}/visits/${visitId}`,
   users: '/api/users',
@@ -74,24 +68,6 @@ export const BackofficeAPI = {
 
   updateApplicationStatus(id: string, payload: UpdateApplicationStatusPayload) {
     return backofficeHttpClient.post<void, UpdateApplicationStatusPayload>(routes.applicationStatus(id), {
-      body: payload,
-    })
-  },
-
-  escalateApplication(id: string, payload: EscalateApplicationPayload) {
-    return backofficeHttpClient.post<void, EscalateApplicationPayload>(routes.applicationEscalate(id), {
-      body: payload,
-    })
-  },
-
-  confirmDuplicate(id: string, payload: ConfirmDuplicatePayload) {
-    return backofficeHttpClient.post<void, ConfirmDuplicatePayload>(routes.applicationConfirmDuplicate(id), {
-      body: payload,
-    })
-  },
-
-  ignoreDuplicate(id: string, payload: IgnoreDuplicatePayload) {
-    return backofficeHttpClient.post<void, IgnoreDuplicatePayload>(routes.applicationIgnoreDuplicate(id), {
       body: payload,
     })
   },
