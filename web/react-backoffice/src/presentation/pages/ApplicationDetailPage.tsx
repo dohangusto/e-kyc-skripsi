@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { z } from 'zod'
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { StatusPill } from '@presentation/components/StatusPill'
 import { ScoreBadge } from '@presentation/components/ScoreBadge'
 import { ConfirmModal } from '@presentation/components/ConfirmModal'
@@ -9,7 +10,7 @@ import { getSession } from '@shared/session'
 import { DocumentGallery } from '@presentation/components/DocumentGallery'
 import { VisitManager } from '@presentation/components/VisitManager'
 import { RoleGate } from '@presentation/components/RoleGate'
-import type { Application, SurveyStatus } from '@domain/types'
+import type { Application, AuditEntry, SurveyStatus } from '@domain/types'
 
 type ActionModal = 'APPROVE' | 'ESCALATE' | 'READY' | 'REJECT' | 'RETURN' | 'LINK_DUP' | 'IGNORE_DUP'
 
@@ -25,8 +26,11 @@ const TABS = [
 ]
 
 export default function ApplicationDetailPage({ id }: { id: string }) {
-  const [snapshot, setSnapshot] = useState(Data.get())
-  const application = useMemo(() => Data.getApplication(id), [snapshot, id])
+  const snapshot = useDataSnapshot()
+  const application = useMemo(
+    () => snapshot.applications.find(app => app.id === id) ?? null,
+    [snapshot.applications, id],
+  )
   const [tab, setTab] = useState<'summary'|'documents'|'tksk'|'risk'|'audit'>('summary')
   const [modal, setModal] = useState<{ type: ActionModal; candidate?: string } | null>(null)
   const [returnForm, setReturnForm] = useState({ reason: '', fields: [] as string[] })
@@ -38,15 +42,10 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
     return <div className="text-sm text-slate-600">Anda tidak memiliki akses ke aplikasi ini.</div>
   }
 
-  function refresh() {
-    setSnapshot(Data.refresh())
-  }
-
   async function run(action: () => Promise<unknown>, success: string) {
     try {
       await action()
       Toast.show(success)
-      refresh()
     } catch (e) {
       Toast.show('Gagal: ' + (e as Error).message, 'error')
     } finally {
@@ -102,9 +101,16 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
 
       {tab === 'summary' && <SummaryTab application={application} />}
       {tab === 'documents' && <DocumentsTab application={application} />}
-      {tab === 'tksk' && <VisitManager app={application} onChange={refresh} />}
+      {tab === 'tksk' && (
+        <VisitManager
+          app={application}
+          onChange={() => {
+            Data.syncFromServer().catch(() => undefined)
+          }}
+        />
+      )}
       {tab === 'risk' && <RiskTab application={application} onLink={(candidateId) => setModal({ type: 'LINK_DUP', candidate: candidateId })} onIgnore={() => setModal({ type: 'IGNORE_DUP' })} />}
-      {tab === 'audit' && <AuditTab appId={application.id} />}
+      {tab === 'audit' && <AuditTab appId={application.id} rows={snapshot.audit} />}
 
       {modal?.type === 'APPROVE' && (
         <ConfirmModal
@@ -420,8 +426,8 @@ function RiskTab({ application, onLink, onIgnore }: { application: Application; 
   )
 }
 
-function AuditTab({ appId }: { appId: string }) {
-  const rows = Data.get().audit.filter(a => a.entity === appId).slice().reverse()
+function AuditTab({ appId, rows }: { appId: string; rows: AuditEntry[] }) {
+  const filtered = rows.filter(a => a.entity === appId).slice().reverse()
   return (
     <section role="tabpanel" className="bg-white border rounded p-3 overflow-auto">
       <table className="min-w-full text-sm">
@@ -429,7 +435,7 @@ function AuditTab({ appId }: { appId: string }) {
           <tr><th className="text-left p-2">At</th><th className="text-left p-2">Actor</th><th className="text-left p-2">Action</th><th className="text-left p-2">Reason</th></tr>
         </thead>
         <tbody>
-          {rows.map((row, idx) => (
+          {filtered.map((row, idx) => (
             <tr key={idx}>
               <td className="p-2 text-xs text-slate-500">{new Date(row.at).toLocaleString('id-ID')}</td>
               <td className="p-2">{row.actor}</td>
@@ -439,7 +445,7 @@ function AuditTab({ appId }: { appId: string }) {
           ))}
         </tbody>
       </table>
-      {rows.length === 0 && <p className="text-sm text-slate-500">Belum ada audit log.</p>}
+      {filtered.length === 0 && <p className="text-sm text-slate-500">Belum ada audit log.</p>}
     </section>
   )
 }

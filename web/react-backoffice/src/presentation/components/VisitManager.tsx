@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import type { Application, Visit } from '@domain/types'
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { Toast } from './Toast'
 import { RoleGate } from './RoleGate'
 import { getSession } from '@shared/session'
@@ -14,7 +15,11 @@ const scheduleSchema = z.object({
 
 export function VisitManager({ app, onChange }: { app: Application; onChange: () => void }) {
   const session = getSession()
-  const tkss = useMemo(() => Data.listUsers().filter(u => u.role === 'TKSK').map(u => u.id), [])
+  const usersSnapshot = useDataSnapshot()
+  const tkss = useMemo(
+    () => usersSnapshot.users.filter(u => u.role === 'TKSK').map(u => u.id),
+    [usersSnapshot.users],
+  )
   const defaultTksk = session?.role === 'TKSK' ? session.userId : tkss[0] ?? ''
   const [form, setForm] = useState({ datetime: '', tksk: defaultTksk, notes: '' })
   const [errors, setErrors] = useState<Record<string,string>>({})

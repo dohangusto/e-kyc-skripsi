@@ -25,37 +25,38 @@ func RegisterRoutes(
 	e.GET("/api/applications/:id", backofficeHandler.GetApplication)
 	e.GET("/api/backoffice/applications", backofficeHandler.ListApplications)
 	app := e.Group("/api/applications/:id")
-	app.POST("/status", backofficeHandler.NotImplemented)
-	app.POST("/escalate", backofficeHandler.NotImplemented)
-	app.POST("/duplicate/confirm", backofficeHandler.NotImplemented)
-	app.POST("/duplicate/ignore", backofficeHandler.NotImplemented)
-	app.POST("/visits", backofficeHandler.NotImplemented)
-	app.PATCH("/visits/:visitId", backofficeHandler.NotImplemented)
+	app.POST("/status", backofficeHandler.UpdateApplicationStatus)
+	app.POST("/escalate", backofficeHandler.EscalateApplication)
+	app.POST("/duplicate/confirm", backofficeHandler.ConfirmDuplicate)
+	app.POST("/duplicate/ignore", backofficeHandler.IgnoreDuplicate)
+	app.POST("/visits", backofficeHandler.CreateVisit)
+	app.PATCH("/visits/:visitId", backofficeHandler.UpdateVisit)
 
 	// Config & users
-	e.GET("/api/users", backofficeHandler.NotImplemented)
-	e.GET("/api/config", backofficeHandler.NotImplemented)
-	e.PUT("/api/config", backofficeHandler.NotImplemented)
+	e.GET("/api/users", backofficeHandler.ListUsers)
+	e.GET("/api/config", backofficeHandler.GetConfig)
+	e.PUT("/api/config", backofficeHandler.UpdateConfig)
 
 	// Batches
-	e.GET("/api/batches", backofficeHandler.NotImplemented)
-	e.POST("/api/batches", backofficeHandler.NotImplemented)
-	e.POST("/api/batches/:id/status", backofficeHandler.NotImplemented)
+	e.GET("/api/batches", backofficeHandler.ListBatches)
+	e.POST("/api/batches", backofficeHandler.CreateBatch)
+	e.POST("/api/batches/:id/status", backofficeHandler.UpdateBatchStatus)
 
 	// Distributions
-	e.GET("/api/distributions", backofficeHandler.NotImplemented)
-	e.POST("/api/distributions", backofficeHandler.NotImplemented)
-	e.POST("/api/distributions/:id/status", backofficeHandler.NotImplemented)
-	e.POST("/api/distributions/:id/notify", backofficeHandler.NotImplemented)
+	e.GET("/api/distributions", backofficeHandler.ListDistributions)
+	e.POST("/api/distributions", backofficeHandler.CreateDistribution)
+	e.POST("/api/distributions/:id/status", backofficeHandler.UpdateDistributionStatus)
+	e.POST("/api/distributions/:id/notify", backofficeHandler.NotifyDistribution)
 
 	// Clustering
-	e.GET("/api/clustering/runs", backofficeHandler.NotImplemented)
-	e.GET("/api/clustering/runs/:id", backofficeHandler.NotImplemented)
-	e.POST("/api/clustering/runs/:id/candidates/:candidateId/assign", backofficeHandler.NotImplemented)
-	e.POST("/api/clustering/runs/:id/candidates/:candidateId/status", backofficeHandler.NotImplemented)
+	e.GET("/api/clustering/runs", backofficeHandler.ListClusteringRuns)
+	e.POST("/api/clustering/runs", backofficeHandler.TriggerClusteringRun)
+	e.GET("/api/clustering/runs/:id", backofficeHandler.GetClusteringRun)
+	e.POST("/api/clustering/runs/:id/candidates/:candidateId/assign", backofficeHandler.AssignClusteringCandidate)
+	e.POST("/api/clustering/runs/:id/candidates/:candidateId/status", backofficeHandler.UpdateClusteringCandidateStatus)
 
-	e.GET("/api/audit", backofficeHandler.NotImplemented)
-	e.GET("/api/overview", backofficeHandler.NotImplemented)
+	e.GET("/api/audit", backofficeHandler.ListAuditLogs)
+	e.GET("/api/overview", backofficeHandler.Overview)
 
 	e.GET("/api/debug", debugRoutesHandler(e))
 }

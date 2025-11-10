@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	db "e-kyc/services/api-backoffice/internal/infrastructure/database"
-	httpWire "e-kyc/services/api-backoffice/internal/infrastructure/http"
+	httpInfra "e-kyc/services/api-backoffice/internal/infrastructure/http"
 	"e-kyc/services/api-backoffice/internal/infrastructure/repository"
 	"e-kyc/services/api-backoffice/internal/service"
 	"errors"
@@ -33,15 +33,25 @@ func main() {
 		log.Fatalf("api-backoffice: setup schema: %v", err)
 	}
 
-	repo := repository.NewApplicationRepository(nil, pool)
-	applicationService := service.NewApplicationService(repo)
-	appHandler := httpWire.NewApplicationHandler(applicationService)
-	backofficeSvc := service.NewBackofficeService(pool)
-	backofficeHandler := httpWire.NewBackofficeHTTPHandler(backofficeSvc)
-	authSvc := service.NewAuthService(pool)
-	authHandler := httpWire.NewAuthHTTPHandler(authSvc)
-	server := httpWire.NewServer(appHandler, backofficeHandler, authHandler)
+	// REPOSITORIES
+	appRepo := repository.NewApplicationRepository(nil, pool)
+	authRepo := repository.NewAuthRepository(pool)
+	backofficeRepo := repository.NewBackofficeRepository(pool)
 
+	// SERVICES
+	applicationService := service.NewApplicationService(appRepo)
+	authSvc := service.NewAuthService(authRepo)
+	backofficeSvc := service.NewBackofficeService(backofficeRepo)
+
+	// HANDLERS
+	appHandler := httpInfra.NewApplicationHandler(applicationService)
+	authHandler := httpInfra.NewAuthHTTPHandler(authSvc)
+	backofficeHandler := httpInfra.NewBackofficeHTTPHandler(backofficeSvc)
+
+	// SERVER
+	server := httpInfra.NewServer(appHandler, backofficeHandler, authHandler)
+
+	// GRACEFUL SHUTDOWN BY ECHO
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

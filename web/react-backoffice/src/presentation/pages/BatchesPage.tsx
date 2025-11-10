@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { getSession } from '@shared/session'
 import { Toast } from '@presentation/components/Toast'
 import { RoleGate } from '@presentation/components/RoleGate'
@@ -11,7 +12,7 @@ const STATUS_FLOW: Array<{ from: string; to: 'SIGNED' | 'EXPORTED' | 'SENT'; lab
 ]
 
 export default function BatchesPage() {
-  const [snapshot, setSnapshot] = useState(Data.get())
+  const snapshot = useDataSnapshot()
   const session = getSession()
   const ready = useMemo(() => snapshot.applications.filter(a => a.status === 'FINAL_APPROVED').map(a => a.id), [snapshot])
   const [selected, setSelected] = useState<string[]>([])
@@ -30,7 +31,6 @@ export default function BatchesPage() {
       if (!session) throw new Error('no-session')
       if (selected.length === 0) throw new Error('Pilih minimal satu aplikasi')
       await Data.createBatch(code, selected, session.userId)
-      setSnapshot(Data.refresh())
       setSelected([])
       Toast.show('Batch created')
     } catch (e) {
@@ -42,7 +42,6 @@ export default function BatchesPage() {
     try {
       if (!session) throw new Error('no-session')
       await Data.setBatchStatus(batchId, next, session.userId)
-      setSnapshot(Data.refresh())
       Toast.show(`Batch ${next}`)
     } catch (e) {
       Toast.show('Gagal: ' + (e as Error).message, 'error')

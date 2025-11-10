@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppRouter, type Route } from "@app/router";
+import { AuthAPI } from "@application/services/api";
+import { Data } from "@application/services/data-service";
 import { Navbar } from "@presentation/components/Navbar";
 import LoginPage from "@presentation/pages/LoginPage";
 import OverviewPage from "@presentation/pages/OverviewPage";
@@ -14,13 +16,33 @@ import AuditPage from "@presentation/pages/AuditPage";
 import ClusteringPage from "@presentation/pages/ClusteringPage";
 import DistributionPage from "@presentation/pages/DistributionPage";
 import { ToastHost } from "@presentation/components/Toast";
-import { getSession } from "@shared/session";
+import { getSession, setSession } from "@shared/session";
 
 const App = () => {
   const [route, setRoute] = useState<Route>(() => AppRouter.get());
   const session = useMemo(() => getSession(), [route.key]);
 
   useEffect(() => AppRouter.listen(setRoute), []);
+  useEffect(() => {
+    if (!session?.token) return;
+    let cancelled = false;
+    const initialize = async () => {
+      try {
+        await AuthAPI.me(session.token);
+        if (!cancelled) {
+          await Data.syncFromServer();
+        }
+      } catch (err) {
+        console.error("sync failed", err);
+        setSession(null);
+        AppRouter.navigate("/login");
+      }
+    };
+    initialize();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
 
   return (
     <div className="min-h-screen bg-slate-50">

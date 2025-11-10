@@ -1,12 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { Toast } from '@presentation/components/Toast'
 import { ConfirmModal } from '@presentation/components/ConfirmModal'
 
 export default function ConfigPage() {
-  const [cfg, setCfg] = useState(Data.get().config)
+  const snapshot = useDataSnapshot()
+  const [cfg, setCfg] = useState(snapshot.config)
+  useEffect(() => {
+    setCfg(snapshot.config)
+  }, [snapshot.config])
   const [confirmReset, setConfirmReset] = useState(false)
-  function save() { Data.setConfig(cfg) }
+  async function save() {
+    try {
+      await Data.setConfig(cfg)
+      Toast.show('Config updated')
+    } catch (err) {
+      Toast.show('Gagal menyimpan konfigurasi: ' + (err as Error).message, 'error')
+    }
+  }
   return (
     <div className="space-y-3">
       <h2 className="text-xl font-semibold">Config</h2>
@@ -41,7 +53,6 @@ export default function ConfigPage() {
           onCancel={() => setConfirmReset(false)}
           onConfirm={() => {
             Data.reset()
-            setCfg(Data.get().config)
             setConfirmReset(false)
             Toast.show('Database direset')
           }}

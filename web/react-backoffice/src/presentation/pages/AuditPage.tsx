@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { Toast } from '@presentation/components/Toast'
 
 export default function AuditPage() {
-  const audit = Data.get().audit.slice().reverse()
+  const audit = useDataSnapshot().audit.slice().reverse()
   const [filters, setFilters] = useState({ entity: '', actor: '', from: '', to: '' })
   const filtered = useMemo(() => {
     return audit.filter(entry => {

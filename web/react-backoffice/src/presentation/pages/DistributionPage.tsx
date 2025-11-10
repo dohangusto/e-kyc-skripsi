@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { Toast } from '@presentation/components/Toast'
 import { RoleGate } from '@presentation/components/RoleGate'
 import { getSession } from '@shared/session'
@@ -30,7 +31,7 @@ const STATUS_CLASS: Record<Distribution['status'], string> = {
 }
 
 export default function DistributionPage() {
-  const [snapshot, setSnapshot] = useState(Data.get())
+  const snapshot = useDataSnapshot()
   const session = getSession()
   const distributions = snapshot.distributions
   const applications = snapshot.applications
@@ -98,7 +99,6 @@ export default function DistributionPage() {
         },
         session.userId,
       )
-      setSnapshot(Data.refresh())
       setForm({
         name: '',
         scheduledAt: '',
@@ -118,7 +118,6 @@ export default function DistributionPage() {
     try {
       if (!session) throw new Error('Harus login sebagai admin atau risk')
       await Data.updateDistributionStatus(distribution.id, next, session.userId)
-      setSnapshot(Data.refresh())
       Toast.show(`Status diperbarui ke ${STATUS_LABEL[next]}`)
     } catch (e) {
       Toast.show(`Gagal memperbarui status: ${(e as Error).message}`, 'error')
@@ -132,7 +131,6 @@ export default function DistributionPage() {
       const pending = ids.filter(id => !distribution.notified.includes(id))
       if (!pending.length) throw new Error('Semua penerima sudah diberi tahu')
       await Data.notifyDistribution(distribution.id, pending, session.userId)
-      setSnapshot(Data.refresh())
       Toast.show(`Notifikasi dikirim ke ${pending.length} penerima`)
     } catch (e) {
       Toast.show(`Gagal mengirim notifikasi: ${(e as Error).message}`, 'error')

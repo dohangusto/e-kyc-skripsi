@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
 export default defineConfig({
+  envDir: path.resolve(__dirname, '../../shared/env'),
   plugins: [react(), tailwindcss()],
   server: {
     allowedHosts: ['.ngrok-free.dev'],

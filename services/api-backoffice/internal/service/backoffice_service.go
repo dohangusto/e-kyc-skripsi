@@ -2,255 +2,423 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
+	"math/rand"
+	"strings"
+	"time"
 
 	domain "e-kyc/services/api-backoffice/internal/domain"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrNotFound = errors.New("not found")
+var ErrNotFound = domain.ErrNotFound
 
 type BackofficeService struct {
-	db *pgxpool.Pool
+	repo domain.BackofficeRepository
 }
 
-func NewBackofficeService(db *pgxpool.Pool) *BackofficeService {
-	return &BackofficeService{db: db}
+var _ domain.BackofficeService = (*BackofficeService)(nil)
+
+func NewBackofficeService(repo domain.BackofficeRepository) *BackofficeService {
+	return &BackofficeService{repo: repo}
 }
 
 func (s *BackofficeService) ListApplications(ctx context.Context, limit int) ([]domain.Application, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-
-	rows, err := s.db.Query(ctx, `
-        SELECT a.id, u.name, a.applicant_nik_mask, a.applicant_dob,
-               COALESCE(a.applicant_phone_mask, ''),
-               u.region_prov, u.region_kab, u.region_kec, u.region_kel,
-               a.status, a.assigned_to, a.aging_days,
-               a.score_ocr, a.score_face, a.score_liveness,
-               a.flags, a.created_at, a.updated_at
-        FROM applications a
-        JOIN users u ON u.id = a.beneficiary_user_id
-        ORDER BY a.created_at DESC
-        LIMIT $1`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	apps := make([]domain.Application, 0)
-	for rows.Next() {
-		var (
-			app        domain.Application
-			phone      string
-			assignedTo *string
-		)
-
-		if err := rows.Scan(
-			&app.ID, &app.ApplicantName, &app.ApplicantNikMask, &app.ApplicantDOB,
-			&phone,
-			&app.Region.Prov, &app.Region.Kab, &app.Region.Kec, &app.Region.Kel,
-			&app.Status, &assignedTo, &app.AgingDays,
-			&app.ScoreOCR, &app.ScoreFace, &app.ScoreLiveness,
-			&app.Flags, &app.CreatedAt, &app.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		app.ApplicantPhone = phone
-		app.AssignedTo = assignedTo
-		apps = append(apps, app)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return apps, nil
+	return s.repo.ListApplications(ctx, limit)
 }
 
 func (s *BackofficeService) GetApplication(ctx context.Context, id string) (*domain.Application, error) {
-	var (
-		app        domain.Application
-		phone      string
-		assignedTo *string
-	)
-
-	row := s.db.QueryRow(ctx, `
-        SELECT a.id, u.name, a.applicant_nik_mask, a.applicant_dob,
-               COALESCE(a.applicant_phone_mask, ''),
-               u.region_prov, u.region_kab, u.region_kec, u.region_kel,
-               a.status, a.assigned_to, a.aging_days,
-               a.score_ocr, a.score_face, a.score_liveness,
-               a.flags, a.created_at, a.updated_at
-        FROM applications a
-        JOIN users u ON u.id = a.beneficiary_user_id
-        WHERE a.id = $1`, id)
-
-	if err := row.Scan(
-		&app.ID, &app.ApplicantName, &app.ApplicantNikMask, &app.ApplicantDOB,
-		&phone,
-		&app.Region.Prov, &app.Region.Kab, &app.Region.Kec, &app.Region.Kel,
-		&app.Status, &assignedTo, &app.AgingDays,
-		&app.ScoreOCR, &app.ScoreFace, &app.ScoreLiveness,
-		&app.Flags, &app.CreatedAt, &app.UpdatedAt,
-	); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-	app.ApplicantPhone = phone
-	app.AssignedTo = assignedTo
-
-	docs, err := s.fetchDocuments(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	app.Documents = docs
-
-	visits, err := s.fetchVisits(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	app.Visits = visits
-
-	timeline, err := s.fetchTimeline(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	app.Timeline = timeline
-
-	survey, err := s.fetchSurvey(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if survey != nil {
-		app.Survey = survey
-	}
-
-	return &app, nil
+	return s.repo.GetApplication(ctx, id)
 }
 
-func (s *BackofficeService) fetchDocuments(ctx context.Context, appID string) ([]domain.Document, error) {
-	rows, err := s.db.Query(ctx, `
-        SELECT id, application_id, doc_type, url, sha256, created_at
-        FROM application_documents
-        WHERE application_id = $1`, appID)
+func (s *BackofficeService) ListUsers(ctx context.Context) ([]domain.User, error) {
+	return s.repo.ListUsers(ctx)
+}
+
+func (s *BackofficeService) GetConfig(ctx context.Context) (*domain.SystemConfig, error) {
+	return s.repo.GetConfig(ctx)
+}
+
+func (s *BackofficeService) UpdateConfig(ctx context.Context, cfg domain.SystemConfig) (*domain.SystemConfig, error) {
+	if cfg.Thresholds == nil {
+		cfg.Thresholds = map[string]any{}
+	}
+	if cfg.Features == nil {
+		cfg.Features = map[string]any{}
+	}
+	return s.repo.UpsertConfig(ctx, cfg)
+}
+
+func (s *BackofficeService) UpdateApplicationStatus(ctx context.Context, appID, status, actor, reason string) error {
+	action := fmt.Sprintf("STATUS:%s", status)
+	params := domain.UpdateApplicationStatusParams{
+		AppID:    appID,
+		Status:   status,
+		Timeline: timelineEntry(appID, actor, action, reason, nil),
+		Audit:    auditEntry(actor, appID, action, reason, nil),
+	}
+	return s.repo.UpdateApplicationStatus(ctx, params)
+}
+
+func (s *BackofficeService) EscalateApplication(ctx context.Context, appID, actor, reason string) error {
+	params := domain.PatchApplicationFlagsParams{
+		AppID:    appID,
+		Flags:    map[string]any{"escalated": true},
+		Timeline: timelineEntry(appID, actor, "ESCALATED", reason, nil),
+		Audit:    auditEntry(actor, appID, "ESCALATED", reason, nil),
+	}
+	return s.repo.PatchApplicationFlags(ctx, params)
+}
+
+func (s *BackofficeService) ConfirmDuplicate(ctx context.Context, appID, candidateID, actor, note string) error {
+	action := fmt.Sprintf("DUPLICATE_CONFIRMED:%s", candidateID)
+	params := domain.PatchApplicationFlagsParams{
+		AppID:    appID,
+		Flags:    map[string]any{"duplicate_confirmed": true},
+		Timeline: timelineEntry(appID, actor, action, note, nil),
+		Audit:    auditEntry(actor, appID, "DUPLICATE_CONFIRMED", note, nil),
+	}
+	return s.repo.PatchApplicationFlags(ctx, params)
+}
+
+func (s *BackofficeService) IgnoreDuplicate(ctx context.Context, appID, actor, note string) error {
+	params := domain.PatchApplicationFlagsParams{
+		AppID: appID,
+		Flags: map[string]any{
+			"duplicate_face": false,
+			"duplicate_nik":  false,
+		},
+		Timeline: timelineEntry(appID, actor, "DUPLICATE_IGNORED", note, nil),
+		Audit:    auditEntry(actor, appID, "DUPLICATE_IGNORED", note, nil),
+	}
+	return s.repo.PatchApplicationFlags(ctx, params)
+}
+
+func (s *BackofficeService) CreateVisit(ctx context.Context, appID, actor string, scheduledAt time.Time, tkskID string) (*domain.Visit, error) {
+	visit := domain.Visit{
+		ID:            fmt.Sprintf("VST-%d", time.Now().UnixNano()),
+		ApplicationID: appID,
+		ScheduledAt:   scheduledAt.UTC(),
+		Status:        "PLANNED",
+		TkskID:        tkskID,
+		CreatedAt:     time.Now().UTC(),
+	}
+
+	if err := s.repo.CreateVisit(ctx, &visit, timelineEntry(appID, actor, "VISIT:CREATED", "", map[string]any{"visitId": visit.ID})); err != nil {
+		return nil, err
+	}
+	return &visit, nil
+}
+
+func (s *BackofficeService) UpdateVisit(ctx context.Context, appID, visitID, actor string, payload domain.UpdateVisitPayload) error {
+	var lat, lng *float64
+	if payload.Geotag != nil {
+		lat = &payload.Geotag.Lat
+		lng = &payload.Geotag.Lng
+	}
+	action := "VISIT:UPDATED"
+	if payload.Status != nil && *payload.Status != "" {
+		action = fmt.Sprintf("VISIT:%s", *payload.Status)
+	}
+	params := domain.UpdateVisitParams{
+		AppID:     appID,
+		VisitID:   visitID,
+		Status:    payload.Status,
+		GeotagLat: lat,
+		GeotagLng: lng,
+		Photos:    payload.Photos,
+		Checklist: payload.Checklist,
+		Timeline:  timelineEntry(appID, actor, action, payload.Reason, map[string]any{"visitId": visitID}),
+	}
+	return s.repo.UpdateVisit(ctx, params)
+}
+
+func (s *BackofficeService) ListBatches(ctx context.Context) ([]domain.Batch, error) {
+	return s.repo.ListBatches(ctx)
+}
+
+func (s *BackofficeService) CreateBatch(ctx context.Context, code string, applicationIDs []string, actor string) (*domain.Batch, error) {
+	if code == "" {
+		return nil, errors.New("code required")
+	}
+	if len(applicationIDs) == 0 {
+		return nil, errors.New("items required")
+	}
+	batch := domain.Batch{
+		ID:        fmt.Sprintf("BATCH-%d", time.Now().UnixNano()),
+		Code:      code,
+		Status:    "DRAFT",
+		Items:     applicationIDs,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+
+	audit := auditEntry(actor, batch.ID, "BATCH:CREATED", "", nil)
+	if err := s.repo.CreateBatch(ctx, &batch, audit); err != nil {
+		return nil, err
+	}
+	return &batch, nil
+}
+
+func (s *BackofficeService) UpdateBatchStatus(ctx context.Context, batchID, status, actor string) error {
+	action := fmt.Sprintf("BATCH:%s", status)
+	params := domain.UpdateBatchStatusParams{
+		BatchID: batchID,
+		Status:  status,
+		Audit:   auditEntry(actor, batchID, action, "", nil),
+	}
+	return s.repo.UpdateBatchStatus(ctx, params)
+}
+
+func (s *BackofficeService) ListDistributions(ctx context.Context) ([]domain.Distribution, error) {
+	return s.repo.ListDistributions(ctx)
+}
+
+func (s *BackofficeService) CreateDistribution(ctx context.Context, dist *domain.Distribution, actor string) (*domain.Distribution, error) {
+	dist.ID = fmt.Sprintf("DIST-%d", time.Now().UnixNano())
+	dist.Status = "PLANNED"
+	now := time.Now().UTC()
+	dist.CreatedAt = now
+	dist.UpdatedAt = now
+	dist.CreatedBy = &actor
+	dist.UpdatedBy = &actor
+
+	userIDs, err := s.repo.NormalizeUserIDs(ctx, dist.Beneficiaries)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	dist.Beneficiaries = userIDs
 
-	var docs []domain.Document
-	for rows.Next() {
-		var doc domain.Document
-		if err := rows.Scan(&doc.ID, &doc.ApplicationID, &doc.Type, &doc.URL, &doc.SHA256, &doc.CreatedAt); err != nil {
-			return nil, err
-		}
-		docs = append(docs, doc)
-	}
-	return docs, rows.Err()
-}
-
-func (s *BackofficeService) fetchVisits(ctx context.Context, appID string) ([]domain.Visit, error) {
-	rows, err := s.db.Query(ctx, `
-        SELECT id, application_id, scheduled_at, geotag_lat, geotag_lng, photos, checklist, status, COALESCE(tksk_id, ''), created_at
-        FROM application_visits
-        WHERE application_id = $1
-        ORDER BY scheduled_at DESC`, appID)
-	if err != nil {
+	audit := auditEntry(actor, dist.ID, "DISTRIBUTION:CREATED", "", nil)
+	if err := s.repo.CreateDistribution(ctx, dist, audit); err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var visits []domain.Visit
-	for rows.Next() {
-		var (
-			visit     domain.Visit
-			photos    []byte
-			checklist []byte
-			geotagLat *float64
-			geotagLng *float64
-		)
-
-		if err := rows.Scan(&visit.ID, &visit.ApplicationID, &visit.ScheduledAt, &geotagLat, &geotagLng, &photos, &checklist, &visit.Status, &visit.TkskID, &visit.CreatedAt); err != nil {
-			return nil, err
-		}
-		visit.GeotagLat = geotagLat
-		visit.GeotagLng = geotagLng
-		visit.Photos = decodeStringArray(photos)
-		visit.Checklist = decodeJSON(checklist)
-		visits = append(visits, visit)
-	}
-	return visits, rows.Err()
+	return dist, nil
 }
 
-func (s *BackofficeService) fetchTimeline(ctx context.Context, appID string) ([]domain.TimelineItem, error) {
-	rows, err := s.db.Query(ctx, `
-        SELECT id, application_id, occurred_at, actor, action, reason, metadata
-        FROM application_timeline
-        WHERE application_id = $1
-        ORDER BY occurred_at DESC`, appID)
-	if err != nil {
-		return nil, err
+func (s *BackofficeService) UpdateDistributionStatus(ctx context.Context, distID, status, actor string) error {
+	action := fmt.Sprintf("DISTRIBUTION:%s", status)
+	params := domain.UpdateDistributionStatusParams{
+		DistributionID: distID,
+		Status:         status,
+		Audit:          auditEntry(actor, distID, action, "", nil),
 	}
-	defer rows.Close()
-
-	var items []domain.TimelineItem
-	for rows.Next() {
-		var (
-			item     domain.TimelineItem
-			metadata []byte
-		)
-		if err := rows.Scan(&item.ID, &item.ApplicationID, &item.OccurredAt, &item.Actor, &item.Action, &item.Reason, &metadata); err != nil {
-			return nil, err
-		}
-		item.Metadata = decodeJSON(metadata)
-		items = append(items, item)
-	}
-	return items, rows.Err()
+	return s.repo.UpdateDistributionStatus(ctx, params)
 }
 
-func (s *BackofficeService) fetchSurvey(ctx context.Context, appID string) (*domain.SurveyState, error) {
-	var (
-		state   domain.SurveyState
-		answers []byte
-	)
-
-	row := s.db.QueryRow(ctx, `
-        SELECT application_id, completed, submitted_at, status, answers
-        FROM survey_responses
-        WHERE application_id = $1`, appID)
-	if err := row.Scan(&state.ApplicationID, &state.Completed, &state.SubmittedAt, &state.Status, &answers); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	state.Answers = decodeJSON(answers)
-	return &state, nil
-}
-
-func decodeJSON(data []byte) map[string]any {
-	if len(data) == 0 {
-		return map[string]any{}
-	}
-	var out map[string]any
-	if err := json.Unmarshal(data, &out); err != nil {
-		return map[string]any{}
-	}
-	return out
-}
-
-func decodeStringArray(data []byte) []string {
-	if len(data) == 0 {
+func (s *BackofficeService) NotifyDistribution(ctx context.Context, distID string, userIDs []string, actor string) error {
+	if len(userIDs) == 0 {
 		return nil
 	}
-	var out []string
-	if err := json.Unmarshal(data, &out); err != nil {
-		return nil
+	normalized, err := s.repo.NormalizeUserIDs(ctx, userIDs)
+	if err != nil {
+		return err
 	}
-	return out
+	params := domain.NotifyDistributionParams{
+		DistributionID: distID,
+		UserIDs:        normalized,
+		Actor:          actor,
+		Audit:          auditEntry(actor, distID, "DISTRIBUTION:NOTIFIED", strings.Join(normalized, ","), nil),
+	}
+	return s.repo.NotifyDistribution(ctx, params)
+}
+
+func (s *BackofficeService) ListClusteringRuns(ctx context.Context) ([]domain.ClusteringRun, error) {
+	return s.repo.ListClusteringRuns(ctx)
+}
+
+func (s *BackofficeService) GetClusteringRun(ctx context.Context, runID string) (*domain.ClusteringRun, error) {
+	return s.repo.GetClusteringRun(ctx, runID)
+}
+
+func (s *BackofficeService) AssignClusteringCandidate(ctx context.Context, runID, candidateID, tkskID, actor string) error {
+	action := fmt.Sprintf("CLUSTER_ASSIGN:%s", tkskID)
+	params := domain.AssignClusteringCandidateParams{
+		RunID:       runID,
+		CandidateID: candidateID,
+		TkskID:      tkskID,
+		Audit:       auditEntry(actor, fmt.Sprintf("%s:%s", runID, candidateID), action, "", nil),
+	}
+	return s.repo.AssignClusteringCandidate(ctx, params)
+}
+
+func (s *BackofficeService) UpdateClusteringCandidateStatus(ctx context.Context, runID, candidateID, status, actor, notes string) error {
+	action := fmt.Sprintf("CLUSTER_STATUS:%s", status)
+	params := domain.UpdateClusteringCandidateStatusParams{
+		RunID:       runID,
+		CandidateID: candidateID,
+		Status:      status,
+		Actor:       actor,
+		Notes:       notes,
+		Audit:       auditEntry(actor, fmt.Sprintf("%s:%s", runID, candidateID), action, notes, nil),
+	}
+	return s.repo.UpdateClusteringCandidateStatus(ctx, params)
+}
+
+func (s *BackofficeService) TriggerClusteringRun(ctx context.Context, operator string, payload domain.ClusteringRunPayload) (*domain.ClusteringRun, error) {
+	if operator == "" {
+		return nil, errors.New("operator required")
+	}
+	if payload.SampleSize <= 0 {
+		payload.SampleSize = 120
+	}
+	beneficiaries, err := s.repo.ListBeneficiaries(ctx, payload.SampleSize)
+	if err != nil {
+		return nil, err
+	}
+	if len(beneficiaries) == 0 {
+		return nil, errors.New("no beneficiaries available for clustering")
+	}
+
+	now := time.Now().UTC()
+	runID := fmt.Sprintf("CLUST-%d", now.UnixNano())
+	randSrc := rand.New(rand.NewSource(now.UnixNano()))
+
+	var tinggi, sedang, rendah int
+	candidates := make([]domain.ClusteringCandidate, 0, len(beneficiaries))
+	for _, bene := range beneficiaries {
+		priority := normalizePriority(bene.ClusterPriority)
+		switch priority {
+		case "TINGGI":
+			tinggi++
+		case "SEDANG":
+			sedang++
+		default:
+			rendah++
+		}
+		cluster := "LAINNYA"
+		if bene.ClusterCategory != nil && strings.TrimSpace(*bene.ClusterCategory) != "" {
+			cluster = strings.ToUpper(strings.TrimSpace(*bene.ClusterCategory))
+		}
+		score := scoreForPriority(priority, randSrc)
+		household := bene.HouseholdSize
+		if household <= 0 {
+			household = 1
+		}
+		candidate := domain.ClusteringCandidate{
+			ID:            bene.User.ID,
+			RunID:         runID,
+			Name:          bene.User.Name,
+			NikMask:       maskNikPointer(bene.User.NIK),
+			Region:        bene.User.Region,
+			Cluster:       cluster,
+			Priority:      priority,
+			Score:         score,
+			HouseholdSize: household,
+			Status:        "PENDING_REVIEW",
+		}
+		candidates = append(candidates, candidate)
+	}
+
+	finished := now.Add(2 * time.Second)
+	parameters := map[string]any{
+		"dataset":   payload.Dataset,
+		"window":    payload.Window,
+		"algorithm": payload.Algorithm,
+	}
+	summary := map[string]any{
+		"total":  len(candidates),
+		"tinggi": tinggi,
+		"sedang": sedang,
+		"rendah": rendah,
+	}
+	run := domain.ClusteringRun{
+		ID:         runID,
+		Operator:   operator,
+		StartedAt:  now,
+		FinishedAt: &finished,
+		Parameters: parameters,
+		Summary:    summary,
+		Candidates: candidates,
+	}
+	audit := auditEntry(operator, runID, "CLUSTERING:CREATED", fmt.Sprintf("%s/%s/%s", payload.Dataset, payload.Window, payload.Algorithm), nil)
+	if err := s.repo.CreateClusteringRun(ctx, &run, audit, candidates); err != nil {
+		return nil, err
+	}
+	created, err := s.repo.GetClusteringRun(ctx, runID)
+	if err != nil {
+		return nil, err
+	}
+	return created, nil
+}
+
+func (s *BackofficeService) ListAuditLogs(ctx context.Context, limit int) ([]domain.AuditLog, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	return s.repo.ListAuditLogs(ctx, limit)
+}
+
+func (s *BackofficeService) Overview(ctx context.Context) (map[string]any, error) {
+	return s.repo.Overview(ctx)
+}
+
+func timelineEntry(appID, actor, action, reason string, metadata map[string]any) domain.TimelineEntry {
+	return domain.TimelineEntry{
+		ApplicationID: appID,
+		Actor:         actor,
+		Action:        action,
+		Reason:        reason,
+		Metadata:      metadata,
+	}
+}
+
+func auditEntry(actor, entity, action, reason string, metadata map[string]any) domain.AuditEntry {
+	return domain.AuditEntry{
+		Actor:    actor,
+		Entity:   entity,
+		Action:   action,
+		Reason:   reason,
+		Metadata: metadata,
+	}
+}
+
+func maskNikPointer(nik *string) string {
+	if nik == nil {
+		return ""
+	}
+	value := strings.TrimSpace(*nik)
+	if len(value) <= 4 {
+		return value
+	}
+	maskLen := len(value) - 4
+	return strings.Repeat("*", maskLen) + value[maskLen:]
+}
+
+func normalizePriority(priority *string) string {
+	if priority == nil {
+		return "SEDANG"
+	}
+	normalized := strings.ToUpper(strings.TrimSpace(*priority))
+	switch normalized {
+	case "TINGGI", "SEDANG", "RENDAH":
+		return normalized
+	default:
+		return "SEDANG"
+	}
+}
+
+func scoreForPriority(priority string, r *rand.Rand) float64 {
+	base := 0.65
+	switch priority {
+	case "TINGGI":
+		base = 0.9
+	case "SEDANG":
+		base = 0.75
+	case "RENDAH":
+		base = 0.6
+	}
+	jitter := (r.Float64() - 0.5) * 0.2
+	score := base + jitter
+	if score > 0.99 {
+		score = 0.99
+	}
+	if score < 0.45 {
+		score = 0.45
+	}
+	return math.Round(score*100) / 100
 }

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,8 +11,6 @@ import (
 	domain "e-kyc/services/api-backoffice/internal/domain"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -21,145 +18,80 @@ var (
 )
 
 type AuthService struct {
-	db       *pgxpool.Pool
+	repo     domain.AuthRepository
 	sessions *SessionStore
 }
 
-type Session struct {
-	Token       string    `json:"token"`
-	UserID      string    `json:"userId"`
-	Role        string    `json:"role"`
-	RegionScope []string  `json:"regionScope"`
-	IssuedAt    time.Time `json:"issuedAt"`
+var _ domain.AuthService = (*AuthService)(nil)
+
+func NewAuthService(repo domain.AuthRepository) *AuthService {
+	return &AuthService{repo: repo, sessions: NewSessionStore()}
 }
 
-type AuthResult struct {
-	Session Session     `json:"session"`
-	User    domain.User `json:"user"`
-}
-
-func NewAuthService(db *pgxpool.Pool) *AuthService {
-	return &AuthService{db: db, sessions: NewSessionStore()}
-}
-
-func (s *AuthService) LoginAdmin(ctx context.Context, nik, pin string) (*AuthResult, error) {
-	var (
-		u             domain.User
-		dob           *time.Time
-		phone         *string
-		email         *string
-		regionScope   []string
-		metadataBytes []byte
-		pinHash       string
-	)
-
+func (s *AuthService) LoginAdmin(ctx context.Context, nik, pin string) (*domain.AuthResult, error) {
 	nik = strings.TrimSpace(nik)
 	pin = strings.TrimSpace(pin)
 	if nik == "" || pin == "" {
 		return nil, ErrInvalidCredential
 	}
 
-	query := `SELECT id, role, nik, name, dob, phone, email, pin_hash,
-        region_prov, region_kab, region_kec, region_kel,
-        region_scope, metadata
-        FROM users
-        WHERE nik = $1 AND role <> 'BENEFICIARY'
-        LIMIT 1`
-
-	row := s.db.QueryRow(ctx, query, nik)
-	if err := row.Scan(&u.ID, &u.Role, &u.NIK, &u.Name, &dob, &phone, &email, &pinHash,
-		&u.Region.Prov, &u.Region.Kab, &u.Region.Kec, &u.Region.Kel,
-		&regionScope, &metadataBytes); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	cred, err := s.repo.FindAdminByNIK(ctx, nik)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
 			return nil, ErrInvalidCredential
 		}
 		return nil, err
 	}
 
-	if !verifyPIN(pinHash, pin) {
+	if !verifyPIN(cred.PINHash, pin) {
 		return nil, ErrInvalidCredential
 	}
 
-	u.DOB = dob
-	u.Phone = phone
-	u.Email = email
-	u.RegionScope = regionScope
-	if len(metadataBytes) > 0 {
-		_ = json.Unmarshal(metadataBytes, &u.Metadata)
-	}
-
-	sess := s.sessions.Create(u.ID, u.Role, regionScope)
-	return &AuthResult{Session: sess, User: u}, nil
+	sess := s.sessions.Create(cred.User.ID, cred.User.Role, cred.User.RegionScope)
+	return &domain.AuthResult{Session: sess, User: cred.User}, nil
 }
 
-func (s *AuthService) LoginBeneficiary(ctx context.Context, phone, pin string) (*AuthResult, error) {
-	var (
-		u             domain.User
-		dob           *time.Time
-		phoneDB       *string
-		email         *string
-		regionScope   []string
-		metadataBytes []byte
-		pinHash       string
-	)
-
+func (s *AuthService) LoginBeneficiary(ctx context.Context, phone, pin string) (*domain.AuthResult, error) {
 	phone = strings.TrimSpace(phone)
 	pin = strings.TrimSpace(pin)
 	if phone == "" || pin == "" {
 		return nil, ErrInvalidCredential
 	}
 
-	query := `SELECT id, role, nik, name, dob, phone, email, pin_hash,
-        region_prov, region_kab, region_kec, region_kel,
-        region_scope, metadata
-        FROM users
-        WHERE phone = $1 AND role = 'BENEFICIARY'
-        LIMIT 1`
-
-	row := s.db.QueryRow(ctx, query, phone)
-	if err := row.Scan(&u.ID, &u.Role, &u.NIK, &u.Name, &dob, &phoneDB, &email, &pinHash,
-		&u.Region.Prov, &u.Region.Kab, &u.Region.Kec, &u.Region.Kel,
-		&regionScope, &metadataBytes); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	cred, err := s.repo.FindBeneficiaryByPhone(ctx, phone)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
 			return nil, ErrInvalidCredential
 		}
 		return nil, err
 	}
 
-	if !verifyPIN(pinHash, pin) {
+	if !verifyPIN(cred.PINHash, pin) {
 		return nil, ErrInvalidCredential
 	}
 
-	u.DOB = dob
-	u.Phone = phoneDB
-	u.Email = email
-	u.RegionScope = regionScope
-	if len(metadataBytes) > 0 {
-		_ = json.Unmarshal(metadataBytes, &u.Metadata)
-	}
-
-	sess := s.sessions.Create(u.ID, u.Role, regionScope)
-	return &AuthResult{Session: sess, User: u}, nil
+	sess := s.sessions.Create(cred.User.ID, cred.User.Role, cred.User.RegionScope)
+	return &domain.AuthResult{Session: sess, User: cred.User}, nil
 }
 
-func (s *AuthService) Validate(token string) (*Session, bool) {
+func (s *AuthService) Validate(token string) (*domain.Session, bool) {
 	return s.sessions.Get(token)
 }
 
 type SessionStore struct {
 	mu   sync.RWMutex
-	data map[string]Session
+	data map[string]domain.Session
 }
 
 func NewSessionStore() *SessionStore {
-	return &SessionStore{data: make(map[string]Session)}
+	return &SessionStore{data: make(map[string]domain.Session)}
 }
 
-func (s *SessionStore) Create(userID, role string, regionScope []string) Session {
+func (s *SessionStore) Create(userID, role string, regionScope []string) domain.Session {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	sess := Session{
+	sess := domain.Session{
 		Token:       uuid.NewString(),
 		UserID:      userID,
 		Role:        role,
@@ -170,7 +102,7 @@ func (s *SessionStore) Create(userID, role string, regionScope []string) Session
 	return sess
 }
 
-func (s *SessionStore) Get(token string) (*Session, bool) {
+func (s *SessionStore) Get(token string) (*domain.Session, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	sess, ok := s.data[token]

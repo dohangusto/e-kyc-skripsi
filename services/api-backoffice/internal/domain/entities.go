@@ -166,6 +166,7 @@ type AuditLog struct {
 	Entity     string
 	Action     string
 	Reason     *string
+	Metadata   map[string]any
 }
 
 type SystemConfig struct {

@@ -1,3 +1,4 @@
+import { Data } from '@application/services/data-service'
 import { AppRouter } from '@app/router'
 import { getSession, setSession, type Session } from '@shared/session'
 
@@ -28,7 +29,16 @@ export function Navbar({ session }: { session: Session | null }) {
           {session ? (
             <>
               <span className="text-slate-600">{session.userId} · {session.role} · {session.regionScope.join(',')}</span>
-              <button className="px-2 py-1 border rounded" onClick={() => { setSession(null); AppRouter.navigate('/login') }}>Logout</button>
+              <button
+                className="px-2 py-1 border rounded"
+                onClick={() => {
+                  setSession(null)
+                  Data.reset()
+                  AppRouter.navigate('/login')
+                }}
+              >
+                Logout
+              </button>
             </>
           ) : (
             <button className="px-2 py-1 border rounded" onClick={() => AppRouter.navigate('/login')}>Login</button>

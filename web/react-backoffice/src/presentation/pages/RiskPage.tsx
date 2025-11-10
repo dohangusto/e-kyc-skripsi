@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { ConfirmModal } from '@presentation/components/ConfirmModal'
 import { Toast } from '@presentation/components/Toast'
 import { ScoreBadge } from '@presentation/components/ScoreBadge'
@@ -7,7 +8,7 @@ import type { Application } from '@domain/types'
 import { getSession } from '@shared/session'
 
 export default function RiskPage() {
-  const [snapshot, setSnapshot] = useState(Data.get())
+  const snapshot = useDataSnapshot()
   const flagged = useMemo(
     () => snapshot.applications.filter(a => a.flags.duplicate_face || a.flags.duplicate_nik || a.flags.device_anomaly),
     [snapshot],
@@ -22,15 +23,10 @@ export default function RiskPage() {
     return <div className="text-sm text-slate-600">Anda tidak memiliki akses ke halaman Risk Desk.</div>
   }
 
-  function refresh() {
-    setSnapshot(Data.refresh())
-  }
-
   async function run(action: () => Promise<unknown>, message: string) {
     try {
       await action()
       Toast.show(message)
-      refresh()
     } catch (e) {
       Toast.show('Gagal: ' + (e as Error).message, 'error')
     } finally {
@@ -38,9 +34,12 @@ export default function RiskPage() {
     }
   }
 
-  function updateThreshold(type: 'ocr_min' | 'face_min', value: number) {
-    Data.setConfig({ ...config, thresholds: { ...config.thresholds, [type]: value } })
-    refresh()
+  async function updateThreshold(type: 'ocr_min' | 'face_min', value: number) {
+    try {
+      await Data.setConfig({ ...config, thresholds: { ...config.thresholds, [type]: value } })
+    } catch (err) {
+      Toast.show('Gagal mengubah threshold: ' + (err as Error).message, 'error')
+    }
   }
 
   return (

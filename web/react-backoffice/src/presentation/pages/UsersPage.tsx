@@ -1,7 +1,7 @@
-import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 
 export default function UsersPage() {
-  const users = Data.get().users
+  const users = useDataSnapshot().users
   return (
     <div className="space-y-3">
       <h2 className="text-xl font-semibold">Users</h2>
@@ -20,4 +20,3 @@ export default function UsersPage() {
     </div>
   )
 }
-

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { AppRouter } from '@app/router'
 import { StatusPill } from '@presentation/components/StatusPill'
 import { SavedViews } from '@shared/saved-views'
@@ -63,7 +63,7 @@ export default function ApplicationsPage() {
     AppRouter.navigate(next, { replace: true })
   }, [filters])
 
-  const db = Data.get()
+  const db = useDataSnapshot()
   const batchLookup = useMemo(() => {
     const map = new Map<string, string[]>()
     db.batches.forEach(batch => {

@@ -1,8 +1,8 @@
 import { FormEvent, useState } from 'react'
 
 import { AppRouter } from '@app/router'
-import { Data } from '@application/services/data-service'
-import { setSession } from '@shared/session'
+import { AuthAPI } from '@application/services/api'
+import { setSession, type Role } from '@shared/session'
 
 export default function LoginPage() {
   const [nik, setNik] = useState('')
@@ -19,8 +19,13 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      const user = await Data.loginWithCredential(nik, pin)
-      setSession({ userId: user.id, role: user.role, regionScope: user.region_scope })
+      const res = await AuthAPI.loginAdmin({ nik, pin })
+      setSession({
+        token: res.session.token,
+        userId: res.session.userId,
+        role: res.session.role as Role,
+        regionScope: res.session.regionScope,
+      })
       AppRouter.navigate('/overview')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login gagal')

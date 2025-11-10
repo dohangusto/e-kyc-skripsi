@@ -1,6 +1,7 @@
 export type Role = 'ADMIN' | 'RISK' | 'TKSK' | 'AUDITOR'
 
 export type Session = {
+  token: string
   userId: string
   role: Role
   regionScope: string[]
@@ -21,4 +22,3 @@ export function setSession(s: Session | null) {
   if (!s) localStorage.removeItem(KEY)
   else localStorage.setItem(KEY, JSON.stringify(s))
 }
-

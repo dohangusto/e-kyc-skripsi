@@ -4,15 +4,15 @@ import (
 	"net/http"
 	"strings"
 
-	"e-kyc/services/api-backoffice/internal/service"
+	"e-kyc/services/api-backoffice/internal/domain"
 	"github.com/labstack/echo/v4"
 )
 
 type AuthHTTPHandler struct {
-	Service *service.AuthService
+	Service domain.AuthService
 }
 
-func NewAuthHTTPHandler(svc *service.AuthService) *AuthHTTPHandler {
+func NewAuthHTTPHandler(svc domain.AuthService) *AuthHTTPHandler {
 	return &AuthHTTPHandler{Service: svc}
 }
 

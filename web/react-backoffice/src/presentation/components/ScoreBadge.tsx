@@ -1,7 +1,7 @@
-import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 
 export function ScoreBadge({ ocr, face }: { ocr: number; face: number }) {
-  const { thresholds } = Data.get().config
+  const { thresholds } = useDataSnapshot().config
   const okOcr = ocr >= thresholds.ocr_min
   const okFace = face >= thresholds.face_min
   return (
@@ -11,4 +11,3 @@ export function ScoreBadge({ ocr, face }: { ocr: number; face: number }) {
     </div>
   )
 }
-

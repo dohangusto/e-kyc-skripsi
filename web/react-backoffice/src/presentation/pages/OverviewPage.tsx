@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Data } from '@application/services/data-service'
+import { useMemo, useState } from 'react'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { AppRouter } from '@app/router'
 import { getSession } from '@shared/session'
 import type { Batch, Distribution } from '@domain/types'
@@ -20,16 +20,9 @@ type VisitItem = {
 }
 export default function OverviewPage() {
   const session = getSession()
-  const [snapshot, setSnapshot] = useState(() => Data.get())
+  const snapshot = useDataSnapshot()
   const [batchFilter, setBatchFilter] = useState<BatchFilter>('ALL')
   const [distributionFilter, setDistributionFilter] = useState<DistributionFilter>('ALL')
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handler = () => setSnapshot(Data.refresh())
-    window.addEventListener('backoffice:data:changed', handler)
-    return () => window.removeEventListener('backoffice:data:changed', handler)
-  }, [])
 
   const accessible = useMemo(() => {
     let apps = snapshot.applications.slice()

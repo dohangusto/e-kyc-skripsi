@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { getSession } from '@shared/session'
 import { VisitManager } from '@presentation/components/VisitManager'
 import type { Application, Visit } from '@domain/types'
@@ -9,7 +10,7 @@ export default function TkskPage() {
   if (!session || session.role !== 'TKSK') {
     return <div className="text-sm text-slate-600">Halaman ini hanya untuk pengguna TKSK.</div>
   }
-  const [snapshot, setSnapshot] = useState(Data.get())
+  const snapshot = useDataSnapshot()
   const queue = useMemo(
     () => snapshot.applications.filter(app =>
       app.assigned_to === session.userId &&
@@ -61,10 +62,6 @@ export default function TkskPage() {
   useEffect(() => {
     setCalendarPage(prev => (prev >= calendarTotalPages ? calendarTotalPages - 1 : prev))
   }, [calendarTotalPages])
-
-  function refresh() {
-    setSnapshot(Data.refresh())
-  }
 
   return (
     <div className="space-y-4">
@@ -138,7 +135,12 @@ export default function TkskPage() {
                 <h3 className="font-semibold">{selected.id}</h3>
                 <p className="text-sm text-slate-500">{selected.applicant.name} · {selected.region.kec}</p>
               </div>
-              <VisitManager app={selected} onChange={refresh} />
+              <VisitManager
+                app={selected}
+                onChange={() => {
+                  Data.syncFromServer().catch(() => undefined)
+                }}
+              />
             </div>
           ) : (
             <p className="text-sm text-slate-500">Pilih aplikasi untuk melihat kunjungan.</p>

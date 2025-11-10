@@ -1,0 +1,43 @@
+package domain
+
+import (
+	"context"
+	"time"
+
+	"github.com/labstack/echo/v4"
+)
+
+type UserCredential struct {
+	User    User
+	PINHash string
+}
+
+type Session struct {
+	Token       string    `json:"token"`
+	UserID      string    `json:"userId"`
+	Role        string    `json:"role"`
+	RegionScope []string  `json:"regionScope"`
+	IssuedAt    time.Time `json:"issuedAt"`
+}
+
+type AuthResult struct {
+	Session Session `json:"session"`
+	User    User    `json:"user"`
+}
+
+type AuthRepository interface {
+	FindAdminByNIK(ctx context.Context, nik string) (*UserCredential, error)
+	FindBeneficiaryByPhone(ctx context.Context, phone string) (*UserCredential, error)
+}
+
+type AuthService interface {
+	LoginAdmin(ctx context.Context, nik, pin string) (*AuthResult, error)
+	LoginBeneficiary(ctx context.Context, phone, pin string) (*AuthResult, error)
+	Validate(token string) (*Session, bool)
+}
+
+type AuthHTTPHandler interface {
+	LoginAdmin(ctx echo.Context) error
+	LoginBeneficiary(ctx echo.Context) error
+	Me(ctx echo.Context) error
+}

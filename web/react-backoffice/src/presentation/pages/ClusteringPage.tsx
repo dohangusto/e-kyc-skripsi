@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { triggerClustering, type ClusteringParams } from '@application/services/clustering-service'
+import type { ClusteringCandidate } from '@domain/types'
+import { BackofficeAPI } from '@application/services/api'
 import { Data } from '@application/services/data-service'
-import type { ClusteringCandidate, ClusteringRun } from '@domain/types'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { getSession } from '@shared/session'
 import { Toast } from '@presentation/components/Toast'
 import { ConfirmModal } from '@presentation/components/ConfirmModal'
 import { RoleGate } from '@presentation/components/RoleGate'
+
+type ClusteringParams = {
+  dataset: string
+  window: string
+  algorithm: string
+}
 
 const DEFAULT_PARAMS: ClusteringParams = {
   dataset: '2025-Q4-Seeding',
@@ -38,8 +45,9 @@ type Filters = {
 
 export default function ClusteringPage() {
   const session = getSession()
+  const snapshot = useDataSnapshot()
+  const runs = snapshot.clusteringRuns
   const [params, setParams] = useState<ClusteringParams>(DEFAULT_PARAMS)
-  const [runs, setRuns] = useState<ClusteringRun[]>(Data.listClusteringRuns())
   const [selectedRunId, setSelectedRunId] = useState<string | null>(runs[0]?.id ?? null)
   const [stage, setStage] = useState<'idle' | 'queued' | 'running' | 'completed'>('idle')
   const [busy, setBusy] = useState(false)
@@ -54,8 +62,18 @@ export default function ClusteringPage() {
     timers.current = []
   }, [])
 
+  useEffect(() => {
+    if (!runs.length) {
+      setSelectedRunId(null)
+      return
+    }
+    if (!selectedRunId || !runs.some(run => run.id === selectedRunId)) {
+      setSelectedRunId(runs[0].id)
+    }
+  }, [runs, selectedRunId])
+
   const selectedRun = runs.find(r => r.id === selectedRunId) ?? runs[0] ?? null
-  const tkss = useMemo(() => Data.listUsers().filter(u => u.role === 'TKSK'), [])
+  const tkss = useMemo(() => snapshot.users.filter(u => u.role === 'TKSK'), [snapshot.users])
   const canTrigger = session?.role === 'ADMIN' || session?.role === 'RISK'
   const canAssign = session?.role === 'ADMIN' || session?.role === 'RISK'
   const canApprove = session?.role === 'TKSK'
@@ -103,11 +121,12 @@ export default function ClusteringPage() {
       )
     })
     try {
-      const run = await triggerClustering(params, session?.userId ?? 'system')
-      Data.recordClusteringRun(run)
-      const updated = Data.listClusteringRuns()
-      setRuns(updated)
-      setSelectedRunId(run.id)
+      await BackofficeAPI.triggerClusteringRun({
+        operator: session?.userId ?? 'system',
+        parameters: params,
+      })
+      await Data.syncFromServer()
+      setSelectedRunId(prev => prev ?? runs[0]?.id ?? null)
       setStage('completed')
       setStepState(() => createStepState('done'))
       Toast.show('Clustering berhasil dijalankan')
@@ -135,22 +154,28 @@ export default function ClusteringPage() {
     timers.current = []
   }
 
-  function handleAssign(runId: string, candidateId: string, tkskId: string) {
+  async function handleAssign(runId: string, candidateId: string, tkskId: string) {
     try {
-      Data.assignClusteringCandidate(runId, candidateId, tkskId, session?.userId ?? 'system')
-      const updated = Data.listClusteringRuns()
-      setRuns(updated)
+      await BackofficeAPI.assignClusteringCandidate(runId, candidateId, {
+        actor: session?.userId ?? 'system',
+        tkskId,
+      })
+      await Data.syncFromServer()
       Toast.show(`Kandidat dikirim ke ${tkskId}`)
     } catch (err) {
       Toast.show('Gagal assign: ' + (err as Error).message, 'error')
     }
   }
 
-  function handleApprovalConfirm(notes: string) {
+  async function handleApprovalConfirm(notes: string) {
     if (!approvalTarget) return
     try {
-      Data.setClusteringCandidateStatus(approvalTarget.runId, approvalTarget.candidateId, 'APPROVED', session?.userId ?? 'TKSK', notes)
-      setRuns(Data.listClusteringRuns())
+      await BackofficeAPI.updateClusteringCandidateStatus(approvalTarget.runId, approvalTarget.candidateId, {
+        actor: session?.userId ?? 'TKSK',
+        status: 'APPROVED',
+        notes,
+      })
+      await Data.syncFromServer()
       Toast.show('Kandidat disetujui TKSK')
     } catch (err) {
       Toast.show('Gagal update status: ' + (err as Error).message, 'error')
