@@ -36,9 +36,13 @@ const ensureSession = () => {
   return session
 }
 
-const runWithSync = async <T>(operation: () => Promise<T>) => {
+type SyncOptions = { sync?: boolean }
+
+const runWithSync = async <T>(operation: () => Promise<T>, options: SyncOptions = {}) => {
   const result = await operation()
-  await Data.syncFromServer()
+  if (options.sync !== false) {
+    await Data.syncFromServer()
+  }
   return result
 }
 
@@ -84,6 +88,7 @@ export const Data = {
   listClusteringRuns() { return db.clusteringRuns },
   listDistributions() { return db.distributions },
   getClusteringRun(id: string) { return db.clusteringRuns.find(r => r.id === id) ?? null },
+  listVisits() { return db.visits },
 
   async updateStatus(id: string, next: Application['status'], by: string, reason?: string) {
     await runWithSync(() =>
@@ -91,13 +96,14 @@ export const Data = {
     )
   },
 
-  async createVisit(appId: string, payload: Pick<Visit, 'scheduled_at' | 'tksk_id'>, by: string) {
+  async createVisit(appId: string, payload: Pick<Visit, 'scheduled_at' | 'tksk_id'>, by: string, options?: SyncOptions) {
     const visit = await runWithSync(() =>
       BackofficeAPI.createVisit(appId, {
         actor: by,
         scheduledAt: payload.scheduled_at,
         tkskId: payload.tksk_id,
       }),
+      options,
     )
     return mapVisitResponse(visit)
   },
@@ -108,7 +114,7 @@ export const Data = {
     )
   },
 
-  async addVisitArtifacts(appId: string, visitId: string, data: Partial<Pick<Visit, 'geotag' | 'photos' | 'checklist'>>, by: string) {
+  async addVisitArtifacts(appId: string, visitId: string, data: Partial<Pick<Visit, 'geotag' | 'photos' | 'checklist'>>, by: string, options?: SyncOptions) {
     await runWithSync(() =>
       BackofficeAPI.updateVisit(appId, visitId, {
         actor: by,
@@ -116,6 +122,7 @@ export const Data = {
         photos: data.photos,
         checklist: data.checklist,
       }),
+      options,
     )
   },
 

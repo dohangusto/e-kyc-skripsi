@@ -6,6 +6,7 @@ import { StatusPill } from '@presentation/components/StatusPill'
 import { ScoreBadge } from '@presentation/components/ScoreBadge'
 import { ConfirmModal } from '@presentation/components/ConfirmModal'
 import { Toast } from '@presentation/components/Toast'
+import { PageIntro } from '@presentation/components/PageIntro'
 import { getSession } from '@shared/session'
 import { DocumentGallery } from '@presentation/components/DocumentGallery'
 import { VisitManager } from '@presentation/components/VisitManager'
@@ -65,6 +66,7 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
           <ScoreBadge ocr={application.scores.ocr} face={application.scores.face} />
         </div>
       </header>
+      <PageIntro>Detail pengajuan lengkap beserta dokumen, kunjungan, dan riwayat audit.</PageIntro>
 
       <div className="flex flex-wrap gap-2">
         <RoleGate allow={['ADMIN']}>
@@ -97,14 +99,7 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
 
       {tab === 'summary' && <SummaryTab application={application} />}
       {tab === 'documents' && <DocumentsTab application={application} />}
-      {tab === 'tksk' && (
-        <VisitManager
-          app={application}
-          onChange={() => {
-            Data.syncFromServer().catch(() => undefined)
-          }}
-        />
-      )}
+      {tab === 'tksk' && <VisitManager app={application} />}
       {tab === 'audit' && <AuditTab appId={application.id} rows={snapshot.audit} />}
 
       {modal?.type === 'APPROVE' && (

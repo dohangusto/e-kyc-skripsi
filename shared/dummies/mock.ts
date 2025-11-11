@@ -96,7 +96,11 @@ function toApplication(seedBeneficiary: BeneficiarySeed): Application {
     aging_days: seedBeneficiary.agingDays,
     created_at: seedBeneficiary.createdAt,
     documents: seedBeneficiary.documents.map(doc => ({ ...doc })),
-    visits: seedBeneficiary.visits.map(cloneVisit),
+    visits: seedBeneficiary.visits.map(visit => {
+      const cloned = cloneVisit(visit)
+      cloned.application_id = seedBeneficiary.applicationId
+      return cloned
+    }),
     timeline: cloneTimeline(seedBeneficiary.timeline),
     survey: seedBeneficiary.survey
       ? {
@@ -164,6 +168,8 @@ export function generate(): Db {
     items: batch.items.filter(item => applications.some(app => app.id === item)),
   })) ?? []
 
+  const visits = applications.flatMap(app => app.visits.map(cloneVisit))
+
   const db: Db = {
     applications,
     users: base.users as User[],
@@ -172,6 +178,7 @@ export function generate(): Db {
     audit: [],
     distributions,
     clusteringRuns: [initialRun, ...((base.clusteringRuns as ClusteringRun[] | undefined) ?? [])],
+    visits,
   }
 
   return db

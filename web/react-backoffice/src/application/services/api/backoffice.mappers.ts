@@ -66,6 +66,7 @@ export const mapApplicationResponse = (input: BackofficeApplicationResponse): Ap
   })),
   visits: (input.Visits ?? []).map(visit => ({
     id: visit.ID,
+    application_id: visit.ApplicationID,
     scheduled_at: visit.ScheduledAt,
     geotag:
       visit.GeotagLat != null && visit.GeotagLng != null ? { lat: visit.GeotagLat, lng: visit.GeotagLng } : null,
@@ -196,6 +197,7 @@ export const mapAuditLogResponse = (log: AuditLogResponse) => ({
 
 export const mapVisitResponse = (visit: VisitResponse): Visit => ({
   id: visit.ID,
+  application_id: visit.ApplicationID,
   scheduled_at: visit.ScheduledAt,
   geotag:
     visit.GeotagLat != null && visit.GeotagLng != null

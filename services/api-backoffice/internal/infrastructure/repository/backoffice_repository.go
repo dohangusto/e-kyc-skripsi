@@ -136,6 +136,22 @@ func (repo *backofficeRepository) ListApplications(ctx context.Context, limit in
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	if len(apps) == 0 {
+		return apps, nil
+	}
+	ids := make([]string, len(apps))
+	for i, app := range apps {
+		ids[i] = app.ID
+	}
+	visitMap, err := repo.fetchVisitsByApplications(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range apps {
+		if visits, ok := visitMap[apps[i].ID]; ok {
+			apps[i].Visits = visits
+		}
+	}
 	return apps, nil
 }
 
@@ -872,7 +888,7 @@ func (repo *backofficeRepository) fetchDocuments(ctx context.Context, appID stri
 
 func (repo *backofficeRepository) fetchVisits(ctx context.Context, appID string) ([]domain.Visit, error) {
 	rows, err := repo.db.Query(ctx, `
-        SELECT id, application_id, scheduled_at, geotag_lat, geotag_lng, photos, checklist, status, COALESCE(tksk_id, ''), created_at
+        SELECT id, application_id, scheduled_at, geotag_lat, geotag_lng, photos, checklist, status, COALESCE(tksk_id::text, ''), created_at
         FROM application_visits
         WHERE application_id = $1
         ORDER BY scheduled_at DESC`, appID)
@@ -891,6 +907,111 @@ func (repo *backofficeRepository) fetchVisits(ctx context.Context, appID string)
 			geotagLng *float64
 		)
 
+		if err := rows.Scan(&visit.ID, &visit.ApplicationID, &visit.ScheduledAt, &geotagLat, &geotagLng, &photos, &checklist, &visit.Status, &visit.TkskID, &visit.CreatedAt); err != nil {
+			return nil, err
+		}
+		visit.GeotagLat = geotagLat
+		visit.GeotagLng = geotagLng
+		visit.Photos = decodeStringArray(photos)
+		visit.Checklist = decodeJSON(checklist)
+		visits = append(visits, visit)
+	}
+	return visits, rows.Err()
+}
+
+func (repo *backofficeRepository) fetchVisitsByApplications(ctx context.Context, appIDs []string) (map[string][]domain.Visit, error) {
+	if len(appIDs) == 0 {
+		return map[string][]domain.Visit{}, nil
+	}
+	rows, err := repo.db.Query(ctx, `
+        SELECT application_id, id, scheduled_at, geotag_lat, geotag_lng, photos, checklist, status, COALESCE(tksk_id::text, ''), created_at
+        FROM application_visits
+        WHERE application_id = ANY($1::text[])
+        ORDER BY scheduled_at DESC`, appIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string][]domain.Visit, len(appIDs))
+	for rows.Next() {
+		var (
+			applicationID string
+			visit         domain.Visit
+			photos        []byte
+			checklist     []byte
+			geotagLat     *float64
+			geotagLng     *float64
+		)
+		if err := rows.Scan(&applicationID, &visit.ID, &visit.ScheduledAt, &geotagLat, &geotagLng, &photos, &checklist, &visit.Status, &visit.TkskID, &visit.CreatedAt); err != nil {
+			return nil, err
+		}
+		visit.ApplicationID = applicationID
+		visit.GeotagLat = geotagLat
+		visit.GeotagLng = geotagLng
+		visit.Photos = decodeStringArray(photos)
+		visit.Checklist = decodeJSON(checklist)
+		result[applicationID] = append(result[applicationID], visit)
+	}
+	return result, rows.Err()
+}
+
+func (repo *backofficeRepository) ListVisits(ctx context.Context, params domain.ListVisitsParams) ([]domain.Visit, error) {
+	var (
+		builder strings.Builder
+		args    []any
+		idx     = 1
+	)
+	builder.WriteString(`
+        SELECT id, application_id, scheduled_at, geotag_lat, geotag_lng, photos, checklist, status, COALESCE(tksk_id::text, ''), created_at
+        FROM application_visits
+        WHERE 1=1`)
+	if params.ApplicationID != "" {
+		builder.WriteString(fmt.Sprintf(" AND application_id = $%d", idx))
+		args = append(args, params.ApplicationID)
+		idx++
+	}
+	if params.TkskID != "" {
+		builder.WriteString(fmt.Sprintf(" AND tksk_id = $%d", idx))
+		args = append(args, params.TkskID)
+		idx++
+	}
+	if params.Status != "" {
+		builder.WriteString(fmt.Sprintf(" AND status = $%d", idx))
+		args = append(args, params.Status)
+		idx++
+	}
+	if params.From != nil {
+		builder.WriteString(fmt.Sprintf(" AND scheduled_at >= $%d", idx))
+		args = append(args, params.From)
+		idx++
+	}
+	if params.To != nil {
+		builder.WriteString(fmt.Sprintf(" AND scheduled_at <= $%d", idx))
+		args = append(args, params.To)
+		idx++
+	}
+	limit := params.Limit
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	builder.WriteString(fmt.Sprintf(" ORDER BY scheduled_at DESC LIMIT $%d", idx))
+	args = append(args, limit)
+	rows, err := repo.db.Query(ctx, builder.String(), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var visits []domain.Visit
+	for rows.Next() {
+		var (
+			visit     domain.Visit
+			photos    []byte
+			checklist []byte
+			geotagLat *float64
+			geotagLng *float64
+		)
 		if err := rows.Scan(&visit.ID, &visit.ApplicationID, &visit.ScheduledAt, &geotagLat, &geotagLng, &photos, &checklist, &visit.Status, &visit.TkskID, &visit.CreatedAt); err != nil {
 			return nil, err
 		}

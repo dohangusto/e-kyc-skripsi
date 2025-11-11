@@ -10,6 +10,7 @@ import {
   mapConfigResponse,
   mapDistributionResponse,
   mapUserResponse,
+  mapVisitResponse,
 } from './backoffice.mappers'
 
 const mapListResponse = <TResponse, TMapped>(
@@ -32,6 +33,7 @@ export async function fetchBackofficeSnapshot(): Promise<Db> {
     distributionsRes,
     clusteringRunsRes,
     auditRes,
+    visitsRes,
   ] = await Promise.all([
     BackofficeAPI.listApplications(),
     BackofficeAPI.listUsers(),
@@ -40,6 +42,7 @@ export async function fetchBackofficeSnapshot(): Promise<Db> {
     BackofficeAPI.listDistributions(),
     BackofficeAPI.listClusteringRuns(),
     BackofficeAPI.listAuditLogs(),
+    BackofficeAPI.listVisits(),
   ])
 
   return {
@@ -50,5 +53,6 @@ export async function fetchBackofficeSnapshot(): Promise<Db> {
     distributions: mapListResponse(distributionsRes, mapDistributionResponse),
     clusteringRuns: mapListResponse(clusteringRunsRes, mapClusteringRunResponse),
     audit: mapListResponse(auditRes, mapAuditLogResponse),
+    visits: mapListResponse(visitsRes, mapVisitResponse),
   }
 }

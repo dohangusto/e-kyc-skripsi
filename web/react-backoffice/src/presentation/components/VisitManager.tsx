@@ -13,7 +13,7 @@ const scheduleSchema = z.object({
   notes: z.string().optional(),
 })
 
-export function VisitManager({ app, onChange }: { app: Application; onChange: () => void }) {
+export function VisitManager({ app }: { app: Application }) {
   const session = getSession()
   const usersSnapshot = useDataSnapshot()
   const tkss = useMemo(
@@ -60,11 +60,16 @@ export function VisitManager({ app, onChange }: { app: Application; onChange: ()
     try {
       setBusy(true)
       const actor = session?.userId || 'system'
-      const visit = await Data.createVisit(app.id, { scheduled_at: new Date(form.datetime).toISOString(), tksk_id: form.tksk }, actor)
-      await Data.addVisitArtifacts(app.id, visit.id, { checklist: { notes: form.notes } }, actor)
+      const visit = await Data.createVisit(
+        app.id,
+        { scheduled_at: new Date(form.datetime).toISOString(), tksk_id: form.tksk },
+        actor,
+        { sync: false },
+      )
+      await Data.addVisitArtifacts(app.id, visit.id, { checklist: { notes: form.notes } }, actor, { sync: false })
+      await Data.syncFromServer()
       Toast.show('Kunjungan dijadwalkan', 'success')
       setForm({ datetime: '', tksk: form.tksk, notes: '' })
-      onChange()
     } catch (e) {
       Toast.show('Gagal membuat visit: ' + (e as Error).message, 'error')
     } finally {
@@ -116,7 +121,7 @@ export function VisitManager({ app, onChange }: { app: Application; onChange: ()
       <div className="space-y-3">
         {app.visits.length === 0 && <p className="text-sm text-slate-500">Belum ada kunjungan.</p>}
         {app.visits.map(v => (
-          <VisitCard key={v.id} visit={v} appId={app.id} onChange={onChange} setUploading={setUploading} uploading={uploading === v.id} />
+          <VisitCard key={v.id} visit={v} appId={app.id} setUploading={setUploading} uploading={uploading === v.id} />
         ))}
       </div>
     </div>
@@ -125,7 +130,7 @@ export function VisitManager({ app, onChange }: { app: Application; onChange: ()
 
 type StepStatus = 'done' | 'current' | 'pending'
 
-function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit: Visit; appId: string; onChange: () => void; uploading: boolean; setUploading: (id: string | null) => void }) {
+function VisitCard({ visit, appId, uploading, setUploading }: { visit: Visit; appId: string; uploading: boolean; setUploading: (id: string | null) => void }) {
   const session = getSession()
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const isInProgress = visit.status === 'IN_PROGRESS'
@@ -190,7 +195,6 @@ function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit:
       setLoadingAction(key)
       await fn()
       Toast.show(success, 'success')
-      onChange()
     } catch (e) {
       Toast.show('Aksi gagal: ' + (e as Error).message, 'error')
     } finally {
@@ -223,7 +227,6 @@ function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit:
         await store(-6.2, 106.8)
       }
       Toast.show('Geotag tercatat', 'success')
-      onChange()
     } catch (e) {
       Toast.show('Gagal menangkap geotag', 'error')
     } finally {
@@ -245,7 +248,6 @@ function VisitCard({ visit, appId, onChange, uploading, setUploading }: { visit:
       }
       await Data.addVisitArtifacts(appId, visit.id, { photos: [...visit.photos, ...urls] }, session.userId)
       Toast.show('Foto ditambahkan', 'success')
-      onChange()
     } catch (e) {
       Toast.show('Upload gagal: ' + (e as Error).message, 'error')
     } finally {

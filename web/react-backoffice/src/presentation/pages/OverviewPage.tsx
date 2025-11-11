@@ -3,6 +3,7 @@ import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { AppRouter } from '@app/router'
 import { getSession } from '@shared/session'
 import type { Batch, Distribution } from '@domain/types'
+import { PageIntro } from '@presentation/components/PageIntro'
 
 const BATCH_FILTERS = ['ALL', 'DRAFT', 'SIGNED', 'EXPORTED', 'SENT'] as const
 type BatchFilter = (typeof BATCH_FILTERS)[number]
@@ -125,6 +126,7 @@ export default function OverviewPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Overview</h2>
+      <PageIntro>Pantau indikator utama pengajuan, kunjungan lapangan, dan penyaluran dalam satu layar.</PageIntro>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
         <Card title="Total Submitted" value={total} />
         <Card title="In Review" value={inReview} />

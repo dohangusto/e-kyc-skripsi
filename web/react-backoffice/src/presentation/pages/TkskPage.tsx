@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Data } from '@application/services/data-service'
 import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { getSession } from '@shared/session'
 import { VisitManager } from '@presentation/components/VisitManager'
 import type { Application, Visit } from '@domain/types'
+import { PageIntro } from '@presentation/components/PageIntro'
 
 export default function TkskPage() {
   const session = getSession()
@@ -52,8 +52,8 @@ export default function TkskPage() {
 
   const CALENDAR_PAGE_SIZE = 5
   const calendarEntries = useMemo(
-    () => buildCalendar(snapshot.applications.filter(app => app.assigned_to === session.userId)),
-    [snapshot, session.userId],
+    () => buildCalendar(snapshot.visits, snapshot.applications, session.userId),
+    [snapshot.visits, snapshot.applications, session.userId],
   )
   const [calendarPage, setCalendarPage] = useState(0)
   const calendarTotalPages = Math.max(1, Math.ceil(calendarEntries.length / CALENDAR_PAGE_SIZE))
@@ -66,6 +66,7 @@ export default function TkskPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">TKSK Console</h2>
+      <PageIntro>Lihat antrian kasus yang ditugaskan dan kalender kunjungan Anda selama 30 hari ke depan.</PageIntro>
       <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="space-y-4">
           <aside className="bg-white border rounded p-3 space-y-3" aria-label="My Queue">
@@ -117,7 +118,7 @@ export default function TkskPage() {
                   <ul className="mt-1 space-y-1">
                     {item.visits.map(v => (
                       <li key={v.id} className="flex justify-between">
-                        <span>{v.id}</span>
+                        <span>{v.appName} · {v.id}</span>
                         <span>{v.status}</span>
                       </li>
                     ))}
@@ -135,12 +136,7 @@ export default function TkskPage() {
                 <h3 className="font-semibold">{selected.id}</h3>
                 <p className="text-sm text-slate-500">{selected.applicant.name} · {selected.region.kec}</p>
               </div>
-              <VisitManager
-                app={selected}
-                onChange={() => {
-                  Data.syncFromServer().catch(() => undefined)
-                }}
-              />
+              <VisitManager app={selected} />
             </div>
           ) : (
             <p className="text-sm text-slate-500">Pilih aplikasi untuk melihat kunjungan.</p>
@@ -151,22 +147,31 @@ export default function TkskPage() {
   )
 }
 
-function buildCalendar(apps: Application[]): Array<{ date: string; visits: Array<Visit & { appId: string }> }> {
-  const map = new Map<string, Array<Visit & { appId: string }>>()
+function buildCalendar(visits: Visit[], apps: Application[], tkskId: string): Array<{ date: string; visits: Array<{ id: string; status: Visit['status']; scheduled_at: string; application_id: string; appName: string }> }> {
+  const appLookup = new Map(apps.map(app => [app.id, app] as const))
+  const map = new Map<string, Array<{ id: string; status: Visit['status']; scheduled_at: string; application_id: string; appName: string }>>()
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const horizon = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
-  apps.forEach(app => {
-    app.visits.forEach(visit => {
-      const date = visit.scheduled_at.split('T')[0]
-      const visitDate = new Date(date)
-      if (visitDate < today || visitDate > horizon) return
-      const arr = map.get(date) ?? []
-      arr.push({ ...visit, appId: app.id })
-      map.set(date, arr)
+  visits.forEach(visit => {
+    if (visit.tksk_id && visit.tksk_id !== tkskId) return
+    const date = visit.scheduled_at.split('T')[0]
+    const visitDate = new Date(date)
+    if (visitDate < today || visitDate > horizon) return
+    const app = appLookup.get(visit.application_id)
+    const arr = map.get(date) ?? []
+    arr.push({
+      id: visit.id,
+      status: visit.status,
+      scheduled_at: visit.scheduled_at,
+      application_id: visit.application_id,
+      appName: app?.applicant.name ?? visit.application_id,
     })
+    map.set(date, arr)
   })
-  return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([date, visits]) => ({ date, visits }))
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, grouped]) => ({ date, visits: grouped }))
 }
 
 function PaginationControls({ page, totalPages, onPrev, onNext }: { page: number; totalPages: number; onPrev: () => void; onNext: () => void }) {

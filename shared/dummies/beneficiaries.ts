@@ -72,6 +72,7 @@ const docs = (appId: string): DocumentSeed[] => [
 
 const visit = (id: string, scheduled: string, status: Visit['status'], tksk = 'TKSK-1002'): Visit => ({
   id,
+  application_id: '',
   scheduled_at: scheduled,
   geotag: null,
   photos: [],

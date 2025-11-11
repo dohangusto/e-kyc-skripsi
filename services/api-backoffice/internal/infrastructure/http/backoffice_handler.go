@@ -117,6 +117,34 @@ func (h *BackofficeHTTPHandler) UpdateVisit(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (h *BackofficeHTTPHandler) ListVisits(c echo.Context) error {
+	params := domain.ListVisitsParams{
+		ApplicationID: c.QueryParam("applicationId"),
+		TkskID:        c.QueryParam("tkskId"),
+		Status:        c.QueryParam("status"),
+	}
+	if limitStr := c.QueryParam("limit"); limitStr != "" {
+		if v, err := strconv.Atoi(limitStr); err == nil {
+			params.Limit = v
+		}
+	}
+	if from := strings.TrimSpace(c.QueryParam("from")); from != "" {
+		if t, err := time.Parse(time.RFC3339, from); err == nil {
+			params.From = &t
+		}
+	}
+	if to := strings.TrimSpace(c.QueryParam("to")); to != "" {
+		if t, err := time.Parse(time.RFC3339, to); err == nil {
+			params.To = &t
+		}
+	}
+	visits, err := h.Service.ListVisits(c.Request().Context(), params)
+	if err != nil {
+		return respondError(c, http.StatusInternalServerError, err)
+	}
+	return c.JSON(http.StatusOK, map[string]any{"data": visits})
+}
+
 func (h *BackofficeHTTPHandler) ListUsers(c echo.Context) error {
 	users, err := h.Service.ListUsers(c.Request().Context())
 	if err != nil {

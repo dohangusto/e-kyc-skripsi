@@ -25,6 +25,7 @@ export type Doc = { id: string; type: 'KTP' | 'SELFIE' | string; url: string; sh
 
 export type Visit = {
   id: string
+  application_id: string
   scheduled_at: string
   geotag: { lat: number; lng: number } | null
   photos: string[]
@@ -192,4 +193,5 @@ export type Db = {
   audit: AuditEntry[]
   clusteringRuns: ClusteringRun[]
   distributions: Distribution[]
+  visits: Visit[]
 }

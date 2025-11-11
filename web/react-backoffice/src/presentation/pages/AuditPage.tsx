@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { Toast } from '@presentation/components/Toast'
+import { PageIntro } from '@presentation/components/PageIntro'
 
 export default function AuditPage() {
   const audit = useDataSnapshot().audit.slice().reverse()
@@ -29,6 +30,7 @@ export default function AuditPage() {
   return (
     <div className="space-y-3">
       <h2 className="text-xl font-semibold">Audit Viewer</h2>
+      <PageIntro>Lacak aktivitas penting sistem untuk investigasi atau kebutuhan audit internal.</PageIntro>
       <div className="bg-white border rounded p-3 space-y-3">
         <div className="grid md:grid-cols-4 gap-3 text-sm">
           <label className="flex flex-col gap-1">

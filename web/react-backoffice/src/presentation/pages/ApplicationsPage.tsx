@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { AppRouter } from '@app/router'
 import { StatusPill } from '@presentation/components/StatusPill'
+import { PageIntro } from '@presentation/components/PageIntro'
 import { SavedViews } from '@shared/saved-views'
 import { getSession } from '@shared/session'
 
@@ -159,6 +160,7 @@ export default function ApplicationsPage() {
           <button className={`px-3 py-1 border rounded ${simulate==='error'?'bg-slate-200':''}`} onClick={() => setSimulate('error')}>Simulate Error</button>
         </div>
       </div>
+      <PageIntro>Kelola dan filter semua pengajuan e-KYC untuk menentukan prioritas tindak lanjut.</PageIntro>
 
       <section className="bg-white border rounded p-3 space-y-3" aria-label="Filters">
         <div className="grid md:grid-cols-3 gap-3">

@@ -29,6 +29,8 @@ func RegisterRoutes(
 	app.POST("/visits", backofficeHandler.CreateVisit)
 	app.PATCH("/visits/:visitId", backofficeHandler.UpdateVisit)
 
+	e.GET("/api/visits", backofficeHandler.ListVisits)
+
 	// Config & users
 	e.GET("/api/users", backofficeHandler.ListUsers)
 	e.GET("/api/config", backofficeHandler.GetConfig)
@@ -52,7 +54,10 @@ func RegisterRoutes(
 	e.POST("/api/clustering/runs/:id/candidates/:candidateId/assign", backofficeHandler.AssignClusteringCandidate)
 	e.POST("/api/clustering/runs/:id/candidates/:candidateId/status", backofficeHandler.UpdateClusteringCandidateStatus)
 
+	// Audit
 	e.GET("/api/audit", backofficeHandler.ListAuditLogs)
+
+	// Overview
 	e.GET("/api/overview", backofficeHandler.Overview)
 
 	e.GET("/api/debug", debugRoutesHandler(e))

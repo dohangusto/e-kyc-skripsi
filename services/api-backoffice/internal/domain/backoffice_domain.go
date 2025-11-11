@@ -63,6 +63,15 @@ type NotifyDistributionParams struct {
 	Audit          AuditEntry
 }
 
+type ListVisitsParams struct {
+	ApplicationID string
+	TkskID        string
+	Status        string
+	From          *time.Time
+	To            *time.Time
+	Limit         int
+}
+
 type AssignClusteringCandidateParams struct {
 	RunID       string
 	CandidateID string
@@ -118,6 +127,7 @@ type BackofficeRepository interface {
 	CreateDistribution(ctx context.Context, dist *Distribution, audit AuditEntry) error
 	UpdateDistributionStatus(ctx context.Context, params UpdateDistributionStatusParams) error
 	NotifyDistribution(ctx context.Context, params NotifyDistributionParams) error
+	ListVisits(ctx context.Context, params ListVisitsParams) ([]Visit, error)
 
 	ListClusteringRuns(ctx context.Context) ([]ClusteringRun, error)
 	GetClusteringRun(ctx context.Context, runID string) (*ClusteringRun, error)
@@ -152,6 +162,7 @@ type BackofficeService interface {
 	CreateDistribution(ctx context.Context, dist *Distribution, actor string) (*Distribution, error)
 	UpdateDistributionStatus(ctx context.Context, distID, status, actor string) error
 	NotifyDistribution(ctx context.Context, distID string, userIDs []string, actor string) error
+	ListVisits(ctx context.Context, params ListVisitsParams) ([]Visit, error)
 
 	ListClusteringRuns(ctx context.Context) ([]ClusteringRun, error)
 	GetClusteringRun(ctx context.Context, runID string) (*ClusteringRun, error)
@@ -180,6 +191,7 @@ type BackofficeHTTPHandler interface {
 	CreateDistribution(ctx echo.Context) error
 	UpdateDistributionStatus(ctx echo.Context) error
 	NotifyDistribution(ctx echo.Context) error
+	ListVisits(ctx echo.Context) error
 	ListClusteringRuns(ctx echo.Context) error
 	TriggerClusteringRun(ctx echo.Context) error
 	GetClusteringRun(ctx echo.Context) error

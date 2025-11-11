@@ -3,6 +3,7 @@ import { Data } from '@application/services/data-service'
 import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { Toast } from '@presentation/components/Toast'
 import { ConfirmModal } from '@presentation/components/ConfirmModal'
+import { PageIntro } from '@presentation/components/PageIntro'
 
 export default function ConfigPage() {
   const snapshot = useDataSnapshot()
@@ -22,6 +23,7 @@ export default function ConfigPage() {
   return (
     <div className="space-y-3">
       <h2 className="text-xl font-semibold">Config</h2>
+      <PageIntro>Atur periode kerja, ambang skor, serta fitur yang diaktifkan di backoffice.</PageIntro>
       <div className="bg-white border rounded p-3 space-y-3 max-w-md">
         <label className="text-sm flex flex-col gap-1">
           <span>Period</span>

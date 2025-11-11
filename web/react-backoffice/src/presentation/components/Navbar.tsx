@@ -1,8 +1,12 @@
 import { Data } from '@application/services/data-service'
+import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { AppRouter } from '@app/router'
 import { getSession, setSession, type Session } from '@shared/session'
 
 export function Navbar({ session }: { session: Session | null }) {
+  const snapshot = useDataSnapshot()
+  const currentUser = session ? snapshot.users.find(user => user.id === session.userId) : null
+  const displayName = currentUser?.name ?? session?.userId ?? 'Pengguna'
   const Item = ({ to, label }: { to: string; label: string }) => (
     <button onClick={() => AppRouter.navigate(to)} className="px-3 py-2 text-sm hover:bg-slate-200 rounded">
       {label}
@@ -27,7 +31,7 @@ export function Navbar({ session }: { session: Session | null }) {
         <div className="flex items-center gap-3 text-sm">
           {session ? (
             <>
-              <span className="text-slate-600">{session.userId} · {session.role} · {session.regionScope.join(',')}</span>
+              <span className="text-slate-600">{displayName} · {session.role} · {session.regionScope.join(',')}</span>
               <button
                 className="px-2 py-1 border rounded"
                 onClick={() => {

@@ -4,6 +4,7 @@ import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { getSession } from '@shared/session'
 import { Toast } from '@presentation/components/Toast'
 import { RoleGate } from '@presentation/components/RoleGate'
+import { PageIntro } from '@presentation/components/PageIntro'
 
 const STATUS_FLOW: Array<{ from: string; to: 'SIGNED' | 'EXPORTED' | 'SENT'; label: string }> = [
   { from: 'DRAFT', to: 'SIGNED', label: 'Mark Signed' },
@@ -14,7 +15,13 @@ const STATUS_FLOW: Array<{ from: string; to: 'SIGNED' | 'EXPORTED' | 'SENT'; lab
 export default function BatchesPage() {
   const snapshot = useDataSnapshot()
   const session = getSession()
-  const ready = useMemo(() => snapshot.applications.filter(a => a.status === 'FINAL_APPROVED').map(a => a.id), [snapshot])
+  const readyApps = useMemo(
+    () =>
+      snapshot.applications
+        .filter(app => app.status === 'FINAL_APPROVED')
+        .map(app => ({ id: app.id, name: app.applicant.name, region: `${app.region.kab} / ${app.region.kec}` })),
+    [snapshot.applications],
+  )
   const [selected, setSelected] = useState<string[]>([])
   const [code, setCode] = useState(`BAT-${snapshot.config.period}-NEW`)
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null)
@@ -73,17 +80,29 @@ export default function BatchesPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Batches</h2>
+      <PageIntro>Mengelompokkan pengajuan FINAL_APPROVED menjadi paket siap penyaluran.</PageIntro>
       <section className="bg-white border rounded p-3 space-y-3" aria-label="Create batch">
         <div className="text-sm">Pilih FINAL_APPROVED untuk buat batch simulasi.</div>
         <input className="border rounded p-2" value={code} onChange={e => setCode(e.target.value)} />
         <div className="flex flex-wrap gap-2">
-          {ready.map(id => (
-            <label key={id} className="text-xs border rounded px-2 py-1 flex items-center gap-1">
-              <input type="checkbox" checked={selected.includes(id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, id] : prev.filter(x => x !== id))} />
-              {id}
+          {readyApps.map(app => (
+            <label key={app.id} className="text-xs border rounded px-2 py-1 flex flex-col">
+              <span className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(app.id)}
+                  onChange={e =>
+                    setSelected(prev =>
+                      e.target.checked ? [...prev, app.id] : prev.filter(x => x !== app.id),
+                    )
+                  }
+                />
+                <span className="font-semibold">{app.name}</span>
+              </span>
+              <span className="text-[11px] text-slate-500">{app.region} · {app.id}</span>
             </label>
           ))}
-          {ready.length === 0 && <p className="text-xs text-slate-500">Belum ada FINAL_APPROVED.</p>}
+          {readyApps.length === 0 && <p className="text-xs text-slate-500">Belum ada FINAL_APPROVED.</p>}
         </div>
         <RoleGate allow={['ADMIN']}>
           <button className="px-3 py-1 border rounded" onClick={create}>Generate Batch</button>

@@ -45,6 +45,7 @@ const routes = {
     `/api/clustering/runs/${runID}/candidates/${candidateID}/assign`,
   clusteringStatus: (runID: string, candidateID: string) =>
     `/api/clustering/runs/${runID}/candidates/${candidateID}/status`,
+  visits: '/api/visits',
   audit: '/api/audit',
   overview: '/api/overview',
 } as const
@@ -173,6 +174,19 @@ export const BackofficeAPI = {
 
   listAuditLogs(limit?: number) {
     return backofficeHttpClient.get<ListEnvelope<AuditLogResponse[]>>(routes.audit, { query: { limit } })
+  },
+
+  listVisits(params?: { applicationId?: string; tkskId?: string; status?: string; from?: string; to?: string; limit?: number }) {
+    return backofficeHttpClient.get<ListEnvelope<VisitResponse[]>>(routes.visits, {
+      query: {
+        applicationId: params?.applicationId,
+        tkskId: params?.tkskId,
+        status: params?.status,
+        from: params?.from,
+        to: params?.to,
+        limit: params?.limit,
+      },
+    })
   },
 
   overview() {

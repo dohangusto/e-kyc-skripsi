@@ -7,6 +7,7 @@ import { getSession } from '@shared/session'
 import { Toast } from '@presentation/components/Toast'
 import { ConfirmModal } from '@presentation/components/ConfirmModal'
 import { RoleGate } from '@presentation/components/RoleGate'
+import { PageIntro } from '@presentation/components/PageIntro'
 
 type ClusteringParams = {
   dataset: string
@@ -188,9 +189,9 @@ export default function ClusteringPage() {
     <div className="space-y-5" aria-live="polite">
       <header className="space-y-2">
         <h2 className="text-xl font-semibold">Clustering Bantuan Sosial</h2>
-        <p className="text-sm text-slate-600">
+        <PageIntro>
           Jalankan rekomendasi jenis bansos untuk calon penerima, assign ke TKSK, dan pantau proses review.
-        </p>
+        </PageIntro>
       </header>
 
       {session?.role === 'ADMIN' && (

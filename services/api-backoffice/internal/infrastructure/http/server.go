@@ -21,9 +21,21 @@ func NewServer(appHandler *ApplicationHTTPHandler, backofficeHandler *Backoffice
 
 func configureMiddleware(e *echo.Echo) {
 	config := middleware.CORSConfig{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodDelete,
+			http.MethodOptions,
+			http.MethodPatch,
+		},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+		},
 		AllowCredentials: true,
 		MaxAge:           3600,
 	}

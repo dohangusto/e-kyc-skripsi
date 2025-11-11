@@ -326,6 +326,13 @@ func (s *BackofficeService) Overview(ctx context.Context) (map[string]any, error
 	return s.repo.Overview(ctx)
 }
 
+func (s *BackofficeService) ListVisits(ctx context.Context, params domain.ListVisitsParams) ([]domain.Visit, error) {
+	if params.Limit <= 0 {
+		params.Limit = 200
+	}
+	return s.repo.ListVisits(ctx, params)
+}
+
 func timelineEntry(appID, actor, action, reason string, metadata map[string]any) domain.TimelineEntry {
 	return domain.TimelineEntry{
 		ApplicationID: appID,

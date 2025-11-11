@@ -176,6 +176,7 @@ const hydrate = (db: Db): Db => ({
   audit: db.audit ?? [],
   clusteringRuns: db.clusteringRuns ?? [],
   distributions: db.distributions ?? [],
+  visits: db.visits ?? [],
 })
 
 const readDbFromStorage = (): Db | null => {

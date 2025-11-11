@@ -3,6 +3,7 @@ import { Data } from '@application/services/data-service'
 import { useDataSnapshot } from '@application/services/useDataSnapshot'
 import { Toast } from '@presentation/components/Toast'
 import { RoleGate } from '@presentation/components/RoleGate'
+import { PageIntro } from '@presentation/components/PageIntro'
 import { getSession } from '@shared/session'
 import type { Application, Distribution } from '@domain/types'
 
@@ -140,6 +141,7 @@ export default function DistributionPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Penjadwalan Penyaluran Bansos</h2>
+      <PageIntro>Susun jadwal penyaluran, pilih batch atau penerima tertentu, dan pantau progres notifikasi.</PageIntro>
 
       <section className="bg-white border rounded p-4 space-y-3">
         <div>
