@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-ai-support
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-ai-support
+  template:
+    metadata:
+      labels:
+        app: api-ai-support
+    spec:
+      containers:
+        - name: api-ai-support
+          image: e-kyc/api-ai-support
+          ports:
+            - containerPort: 50052
+            - containerPort: 8082
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "128Mi"
+              cpu: "125m"
+          env:
+            - name: AI_SUPPORT_SERVICE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_SERVICE_NAME
+                  name: app-config
+            - name: AI_SUPPORT_GRPC_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_GRPC_ADDR
+                  name: app-config
+            - name: AI_SUPPORT_HTTP_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_HTTP_ADDR
+                  name: app-config
+            - name: AI_SUPPORT_DB_DSN
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_DB_DSN
+                  name: app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-ai-support
+spec:
+  type: LoadBalancer
+  ports:
+    - name: grpc
+      port: 50052
+      targetPort: 50052
+    - name: http
+      port: 8082
+      targetPort: 8082
+  selector:
+    app: api-ai-support

@@ -75,6 +75,25 @@ k8s_resource('api-backoffice', port_forwards=8081,
              resource_deps=['api-backoffice-compile'], labels="services")
 ### End of API Backoffice ###
 
+### API AI Support ###
+
+docker_build_with_restart(
+  'e-kyc/api-ai-support',
+  '.',
+  entrypoint=['python', 'cmd/main.py'],
+  dockerfile='./infra/development/docker/api-ai-support.Dockerfile',
+  only=[
+    './services/api-AI-support',
+  ],
+  live_update=[
+    sync('./services/api-AI-support', '/app/services/api-AI-support'),
+  ],
+)
+
+k8s_yaml('./infra/development/k8s/api-ai-support-deployment.yaml')
+k8s_resource('api-ai-support', port_forwards=[50052, 8082], labels="services")
+### End of API AI Support ###
+
 ### Web (React) ###
 
 # Build the React dev image and run the dev server
