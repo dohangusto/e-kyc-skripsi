@@ -1,6 +1,7 @@
 # api-AI-support service
 
-This service handles all api-AI-support-related operations in the system.
+This service handles all api-AI-support-related operations in the system, including e-KYC OCR, face
+matching, and liveness detection workflows.
 
 ## Architecture
 
@@ -44,10 +45,61 @@ services/api-AI-support-service/
    - Contains shared types and models
    - Can be imported by other services
 
-## Key Benefits
+## gRPC API
 
-1. **Dependency Inversion**: Services depend on interfaces, not implementations
-2. **Separation of Concerns**: Each layer has a specific responsibility
-3. **Testability**: Easy to mock dependencies for testing
-4. **Maintainability**: Clear boundaries between components
-5. **Flexibility**: Easy to swap implementations without affecting business logic
+- Protobuf contracts live at `shared/proto/ekyc/v1/ekyc.proto`. Regenerate python bindings with:
+
+  ```bash
+  protoc -I shared -I shared/proto \
+    --python_out=services/api-AI-support/internal/proto \
+    shared/proto/ekyc/v1/ekyc.proto
+  ```
+
+- The service exposes two unary RPCs via `ekyc.v1.EkycSupportService`:
+  - `PerformKtpOcr` – synchronous OCR over a KTP image using EasyOCR.
+  - `ProcessEkyc` – orchestrates OCR plus asynchronous face matching & liveness evaluation. Returns OCR
+    results immediately together with RabbitMQ job handles for the biometric checks.
+
+## RabbitMQ Topology
+
+| Purpose | Queue (env var) | Default |
+| --- | --- | --- |
+| Face match jobs | `AI_SUPPORT_FACE_QUEUE` | `ai.face_match.jobs` |
+| Face match results | `AI_SUPPORT_FACE_RESULT_QUEUE` | `ai.face_match.results` |
+| Liveness jobs | `AI_SUPPORT_LIVENESS_QUEUE` | `ai.liveness.jobs` |
+| Liveness results | `AI_SUPPORT_LIVENESS_RESULT_QUEUE` | `ai.liveness.results` |
+
+`FaceMatchWorker` and `LivenessWorker` consume the job queues concurrently and push structured JSON
+results toward the corresponding result queues for the gateway to consume.
+
+## Configuration
+
+Key environment variables (see `pkg/types/config.py` for defaults):
+
+- `AI_SUPPORT_SERVICE_NAME`
+- `AI_SUPPORT_GRPC_ADDR` / `AI_SUPPORT_HTTP_ADDR`
+- `AI_SUPPORT_DB_DSN`
+- `AI_SUPPORT_RABBIT_URL`
+- `AI_SUPPORT_OCR_LANGS` (comma separated, e.g. `id,en`)
+- `AI_SUPPORT_FACE_THRESHOLD`
+- `AI_SUPPORT_TORCH_DEVICE` (`cpu` by default)
+- `AI_SUPPORT_LIVENESS_CONFIDENCE`
+- Queue specific overrides listed in the RabbitMQ table above.
+
+## Running Locally
+
+1. Ensure PostgreSQL and RabbitMQ are reachable according to the configured DSNs.
+2. Install python dependencies inside the `services/api-AI-support` virtualenv:
+
+   ```bash
+   pip install -r services/api-AI-support/requirements.txt
+   ```
+
+3. Start the service:
+
+   ```bash
+   python services/api-AI-support/cmd/main.py
+   ```
+
+The service automatically boots the HTTP health endpoint, the gRPC server, and the background workers
+for face matching and liveness detection.

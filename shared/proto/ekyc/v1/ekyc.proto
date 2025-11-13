@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package ekyc.v1;
+
+option go_package = "e-kyc/shared/proto/ekyc/v1;ekycv1";
+
+message ImagePayload {
+  bytes content = 1;
+  string mime_type = 2;
+}
+
+message KtpOcrRequest {
+  ImagePayload image = 1;
+  string locale = 2;
+}
+
+message KtpOcrField {
+  string key = 1;
+  string value = 2;
+}
+
+message KtpOcrResult {
+  string nik = 1;
+  string name = 2;
+  string birth_place = 3;
+  string birth_date = 4;
+  string gender = 5;
+  string blood_type = 6;
+  string address = 7;
+  string rt_rw = 8;
+  string village = 9;
+  string sub_district = 10;
+  string religion = 11;
+  string marital_status = 12;
+  string occupation = 13;
+  string citizenship = 14;
+  string issue_date = 15;
+  repeated KtpOcrField extra_fields = 16;
+  string raw_text = 17;
+}
+
+message KtpOcrResponse {
+  KtpOcrResult result = 1;
+}
+
+message FaceMatchJobHandle {
+  string job_id = 1;
+  string queue = 2;
+}
+
+message LivenessJobHandle {
+  string job_id = 1;
+  string queue = 2;
+}
+
+message EkycRequest {
+  string session_id = 1;
+  ImagePayload ktp_image = 2;
+  ImagePayload selfie_image = 3;
+  repeated ImagePayload liveness_frames = 4;
+  repeated string gestures = 5;
+  double face_match_threshold = 6;
+  string locale = 7;
+}
+
+message ProcessEkycResponse {
+  KtpOcrResult ocr = 1;
+  FaceMatchJobHandle face_match_job = 2;
+  LivenessJobHandle liveness_job = 3;
+}
+
+service EkycSupportService {
+  rpc PerformKtpOcr(KtpOcrRequest) returns (KtpOcrResponse);
+  rpc ProcessEkyc(EkycRequest) returns (ProcessEkycResponse);
+}
