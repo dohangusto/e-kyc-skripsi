@@ -88,7 +88,9 @@ Key environment variables (see `pkg/types/config.py` for defaults):
 
 ## Running Locally
 
-1. Ensure PostgreSQL and RabbitMQ are reachable according to the configured DSNs.
+1. Ensure PostgreSQL and RabbitMQ are reachable according to the configured DSNs. When using `tilt up`,
+   the `rabbitmq` Deployment/Service is created automatically and port-forwarded on `5672` (AMQP) and
+   `15672` (management UI).
 2. Install python dependencies inside the `services/api-AI-support` virtualenv:
 
    ```bash

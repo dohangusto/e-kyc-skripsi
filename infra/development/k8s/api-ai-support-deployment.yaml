@@ -46,6 +46,31 @@ spec:
                 configMapKeyRef:
                   key: AI_SUPPORT_DB_DSN
                   name: app-config
+            - name: AI_SUPPORT_RABBIT_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_RABBIT_URL
+                  name: app-config
+            - name: AI_SUPPORT_FACE_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_FACE_QUEUE
+                  name: app-config
+            - name: AI_SUPPORT_FACE_RESULT_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_FACE_RESULT_QUEUE
+                  name: app-config
+            - name: AI_SUPPORT_LIVENESS_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_LIVENESS_QUEUE
+                  name: app-config
+            - name: AI_SUPPORT_LIVENESS_RESULT_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  key: AI_SUPPORT_LIVENESS_RESULT_QUEUE
+                  name: app-config
 ---
 apiVersion: v1
 kind: Service

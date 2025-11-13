@@ -14,3 +14,8 @@ data:
   AI_SUPPORT_GRPC_ADDR: "0.0.0.0:50052"
   AI_SUPPORT_HTTP_ADDR: "0.0.0.0:8082"
   AI_SUPPORT_DB_DSN: "postgres://postgres:postgres@database-postgres:5432/ekyc_backoffice?sslmode=disable"
+  AI_SUPPORT_RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/"
+  AI_SUPPORT_FACE_QUEUE: "ai.face_match.jobs"
+  AI_SUPPORT_FACE_RESULT_QUEUE: "ai.face_match.results"
+  AI_SUPPORT_LIVENESS_QUEUE: "ai.liveness.jobs"
+  AI_SUPPORT_LIVENESS_RESULT_QUEUE: "ai.liveness.results"

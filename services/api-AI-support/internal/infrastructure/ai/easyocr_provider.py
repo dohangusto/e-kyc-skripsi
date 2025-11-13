@@ -5,9 +5,10 @@ import logging
 import re
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-import easyocr
-import numpy as np
-from PIL import Image
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # pragma: no cover - only for editors/type checkers
+    import easyocr
 
 from internal.domain.ocr import KtpOcrProvider, KtpOcrResult
 
@@ -20,7 +21,8 @@ class EasyOcrProvider(KtpOcrProvider):
             raise ValueError("at least one language must be provided to EasyOCR")
         self._gpu = gpu
         self._min_confidence = min_confidence
-        self._readers: Dict[Tuple[str, ...], easyocr.Reader] = {}
+        self._easyocr = _lazy_import_easyocr()
+        self._readers: Dict[Tuple[str, ...], Any] = {}
         self._default_key = self._normalize_languages(languages)
         self._readers[self._default_key] = self._build_reader(self._default_key)
 
@@ -38,7 +40,7 @@ class EasyOcrProvider(KtpOcrProvider):
         result = KtpOcrResult(raw_text=raw_text, **fields)
         return result
 
-    def _resolve_reader(self, locale: str | None) -> easyocr.Reader:
+    def _resolve_reader(self, locale: str | None):
         if not locale:
             return self._readers[self._default_key]
         key = self._normalize_languages((locale,) + self._default_key)
@@ -47,8 +49,8 @@ class EasyOcrProvider(KtpOcrProvider):
             self._readers[key] = self._build_reader(key)
         return self._readers[key]
 
-    def _build_reader(self, languages: Tuple[str, ...]) -> easyocr.Reader:
-        return easyocr.Reader(list(languages), gpu=self._gpu)
+    def _build_reader(self, languages: Tuple[str, ...]):
+        return self._easyocr.Reader(list(languages), gpu=self._gpu)
 
     @staticmethod
     def _normalize_languages(languages: Iterable[str]) -> Tuple[str, ...]:
@@ -58,7 +60,10 @@ class EasyOcrProvider(KtpOcrProvider):
         return normalized
 
 
-def _to_numpy(image_bytes: bytes) -> np.ndarray:
+def _to_numpy(image_bytes: bytes):
+    import numpy as np  # Local import to avoid hard dependency during module import
+    from PIL import Image
+
     with Image.open(io.BytesIO(image_bytes)) as img:
         array = np.array(img.convert("RGB"))
     return array
@@ -196,3 +201,14 @@ def _normalize_text(text: str) -> str:
 def _denoise(text: str) -> str:
     replaced = text.replace("\n", " ").replace("|", "I")
     return re.sub(r"\s+", " ", replaced).strip().upper()
+
+
+def _lazy_import_easyocr():
+    try:
+        import easyocr  # type: ignore
+    except ImportError as exc:  # pragma: no cover - informative error path
+        raise RuntimeError(
+            "easyocr package is required for KTP OCR. Install dependencies via "
+            "`pip install -r services/api-AI-support/requirements.txt`."
+        ) from exc
+    return easyocr

@@ -9,6 +9,8 @@ load('ext://restart_process', 'docker_build_with_restart')
 k8s_yaml('./infra/development/k8s/app-config.yaml')
 k8s_yaml('./infra/development/k8s/database-postgres.yaml')
 k8s_resource('database-postgres', labels="data", port_forwards=5432)
+k8s_yaml('./infra/development/k8s/rabbitmq.yaml')
+k8s_resource('rabbitmq', labels="data", port_forwards=[5672, 15672])
 
 ### End of K8s Config ###
 ### API Gateway ###
