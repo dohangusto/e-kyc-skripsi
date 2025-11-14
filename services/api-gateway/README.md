@@ -1,13 +1,13 @@
-# go-gateway service
+# api-gateway service
 
-This service handles all go-gateway-related operations in the system.
+This service handles all api-gateway-related operations in the system.
 
 ## Architecture
 
 The service follows Clean Architecture principles with the following structure:
 
 ```
-services/go-gateway-service/
+services/api-gateway-service/
 ├── cmd/                    # Application entry points
 │   └── main.go            # Main application setup
 ├── internal/              # Private application code

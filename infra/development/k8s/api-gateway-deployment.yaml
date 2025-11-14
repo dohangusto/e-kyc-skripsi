@@ -19,18 +19,17 @@ spec:
             - containerPort: 8080
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "125m"
+              memory: "256Mi"
+              cpu: "250m"
             limits:
-              memory: "128Mi"
-              cpu: "125m"
+              memory: "1Gi"
+              cpu: "500m"
           env:
-            # Accessing an env variable from the app-config config map
             - name: GATEWAY_HTTP_ADDR
               valueFrom:
                 configMapKeyRef:
-                  key: GATEWAY_HTTP_ADDR
                   name: app-config
+                  key: GATEWAY_HTTP_ADDR
 ---
 apiVersion: v1
 kind: Service

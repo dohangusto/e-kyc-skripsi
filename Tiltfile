@@ -15,40 +15,30 @@ k8s_resource('rabbitmq', labels="data", port_forwards=[5672, 15672])
 ### End of K8s Config ###
 ### API Gateway ###
 
-# Build the API Gateway binary from the cmd package (contains main.go)
-gateway_compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api-gateway ./services/api-gateway/cmd'
-if os.name == 'nt':
-  gateway_compile_cmd = './infra/development/docker/api-gateway-build.bat'
-
-local_resource(
-  'api-gateway-compile',
-  gateway_compile_cmd,
-  deps=['./services/api-gateway', './shared'], labels="compiles")
-
-
 docker_build_with_restart(
   'e-kyc/api-gateway',
   '.',
-  entrypoint=['/app/build/api-gateway'],
+  entrypoint=['cargo', 'run', '-p', 'api-gateway'],
   dockerfile='./infra/development/docker/api-gateway.Dockerfile',
   only=[
-    './build/api-gateway',
-    './shared',
+    './services/api-gateway',
+    './Cargo.toml',
+    './Cargo.lock',
   ],
   live_update=[
-    sync('./build', '/app/build'),
-    sync('./shared', '/app/shared'),
+    sync('./services/api-gateway', '/app/services/api-gateway'),
+    sync('./Cargo.toml', '/app/Cargo.toml'),
+    sync('./Cargo.lock', '/app/Cargo.lock'),
   ],
 )
 
 k8s_yaml('./infra/development/k8s/api-gateway-deployment.yaml')
-k8s_resource('api-gateway', port_forwards=8080,
-             resource_deps=['api-gateway-compile'], labels="services")
+k8s_resource('api-gateway', port_forwards=8080, labels="services")
 ### End of API Gateway ###
 
 ### API Backoffice ###
 
-backoffice_compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api-backoffice ./services/api-backoffice/cmd'
+backoffice_compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/go/api-backoffice ./services/api-backoffice/cmd'
 if os.name == 'nt':
   backoffice_compile_cmd = './infra/development/docker/api-backoffice-build.bat'
 
@@ -60,10 +50,10 @@ local_resource(
 docker_build_with_restart(
   'e-kyc/api-backoffice',
   '.',
-  entrypoint=['/app/build/api-backoffice'],
+  entrypoint=['/app/build/go/api-backoffice'],
   dockerfile='./infra/development/docker/api-backoffice.Dockerfile',
   only=[
-    './build/api-backoffice',
+    './build/go/api-backoffice',
     './shared',
   ],
   live_update=[
