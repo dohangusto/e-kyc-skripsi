@@ -2,16 +2,15 @@ mod internal;
 mod pkg;
 
 use crate::internal::infrastructure::http::axum_server;
+use tracing_subscriber::{fmt, EnvFilter};
 
 fn init_tracing() {
-    use tracing_subscriber::{fmt, EnvFilter};
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info,tower_http=info,api_gateway=debug"));
 
-    let subscriber = fmt()
-        .with_env_filter(EnvFilter::from_default_env()
-        .add_directive("info".parse().unwrap()))
-        .finish();
-
-    let _ = tracing::subscriber::set_global_default(subscriber);
+    fmt()
+        .with_env_filter(env_filter)
+        .init();
 }
 
 #[tokio::main]

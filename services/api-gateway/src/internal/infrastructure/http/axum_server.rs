@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use axum::{routing::get, Router};
 use std::{env, net::SocketAddr};
 use tokio::net::TcpListener;
-use tower_http::trace::TraceLayer;
+use crate::pkg::utils::logger::with_http_trace;
 
 use crate::internal::infrastructure::http::handlers;
 use crate::pkg::types::error::{AppError, AppResult};
@@ -34,8 +34,9 @@ fn resolve_listen_addr() -> AppResult<SocketAddr> {
 
 pub async fn run_http_server() -> AppResult<()> {
     let app = Router::new()
-        .route("/health", get(handlers::health_check))
-        .layer(TraceLayer::new_for_http());
+        .route("/health", get(handlers::health_check));
+
+    let app = with_http_trace(app);
 
     let addr = resolve_listen_addr()?;
     tracing::info!("HTTP Server listening on http://{addr}");
