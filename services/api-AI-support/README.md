@@ -1,4 +1,4 @@
-# api-AI-support service
+# api-AI-support (PYTHON - http -gRPC (consumer))
 
 This service handles all api-AI-support-related operations in the system, including e-KYC OCR, face
 matching, and liveness detection workflows.

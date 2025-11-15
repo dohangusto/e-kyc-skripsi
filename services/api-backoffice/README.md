@@ -1,4 +1,4 @@
-# api-backoffice service
+# api-backoffice (GO - http)
 
 This service powers both the citizen-facing React SPA (`web/react-main`) and the operator-facing backoffice (`web/react-backoffice`). It exposes non-AI endpoints (application data, visits, etc.) while heavier ML/OCR workloads stay in other services.
 

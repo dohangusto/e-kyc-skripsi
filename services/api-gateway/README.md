@@ -1,4 +1,4 @@
-# api-gateway service
+# api-gateway (RUST - http - gRPC (producer))
 
 This service handles all api-gateway-related operations in the system.
 
