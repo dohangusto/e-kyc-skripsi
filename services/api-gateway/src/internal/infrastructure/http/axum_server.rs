@@ -1,11 +1,28 @@
-use anyhow::anyhow;
-use axum::{routing::get, Router};
-use std::{env, net::SocketAddr};
-use tokio::net::TcpListener;
 use crate::pkg::utils::logger::with_http_trace;
+use anyhow::anyhow;
+use axum::{
+    Router,
+    routing::{get, post},
+};
+use std::{env, net::SocketAddr, sync::Arc};
+use tokio::net::TcpListener;
 
-use crate::internal::infrastructure::http::handlers;
+use crate::internal::domain::services::AiSupportPort;
+use crate::internal::infrastructure::http::{ekyc_handlers, handlers};
+use crate::internal::service::ekyc_service::EkycService;
 use crate::pkg::types::error::{AppError, AppResult};
+
+pub struct AppState<P: AiSupportPort + 'static> {
+    pub ekyc_service: Arc<EkycService<P>>,
+}
+
+impl<P: AiSupportPort + 'static> Clone for AppState<P> {
+    fn clone(&self) -> Self {
+        Self {
+            ekyc_service: Arc::clone(&self.ekyc_service),
+        }
+    }
+}
 
 fn parse_socket_addr(raw: &str) -> AppResult<SocketAddr> {
     if raw.trim().is_empty() {
@@ -32,21 +49,29 @@ fn resolve_listen_addr() -> AppResult<SocketAddr> {
     }
 }
 
-pub async fn run_http_server() -> AppResult<()> {
+pub async fn run_http_server<P>(state: AppState<P>) -> AppResult<()>
+where
+    P: AiSupportPort + 'static,
+{
     let app = Router::new()
-        .route("/health", get(handlers::health_check));
+        .route("/health", get(handlers::health_check))
+        .route("/ekyc/ocr", post(ekyc_handlers::perform_ocr::<P>))
+        .route(
+            "/ekyc/ocr/upload",
+            post(ekyc_handlers::perform_ocr_upload::<P>),
+        )
+        .route("/ekyc/process", post(ekyc_handlers::start_async::<P>))
+        .with_state(state);
 
     let app = with_http_trace(app);
 
     let addr = resolve_listen_addr()?;
     tracing::info!("HTTP Server listening on http://{addr}");
 
-    let listener = TcpListener::bind(addr)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to bind HTTP listener on {addr}: {e:?}");
-            AppError::Internal(e.into())
-        })?;
+    let listener = TcpListener::bind(addr).await.map_err(|e| {
+        tracing::error!("Failed to bind HTTP listener on {addr}: {e:?}");
+        AppError::Internal(e.into())
+    })?;
 
     axum::serve(listener, app)
         .await

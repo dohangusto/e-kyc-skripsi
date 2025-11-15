@@ -1,16 +1,26 @@
-use crate::internal::domain::repositories::EkycRepository;
+use crate::internal::domain::entities::ekyc::{
+    EkycAsyncResponse, KtpOcrResultData, PerformOcrPayload, ProcessEkycPayload,
+};
+use crate::internal::domain::services::AiSupportPort;
 use crate::pkg::types::error::AppResult;
 
-pub struct EkycService<R: EkycRepository> {
-    repo: R,
+pub struct EkycService<P: AiSupportPort> {
+    ai_port: P,
 }
 
-impl<R: EkycRepository> EkycService<R> {
-    pub fn new(repo: R) -> Self {
-        Self { repo }
+impl<P: AiSupportPort> EkycService<P> {
+    pub fn new(ai_port: P) -> Self {
+        Self { ai_port }
     }
 
-    pub fn start_ekyc(&self, _user_id: &str) -> AppResult<()> {
-        Ok(())
+    pub async fn perform_ktp_ocr(&self, payload: PerformOcrPayload) -> AppResult<KtpOcrResultData> {
+        self.ai_port.perform_ktp_ocr(payload).await
+    }
+
+    pub async fn start_async_jobs(
+        &self,
+        payload: ProcessEkycPayload,
+    ) -> AppResult<EkycAsyncResponse> {
+        self.ai_port.process_ekyc(payload).await
     }
 }

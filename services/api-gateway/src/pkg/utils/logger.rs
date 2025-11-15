@@ -3,7 +3,7 @@ use std::time::Duration;
 use axum::{Router, body::Body};
 use http::{Request, Response};
 use tower_http::trace::TraceLayer;
-use tracing::{info, info_span, Span};
+use tracing::{Span, info, info_span};
 
 pub fn with_http_trace(app: Router) -> Router {
     let trace_layer = TraceLayer::new_for_http()
@@ -22,6 +22,6 @@ pub fn with_http_trace(app: Router) -> Router {
                 "handled request",
             );
         });
-        
+
     app.layer(trace_layer)
 }

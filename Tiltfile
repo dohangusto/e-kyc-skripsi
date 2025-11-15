@@ -24,11 +24,13 @@ docker_build_with_restart(
     './services/api-gateway',
     './Cargo.toml',
     './Cargo.lock',
+    './shared',
   ],
   live_update=[
     sync('./services/api-gateway', '/app/services/api-gateway'),
     sync('./Cargo.toml', '/app/Cargo.toml'),
     sync('./Cargo.lock', '/app/Cargo.lock'),
+    sync('./shared', '/app/shared'),
   ],
 )
 

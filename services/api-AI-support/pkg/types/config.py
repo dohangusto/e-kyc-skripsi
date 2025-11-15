@@ -27,17 +27,28 @@ class AppConfig:
             grpc_bind=os.getenv("AI_SUPPORT_GRPC_ADDR", "0.0.0.0:50052"),
             http_bind=os.getenv("AI_SUPPORT_HTTP_ADDR", "0.0.0.0:8082"),
             database_dsn=os.getenv(
-                "AI_SUPPORT_DB_DSN", "postgresql://postgres:postgres@localhost:5432/ai_support?sslmode=disable"
+                "AI_SUPPORT_DB_DSN",
+                "postgresql://postgres:postgres@localhost:5432/ekyc_backoffice?sslmode=disable",
             ),
-            rabbitmq_url=os.getenv("AI_SUPPORT_RABBIT_URL", "amqp://guest:guest@localhost:5672/"),
+            rabbitmq_url=os.getenv(
+                "AI_SUPPORT_RABBIT_URL", "amqp://guest:guest@localhost:5672/"
+            ),
             face_match_queue=os.getenv("AI_SUPPORT_FACE_QUEUE", "ai.face_match.jobs"),
-            face_match_result_queue=os.getenv("AI_SUPPORT_FACE_RESULT_QUEUE", "ai.face_match.results"),
+            face_match_result_queue=os.getenv(
+                "AI_SUPPORT_FACE_RESULT_QUEUE", "ai.face_match.results"
+            ),
             liveness_queue=os.getenv("AI_SUPPORT_LIVENESS_QUEUE", "ai.liveness.jobs"),
-            liveness_result_queue=os.getenv("AI_SUPPORT_LIVENESS_RESULT_QUEUE", "ai.liveness.results"),
+            liveness_result_queue=os.getenv(
+                "AI_SUPPORT_LIVENESS_RESULT_QUEUE", "ai.liveness.results"
+            ),
             ocr_languages=_parse_languages(os.getenv("AI_SUPPORT_OCR_LANGS", "id,en")),
-            default_face_threshold=float(os.getenv("AI_SUPPORT_FACE_THRESHOLD", "0.78")),
+            default_face_threshold=float(
+                os.getenv("AI_SUPPORT_FACE_THRESHOLD", "0.78")
+            ),
             torch_device=os.getenv("AI_SUPPORT_TORCH_DEVICE", "cpu"),
-            mediapipe_min_confidence=float(os.getenv("AI_SUPPORT_LIVENESS_CONFIDENCE", "0.5")),
+            mediapipe_min_confidence=float(
+                os.getenv("AI_SUPPORT_LIVENESS_CONFIDENCE", "0.5")
+            ),
         )
 
 

@@ -1,3 +1,3 @@
 pub mod domain;
-pub mod service;
 pub mod infrastructure;
+pub mod service;
