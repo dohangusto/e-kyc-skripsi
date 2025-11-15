@@ -20,11 +20,11 @@ spec:
             - containerPort: 8082
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "125m"
+              memory: "1Gi"
+              cpu: "500m"
             limits:
-              memory: "128Mi"
-              cpu: "125m"
+              memory: "2Gi"
+              cpu: "1000m"
           env:
             - name: AI_SUPPORT_SERVICE_NAME
               valueFrom:

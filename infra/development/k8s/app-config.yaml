@@ -12,6 +12,7 @@ data:
   NEXT_PUBLIC_API_URL: "http://localhost:8080"
   AI_SUPPORT_SERVICE_NAME: "api-AI-support"
   AI_SUPPORT_GRPC_ADDR: "0.0.0.0:50052"
+  AI_SUPPORT_GRPC_ENDPOINT: "http://api-ai-support:50052"
   AI_SUPPORT_HTTP_ADDR: "0.0.0.0:8082"
   AI_SUPPORT_DB_DSN: "postgres://postgres:postgres@database-postgres:5432/ekyc_backoffice?sslmode=disable"
   AI_SUPPORT_RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/"
