@@ -22,19 +22,27 @@ from internal.infrastructure.events.liveness_publisher import (
     RabbitLivenessTaskPublisher,
 )
 from internal.infrastructure.events.liveness_worker import LivenessWorker
-from internal.infrastructure.events.rabbitmq import RabbitMqConnectionFactory, RabbitMqPublisher
+from internal.infrastructure.events.rabbitmq import (
+    RabbitMqConnectionFactory,
+    RabbitMqPublisher,
+)
+from internal.infrastructure.grpc.ekyc_handler import EkycGrpcHandler
 from internal.infrastructure.grpc.server import GrpcServer
 from internal.infrastructure.http.server import HttpServer
 from internal.infrastructure.repository.health_repository import HealthRepositoryImpl
-from internal.infrastructure.grpc.ekyc_handler import EkycGrpcHandler
 from internal.service.ekyc_service import EkycService
-from internal.service.health_service import HealthService
 from internal.service.face_match_service import FaceMatchService
+from internal.service.health_service import HealthService
 from internal.service.liveness_service import LivenessService
 from pkg.types.config import AppConfig
 
 
-def build_runtime() -> tuple[GrpcServer, HttpServer, tuple[FaceMatchWorker, LivenessWorker], MediaPipeGestureDetector]:
+def build_runtime() -> tuple[
+    GrpcServer,
+    HttpServer,
+    tuple[FaceMatchWorker, LivenessWorker],
+    MediaPipeGestureDetector,
+]:
     config = AppConfig.from_env()
     database = PostgresDatabase(config.database_dsn)
     repository = HealthRepositoryImpl(database)
@@ -44,22 +52,44 @@ def build_runtime() -> tuple[GrpcServer, HttpServer, tuple[FaceMatchWorker, Live
 
     ocr_provider = EasyOcrProvider(config.ocr_languages)
     face_embedder = FaceNetEmbedder(device=config.torch_device)
-    gesture_detector = MediaPipeGestureDetector(min_detection_confidence=config.mediapipe_min_confidence)
+    gesture_detector = MediaPipeGestureDetector(
+        min_detection_confidence=config.mediapipe_min_confidence
+    )
 
     face_match_service = FaceMatchService(face_embedder)
     liveness_service = LivenessService(gesture_detector)
 
-    face_task_publisher = RabbitFaceMatchTaskPublisher(rabbit_publisher, config.face_match_queue)
-    liveness_task_publisher = RabbitLivenessTaskPublisher(rabbit_publisher, config.liveness_queue)
+    face_task_publisher = RabbitFaceMatchTaskPublisher(
+        rabbit_publisher, config.face_match_queue
+    )
+    liveness_task_publisher = RabbitLivenessTaskPublisher(
+        rabbit_publisher, config.liveness_queue
+    )
 
-    face_result_publisher = RabbitFaceMatchResultPublisher(rabbit_publisher, config.face_match_result_queue)
-    liveness_result_publisher = RabbitLivenessResultPublisher(rabbit_publisher, config.liveness_result_queue)
+    face_result_publisher = RabbitFaceMatchResultPublisher(
+        rabbit_publisher, config.face_match_result_queue
+    )
+    liveness_result_publisher = RabbitLivenessResultPublisher(
+        rabbit_publisher, config.liveness_result_queue
+    )
 
-    face_worker = FaceMatchWorker(config.face_match_queue, rabbit_factory, face_match_service, face_result_publisher)
-    liveness_worker = LivenessWorker(config.liveness_queue, rabbit_factory, liveness_service, liveness_result_publisher)
+    face_worker = FaceMatchWorker(
+        config.face_match_queue,
+        rabbit_factory,
+        face_match_service,
+        face_result_publisher,
+    )
+    liveness_worker = LivenessWorker(
+        config.liveness_queue,
+        rabbit_factory,
+        liveness_service,
+        liveness_result_publisher,
+    )
 
-    ekyc_service = EkycService(ocr_provider, face_task_publisher, liveness_task_publisher)
-    ekyc_handler = EkycGrpcHandler(ekyc_service, ocr_provider, config.default_face_threshold)
+    ekyc_service = EkycService(face_task_publisher, liveness_task_publisher)
+    ekyc_handler = EkycGrpcHandler(
+        ekyc_service, ocr_provider, config.default_face_threshold
+    )
 
     grpc_server = GrpcServer(config.grpc_bind, service, ekyc_handler)
     http_server = HttpServer(config.http_bind, service)

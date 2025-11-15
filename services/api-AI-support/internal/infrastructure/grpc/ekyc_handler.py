@@ -4,46 +4,84 @@ from uuid import uuid4
 
 import grpc
 
-from internal.domain.ekyc import BinaryImage, EkycRequestPayload, EkycServicePort
+from internal.domain.ekyc import (
+    BinaryImage,
+    EkycServicePort,
+    FaceMatchRequestPayload,
+    LivenessRequestPayload,
+)
 from internal.domain.ocr import KtpOcrProvider, KtpOcrResult
 from internal.proto.ekyc.v1 import ekyc_pb2, ekyc_pb2_grpc
 
 
 class EkycGrpcHandler(ekyc_pb2_grpc.EkycSupportServiceServicer):
-    def __init__(self, service: EkycServicePort, ocr_provider: KtpOcrProvider, default_threshold: float):
+    def __init__(
+        self,
+        service: EkycServicePort,
+        ocr_provider: KtpOcrProvider,
+        default_threshold: float,
+    ):
         self._service = service
         self._ocr_provider = ocr_provider
         self._default_threshold = default_threshold
 
-    def PerformKtpOcr(self, request: ekyc_pb2.KtpOcrRequest, context: grpc.ServicerContext) -> ekyc_pb2.KtpOcrResponse:
+    def PerformKtpOcr(
+        self, request: ekyc_pb2.KtpOcrRequest, context: grpc.ServicerContext
+    ) -> ekyc_pb2.KtpOcrResponse:
         if not request.image.content:
-            context.abort(grpc.StatusCode.INVALID_ARGUMENT, "ktp image content is required")
-        result = self._ocr_provider.extract(request.image.content, locale=_clean(request.locale))
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT, "ktp image content is required"
+            )
+        result = self._ocr_provider.extract(
+            request.image.content, locale=_clean(request.locale)
+        )
         return ekyc_pb2.KtpOcrResponse(result=_to_proto_result(result))
 
-    def ProcessEkyc(self, request: ekyc_pb2.EkycRequest, context: grpc.ServicerContext) -> ekyc_pb2.ProcessEkycResponse:
+    def StartFaceMatchJob(
+        self, request: ekyc_pb2.StartFaceMatchRequest, context: grpc.ServicerContext
+    ) -> ekyc_pb2.StartFaceMatchResponse:
         if not request.ktp_image.content:
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, "ktp_image is required")
         if not request.selfie_image.content:
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, "selfie_image is required")
 
         session_id = request.session_id or str(uuid4())
-        payload = EkycRequestPayload(
+        payload = FaceMatchRequestPayload(
             session_id=session_id,
-            ktp_image=BinaryImage(content=request.ktp_image.content, mime_type=request.ktp_image.mime_type or None),
-            selfie_image=BinaryImage(content=request.selfie_image.content, mime_type=request.selfie_image.mime_type or None),
+            ktp_image=BinaryImage(
+                content=request.ktp_image.content,
+                mime_type=request.ktp_image.mime_type or None,
+            ),
+            selfie_image=BinaryImage(
+                content=request.selfie_image.content,
+                mime_type=request.selfie_image.mime_type or None,
+            ),
+            face_match_threshold=request.face_match_threshold
+            or self._default_threshold,
+        )
+        handle = self._service.start_face_match(payload)
+        return ekyc_pb2.StartFaceMatchResponse(
+            job=_to_job_handle(handle),
+        )
+
+    def StartLivenessJob(
+        self, request: ekyc_pb2.StartLivenessRequest, context: grpc.ServicerContext
+    ) -> ekyc_pb2.StartLivenessResponse:
+        session_id = request.session_id or str(uuid4())
+        payload = LivenessRequestPayload(
+            session_id=session_id,
             liveness_frames=[
-                BinaryImage(content=frame.content, mime_type=frame.mime_type or None) for frame in request.liveness_frames
+                BinaryImage(
+                    content=frame.content,
+                    mime_type=frame.mime_type or None,
+                )
+                for frame in request.liveness_frames
             ],
             gestures=[gesture for gesture in request.gestures],
-            face_match_threshold=request.face_match_threshold or self._default_threshold,
-            locale=_clean(request.locale),
         )
-        response = self._service.process(payload)
-        return ekyc_pb2.ProcessEkycResponse(
-            ocr=_to_proto_result(response.ocr_result),
-            face_match_job=_to_job_handle(response.face_match_job),
-            liveness_job=_to_liveness_handle(response.liveness_job),
+        handle = self._service.start_liveness(payload)
+        return ekyc_pb2.StartLivenessResponse(
+            job=_to_liveness_handle(handle),
         )
 
 

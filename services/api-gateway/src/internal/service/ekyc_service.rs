@@ -1,5 +1,6 @@
 use crate::internal::domain::entities::ekyc::{
     EkycAsyncResponse, KtpOcrResultData, PerformOcrPayload, ProcessEkycPayload,
+    StartFaceMatchJobPayload, StartLivenessJobPayload,
 };
 use crate::internal::domain::services::AiSupportPort;
 use crate::pkg::types::error::AppResult;
@@ -21,6 +22,47 @@ impl<P: AiSupportPort> EkycService<P> {
         &self,
         payload: ProcessEkycPayload,
     ) -> AppResult<EkycAsyncResponse> {
-        self.ai_port.process_ekyc(payload).await
+        let ProcessEkycPayload {
+            session_id,
+            ktp_image,
+            selfie_image,
+            liveness_frames,
+            gestures,
+            face_match_threshold,
+            locale,
+        } = payload;
+
+        let ocr_result = self
+            .ai_port
+            .perform_ktp_ocr(PerformOcrPayload {
+                image: ktp_image.clone(),
+                locale: locale.clone(),
+            })
+            .await?;
+
+        let face_match_job = self
+            .ai_port
+            .start_face_match_job(StartFaceMatchJobPayload {
+                session_id: session_id.clone(),
+                ktp_image,
+                selfie_image,
+                face_match_threshold: face_match_threshold.unwrap_or_default(),
+            })
+            .await?;
+
+        let liveness_job = self
+            .ai_port
+            .start_liveness_job(StartLivenessJobPayload {
+                session_id,
+                liveness_frames,
+                gestures,
+            })
+            .await?;
+
+        Ok(EkycAsyncResponse {
+            ocr_result,
+            face_match_job,
+            liveness_job,
+        })
     }
 }

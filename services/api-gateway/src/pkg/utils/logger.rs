@@ -4,6 +4,7 @@ use axum::{Router, body::Body};
 use http::{Request, Response};
 use tower_http::trace::TraceLayer;
 use tracing::{Span, info, info_span};
+use tracing_subscriber::{EnvFilter, fmt};
 
 pub fn with_http_trace(app: Router) -> Router {
     let trace_layer = TraceLayer::new_for_http()
@@ -24,4 +25,11 @@ pub fn with_http_trace(app: Router) -> Router {
         });
 
     app.layer(trace_layer)
+}
+
+pub fn init_local_trace() {
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info,tower_http=info,api_gateway=debug"));
+
+    fmt().with_env_filter(env_filter).init();
 }

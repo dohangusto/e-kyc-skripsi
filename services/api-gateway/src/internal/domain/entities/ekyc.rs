@@ -19,13 +19,28 @@ pub struct PerformOcrPayload {
 
 #[derive(Debug, Clone)]
 pub struct ProcessEkycPayload {
-    pub session_id: Option<String>,
+    pub session_id: String,
     pub ktp_image: BinaryImage,
     pub selfie_image: BinaryImage,
     pub liveness_frames: Vec<BinaryImage>,
     pub gestures: Vec<String>,
     pub face_match_threshold: Option<f64>,
     pub locale: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StartFaceMatchJobPayload {
+    pub session_id: String,
+    pub ktp_image: BinaryImage,
+    pub selfie_image: BinaryImage,
+    pub face_match_threshold: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct StartLivenessJobPayload {
+    pub session_id: String,
+    pub liveness_frames: Vec<BinaryImage>,
+    pub gestures: Vec<String>,
 }
 
 #[derive(Debug, Clone)]

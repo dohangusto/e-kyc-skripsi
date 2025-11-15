@@ -18,10 +18,15 @@ class EkycSupportServiceStub(object):
             request_serializer=ekyc__pb2.KtpOcrRequest.SerializeToString,
             response_deserializer=ekyc__pb2.KtpOcrResponse.FromString,
         )
-        self.ProcessEkyc = channel.unary_unary(
-            "/ekyc.v1.EkycSupportService/ProcessEkyc",
-            request_serializer=ekyc__pb2.EkycRequest.SerializeToString,
-            response_deserializer=ekyc__pb2.ProcessEkycResponse.FromString,
+        self.StartFaceMatchJob = channel.unary_unary(
+            "/ekyc.v1.EkycSupportService/StartFaceMatchJob",
+            request_serializer=ekyc__pb2.StartFaceMatchRequest.SerializeToString,
+            response_deserializer=ekyc__pb2.StartFaceMatchResponse.FromString,
+        )
+        self.StartLivenessJob = channel.unary_unary(
+            "/ekyc.v1.EkycSupportService/StartLivenessJob",
+            request_serializer=ekyc__pb2.StartLivenessRequest.SerializeToString,
+            response_deserializer=ekyc__pb2.StartLivenessResponse.FromString,
         )
 
 
@@ -33,7 +38,12 @@ class EkycSupportServiceServicer(object):
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
 
-    def ProcessEkyc(self, request, context):
+    def StartFaceMatchJob(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+
+    def StartLivenessJob(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
@@ -46,10 +56,15 @@ def add_EkycSupportServiceServicer_to_server(servicer, server: grpc.Server):
             request_deserializer=ekyc__pb2.KtpOcrRequest.FromString,
             response_serializer=ekyc__pb2.KtpOcrResponse.SerializeToString,
         ),
-        "ProcessEkyc": grpc.unary_unary_rpc_method_handler(
-            servicer.ProcessEkyc,
-            request_deserializer=ekyc__pb2.EkycRequest.FromString,
-            response_serializer=ekyc__pb2.ProcessEkycResponse.SerializeToString,
+        "StartFaceMatchJob": grpc.unary_unary_rpc_method_handler(
+            servicer.StartFaceMatchJob,
+            request_deserializer=ekyc__pb2.StartFaceMatchRequest.FromString,
+            response_serializer=ekyc__pb2.StartFaceMatchResponse.SerializeToString,
+        ),
+        "StartLivenessJob": grpc.unary_unary_rpc_method_handler(
+            servicer.StartLivenessJob,
+            request_deserializer=ekyc__pb2.StartLivenessRequest.FromString,
+            response_serializer=ekyc__pb2.StartLivenessResponse.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(

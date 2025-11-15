@@ -5,6 +5,7 @@ use axum::{
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 use tracing::error;
+use uuid::Uuid;
 
 use crate::internal::domain::entities::ekyc::{
     AsyncJobHandle, BinaryImage, KtpOcrResultData, PerformOcrPayload, ProcessEkycPayload,
@@ -109,8 +110,13 @@ fn decode_process_payload(request: StartEkycRequestDto) -> Result<ProcessEkycPay
         frames.push(decode_image(&label, frame)?);
     }
 
+    let session_id = request
+        .session_id
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
     Ok(ProcessEkycPayload {
-        session_id: request.session_id,
+        session_id,
         ktp_image,
         selfie_image,
         liveness_frames: frames,

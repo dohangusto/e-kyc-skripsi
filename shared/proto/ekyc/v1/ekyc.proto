@@ -53,23 +53,29 @@ message LivenessJobHandle {
   string queue = 2;
 }
 
-message EkycRequest {
+message StartFaceMatchRequest {
   string session_id = 1;
   ImagePayload ktp_image = 2;
   ImagePayload selfie_image = 3;
-  repeated ImagePayload liveness_frames = 4;
-  repeated string gestures = 5;
-  double face_match_threshold = 6;
-  string locale = 7;
+  double face_match_threshold = 4;
 }
 
-message ProcessEkycResponse {
-  KtpOcrResult ocr = 1;
-  FaceMatchJobHandle face_match_job = 2;
-  LivenessJobHandle liveness_job = 3;
+message StartFaceMatchResponse {
+  FaceMatchJobHandle job = 1;
+}
+
+message StartLivenessRequest {
+  string session_id = 1;
+  repeated ImagePayload liveness_frames = 2;
+  repeated string gestures = 3;
+}
+
+message StartLivenessResponse {
+  LivenessJobHandle job = 1;
 }
 
 service EkycSupportService {
   rpc PerformKtpOcr(KtpOcrRequest) returns (KtpOcrResponse);
-  rpc ProcessEkyc(EkycRequest) returns (ProcessEkycResponse);
+  rpc StartFaceMatchJob(StartFaceMatchRequest) returns (StartFaceMatchResponse);
+  rpc StartLivenessJob(StartLivenessRequest) returns (StartLivenessResponse);
 }
