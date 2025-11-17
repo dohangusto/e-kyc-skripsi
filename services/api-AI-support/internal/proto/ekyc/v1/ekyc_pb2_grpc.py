@@ -13,11 +13,6 @@ class EkycSupportServiceStub(object):
 
     def __init__(self, channel: grpc.Channel):
         """Instantiate the stub with the given channel."""
-        self.PerformKtpOcr = channel.unary_unary(
-            "/ekyc.v1.EkycSupportService/PerformKtpOcr",
-            request_serializer=ekyc__pb2.KtpOcrRequest.SerializeToString,
-            response_deserializer=ekyc__pb2.KtpOcrResponse.FromString,
-        )
         self.StartFaceMatchJob = channel.unary_unary(
             "/ekyc.v1.EkycSupportService/StartFaceMatchJob",
             request_serializer=ekyc__pb2.StartFaceMatchRequest.SerializeToString,
@@ -33,11 +28,6 @@ class EkycSupportServiceStub(object):
 class EkycSupportServiceServicer(object):
     """Server API for the EkycSupportService."""
 
-    def PerformKtpOcr(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
-
     def StartFaceMatchJob(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
@@ -51,11 +41,6 @@ class EkycSupportServiceServicer(object):
 
 def add_EkycSupportServiceServicer_to_server(servicer, server: grpc.Server):
     rpc_method_handlers = {
-        "PerformKtpOcr": grpc.unary_unary_rpc_method_handler(
-            servicer.PerformKtpOcr,
-            request_deserializer=ekyc__pb2.KtpOcrRequest.FromString,
-            response_serializer=ekyc__pb2.KtpOcrResponse.SerializeToString,
-        ),
         "StartFaceMatchJob": grpc.unary_unary_rpc_method_handler(
             servicer.StartFaceMatchJob,
             request_deserializer=ekyc__pb2.StartFaceMatchRequest.FromString,

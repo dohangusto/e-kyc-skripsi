@@ -9,40 +9,6 @@ message ImagePayload {
   string mime_type = 2;
 }
 
-message KtpOcrRequest {
-  ImagePayload image = 1;
-  string locale = 2;
-}
-
-message KtpOcrField {
-  string key = 1;
-  string value = 2;
-}
-
-message KtpOcrResult {
-  string nik = 1;
-  string name = 2;
-  string birth_place = 3;
-  string birth_date = 4;
-  string gender = 5;
-  string blood_type = 6;
-  string address = 7;
-  string rt_rw = 8;
-  string village = 9;
-  string sub_district = 10;
-  string religion = 11;
-  string marital_status = 12;
-  string occupation = 13;
-  string citizenship = 14;
-  string issue_date = 15;
-  repeated KtpOcrField extra_fields = 16;
-  string raw_text = 17;
-}
-
-message KtpOcrResponse {
-  KtpOcrResult result = 1;
-}
-
 message FaceMatchJobHandle {
   string job_id = 1;
   string queue = 2;
@@ -75,7 +41,6 @@ message StartLivenessResponse {
 }
 
 service EkycSupportService {
-  rpc PerformKtpOcr(KtpOcrRequest) returns (KtpOcrResponse);
   rpc StartFaceMatchJob(StartFaceMatchRequest) returns (StartFaceMatchResponse);
   rpc StartLivenessJob(StartLivenessRequest) returns (StartLivenessResponse);
 }

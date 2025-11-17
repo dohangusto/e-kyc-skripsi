@@ -8,7 +8,6 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
-from internal.infrastructure.ai.easyocr_provider import EasyOcrProvider
 from internal.infrastructure.ai.facenet_embedder import FaceNetEmbedder
 from internal.infrastructure.ai.mediapipe_liveness import MediaPipeGestureDetector
 from internal.infrastructure.database.postgres import PostgresDatabase
@@ -50,7 +49,6 @@ def build_runtime() -> tuple[
     rabbit_factory = RabbitMqConnectionFactory(config.rabbitmq_url)
     rabbit_publisher = RabbitMqPublisher(rabbit_factory)
 
-    ocr_provider = EasyOcrProvider(config.ocr_languages)
     face_embedder = FaceNetEmbedder(device=config.torch_device)
     gesture_detector = MediaPipeGestureDetector(
         min_detection_confidence=config.mediapipe_min_confidence
@@ -87,9 +85,7 @@ def build_runtime() -> tuple[
     )
 
     ekyc_service = EkycService(face_task_publisher, liveness_task_publisher)
-    ekyc_handler = EkycGrpcHandler(
-        ekyc_service, ocr_provider, config.default_face_threshold
-    )
+    ekyc_handler = EkycGrpcHandler(ekyc_service, config.default_face_threshold)
 
     grpc_server = GrpcServer(config.grpc_bind, service, ekyc_handler)
     http_server = HttpServer(config.http_bind, service)

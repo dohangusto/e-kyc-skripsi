@@ -15,7 +15,6 @@ class AppConfig:
     face_match_result_queue: str
     liveness_queue: str
     liveness_result_queue: str
-    ocr_languages: tuple[str, ...]
     default_face_threshold: float
     torch_device: str
     mediapipe_min_confidence: float
@@ -41,7 +40,6 @@ class AppConfig:
             liveness_result_queue=os.getenv(
                 "AI_SUPPORT_LIVENESS_RESULT_QUEUE", "ai.liveness.results"
             ),
-            ocr_languages=_parse_languages(os.getenv("AI_SUPPORT_OCR_LANGS", "id,en")),
             default_face_threshold=float(
                 os.getenv("AI_SUPPORT_FACE_THRESHOLD", "0.78")
             ),
@@ -50,8 +48,3 @@ class AppConfig:
                 os.getenv("AI_SUPPORT_LIVENESS_CONFIDENCE", "0.5")
             ),
         )
-
-
-def _parse_languages(value: str) -> tuple[str, ...]:
-    parts = [lang.strip().lower() for lang in value.split(",") if lang.strip()]
-    return tuple(parts or ("id", "en"))

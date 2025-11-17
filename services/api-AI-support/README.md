@@ -1,7 +1,7 @@
 # api-AI-support (PYTHON - http -gRPC (consumer))
 
-This service handles all api-AI-support-related operations in the system, including e-KYC OCR, face
-matching, and liveness detection workflows.
+This service handles all api-AI-support-related operations in the system, focusing on face
+matching and liveness detection workflows.
 
 ## Architecture
 
@@ -56,9 +56,8 @@ services/api-AI-support-service/
   ```
 
 - The service exposes two unary RPCs via `ekyc.v1.EkycSupportService`:
-  - `PerformKtpOcr` – synchronous OCR over a KTP image using EasyOCR.
-  - `ProcessEkyc` – orchestrates OCR plus asynchronous face matching & liveness evaluation. Returns OCR
-    results immediately together with RabbitMQ job handles for the biometric checks.
+  - `StartFaceMatchJob` – enqueue a face match job.
+  - `StartLivenessJob` – enqueue a liveness detection job.
 
 ## RabbitMQ Topology
 
@@ -80,7 +79,6 @@ Key environment variables (see `pkg/types/config.py` for defaults):
 - `AI_SUPPORT_GRPC_ADDR` / `AI_SUPPORT_HTTP_ADDR`
 - `AI_SUPPORT_DB_DSN`
 - `AI_SUPPORT_RABBIT_URL`
-- `AI_SUPPORT_OCR_LANGS` (comma separated, e.g. `id,en`)
 - `AI_SUPPORT_FACE_THRESHOLD`
 - `AI_SUPPORT_TORCH_DEVICE` (`cpu` by default)
 - `AI_SUPPORT_LIVENESS_CONFIDENCE`
