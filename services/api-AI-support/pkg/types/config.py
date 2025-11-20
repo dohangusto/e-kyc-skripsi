@@ -18,6 +18,8 @@ class AppConfig:
     default_face_threshold: float
     torch_device: str
     mediapipe_min_confidence: float
+    backoffice_http_base: str
+    media_storage_url: str
 
     @staticmethod
     def from_env() -> "AppConfig":
@@ -46,5 +48,11 @@ class AppConfig:
             torch_device=os.getenv("AI_SUPPORT_TORCH_DEVICE", "cpu"),
             mediapipe_min_confidence=float(
                 os.getenv("AI_SUPPORT_LIVENESS_CONFIDENCE", "0.5")
+            ),
+            backoffice_http_base=os.getenv(
+                "AI_SUPPORT_BACKOFFICE_URL", "http://127.0.0.1:8081"
+            ),
+            media_storage_url=os.getenv(
+                "AI_SUPPORT_MEDIA_URL", "http://127.0.0.1:8090"
             ),
         )

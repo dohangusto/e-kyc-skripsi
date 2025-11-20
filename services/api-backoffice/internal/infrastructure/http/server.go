@@ -8,13 +8,18 @@ import (
 	gommonLog "github.com/labstack/gommon/log"
 )
 
-func NewServer(appHandler *ApplicationHTTPHandler, backofficeHandler *BackofficeHTTPHandler, authHandler *AuthHTTPHandler) *echo.Echo {
+func NewServer(
+	appHandler *ApplicationHTTPHandler,
+	backofficeHandler *BackofficeHTTPHandler,
+	authHandler *AuthHTTPHandler,
+	ekycHandler *EkycHTTPHandler,
+) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.Logger.SetLevel(gommonLog.INFO)
 
 	configureMiddleware(e)
-	RegisterRoutes(e, appHandler, backofficeHandler, authHandler)
+	RegisterRoutes(e, appHandler, backofficeHandler, authHandler, ekycHandler)
 
 	return e
 }

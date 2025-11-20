@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 
 	domain "e-kyc/services/api-backoffice/internal/domain"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -1068,4 +1070,439 @@ func (repo *backofficeRepository) fetchSurvey(ctx context.Context, appID string)
 	}
 	state.Answers = decodeJSON(answers)
 	return &state, nil
+}
+
+func (repo *backofficeRepository) CreateEkycSession(ctx context.Context, params domain.CreateEkycSessionParams) (*domain.EkycSession, error) {
+	row := repo.db.QueryRow(ctx, `
+        INSERT INTO ekyc_sessions (user_id)
+        VALUES ($1)
+        RETURNING id, user_id, status, face_matching_status, liveness_status, final_decision,
+                  id_card_url, selfie_with_id_url, recorded_video_url,
+                  face_match_overall, liveness_overall, rejection_reason,
+                  metadata, created_at, updated_at`,
+		params.UserID,
+	)
+	return scanEkycSessionRow(row)
+}
+
+func (repo *backofficeRepository) UpdateEkycSession(ctx context.Context, params domain.UpdateEkycArtifactsParams) (*domain.EkycSession, error) {
+	row := repo.db.QueryRow(ctx, `
+        UPDATE ekyc_sessions
+        SET id_card_url = COALESCE($2, id_card_url),
+            selfie_with_id_url = COALESCE($3, selfie_with_id_url),
+            recorded_video_url = COALESCE($4, recorded_video_url),
+            face_matching_status = COALESCE($5, face_matching_status),
+            liveness_status = COALESCE($6, liveness_status),
+            status = COALESCE($7, status),
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, user_id, status, face_matching_status, liveness_status, final_decision,
+                  id_card_url, selfie_with_id_url, recorded_video_url,
+                  face_match_overall, liveness_overall, rejection_reason,
+                  metadata, created_at, updated_at`,
+		params.SessionID, params.IDCardURL, params.SelfieWithIDURL, params.RecordedVideoURL,
+		params.FaceMatchingStatus, params.LivenessStatus, params.Status,
+	)
+	return scanEkycSessionRow(row)
+}
+
+func (repo *backofficeRepository) SaveFaceChecks(ctx context.Context, params domain.SaveFaceChecksParams) (*domain.EkycSession, error) {
+	var session *domain.EkycSession
+	err := repo.withTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM face_checks WHERE ekyc_session_id=$1`, params.SessionID); err != nil {
+			return err
+		}
+		for _, check := range params.Checks {
+			meta := []byte(`{}`)
+			if check.Metadata != nil {
+				meta, _ = json.Marshal(check.Metadata)
+			}
+			if _, err := tx.Exec(ctx, `
+                INSERT INTO face_checks (ekyc_session_id, step, similarity_score, threshold, result, raw_metadata)
+                VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
+				params.SessionID, check.Step, check.Similarity, check.Threshold, check.Result, meta,
+			); err != nil {
+				return err
+			}
+		}
+		row := tx.QueryRow(ctx, `
+            UPDATE ekyc_sessions
+            SET face_match_overall = $2,
+                face_matching_status = $3,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, user_id, status, face_matching_status, liveness_status, final_decision,
+                      id_card_url, selfie_with_id_url, recorded_video_url,
+                      face_match_overall, liveness_overall, rejection_reason,
+                      metadata, created_at, updated_at`,
+			params.SessionID, params.Overall, params.Status,
+		)
+		result, err := scanEkycSessionRow(row)
+		if err != nil {
+			return err
+		}
+		session = result
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.enrichEkycSession(ctx, session); err != nil {
+		return nil, err
+	}
+	return session, nil
+}
+
+func (repo *backofficeRepository) SaveLivenessResult(ctx context.Context, params domain.SaveLivenessResultParams) (*domain.EkycSession, error) {
+	var session *domain.EkycSession
+	err := repo.withTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM liveness_checks WHERE ekyc_session_id=$1`, params.SessionID); err != nil {
+			return err
+		}
+		meta := []byte(`{}`)
+		if params.Metadata != nil {
+			meta, _ = json.Marshal(params.Metadata)
+		}
+		perGesture := []byte(`{}`)
+		if params.PerGesture != nil {
+			perGesture, _ = json.Marshal(params.PerGesture)
+		}
+		if _, err := tx.Exec(ctx, `
+            INSERT INTO liveness_checks (ekyc_session_id, overall_result, per_gesture_result, recorded_video_url, raw_metadata)
+            VALUES ($1,$2,$3::jsonb,$4,$5::jsonb)`,
+			params.SessionID, params.Overall, perGesture, params.VideoURL, meta,
+		); err != nil {
+			return err
+		}
+		row := tx.QueryRow(ctx, `
+            UPDATE ekyc_sessions
+            SET liveness_overall = $2,
+                liveness_status = $3,
+                recorded_video_url = COALESCE($4, recorded_video_url),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, user_id, status, face_matching_status, liveness_status, final_decision,
+                      id_card_url, selfie_with_id_url, recorded_video_url,
+                      face_match_overall, liveness_overall, rejection_reason,
+                      metadata, created_at, updated_at`,
+			params.SessionID, params.Overall, params.Status, params.VideoURL,
+		)
+		result, err := scanEkycSessionRow(row)
+		if err != nil {
+			return err
+		}
+		session = result
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.enrichEkycSession(ctx, session); err != nil {
+		return nil, err
+	}
+	return session, nil
+}
+
+func (repo *backofficeRepository) AssignUserToSession(ctx context.Context, params domain.ApplicantSubmission) (*domain.EkycSession, error) {
+	var session *domain.EkycSession
+	err := repo.withTx(ctx, func(tx pgx.Tx) error {
+		userID, err := repo.upsertBeneficiaryUser(ctx, tx, params)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO beneficiaries (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, userID); err != nil {
+			return err
+		}
+		applicantData := map[string]any{
+			"name":        params.FullName,
+			"nik":         params.Nik,
+			"birthDate":   params.BirthDate,
+			"address":     params.Address,
+			"phone":       params.Phone,
+			"email":       params.Email,
+			"userId":      userID,
+			"submittedAt": time.Now().UTC(),
+		}
+		metadataPatch, _ := json.Marshal(map[string]any{"applicant": applicantData})
+		row := tx.QueryRow(ctx, `
+            UPDATE ekyc_sessions
+            SET user_id = $2,
+                metadata = metadata || $3::jsonb,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, user_id, status, face_matching_status, liveness_status, final_decision,
+                      id_card_url, selfie_with_id_url, recorded_video_url,
+                      face_match_overall, liveness_overall, rejection_reason,
+                      metadata, created_at, updated_at`,
+			params.SessionID, userID, metadataPatch,
+		)
+		result, err := scanEkycSessionRow(row)
+		if err != nil {
+			return err
+		}
+		session = result
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.enrichEkycSession(ctx, session); err != nil {
+		return nil, err
+	}
+	return session, nil
+}
+
+func (repo *backofficeRepository) ListEkycSessions(ctx context.Context, params domain.ListEkycSessionsParams) ([]domain.EkycSession, error) {
+	limit := params.Limit
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	rows, err := repo.db.Query(ctx, `
+        SELECT id, user_id, status, face_matching_status, liveness_status, final_decision,
+               id_card_url, selfie_with_id_url, recorded_video_url,
+               face_match_overall, liveness_overall, rejection_reason,
+               metadata, created_at, updated_at
+        FROM ekyc_sessions
+        WHERE ($1 = '' OR status = $1)
+          AND ($2 = '' OR final_decision = $2)
+        ORDER BY created_at DESC
+        LIMIT $3`,
+		params.Status, params.FinalDecision, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []domain.EkycSession
+	for rows.Next() {
+		session, err := scanEkycSessionRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, *session)
+	}
+	return sessions, rows.Err()
+}
+
+func (repo *backofficeRepository) GetEkycSession(ctx context.Context, id string) (*domain.EkycSession, error) {
+	row := repo.db.QueryRow(ctx, `
+        SELECT id, user_id, status, face_matching_status, liveness_status, final_decision,
+               id_card_url, selfie_with_id_url, recorded_video_url,
+               face_match_overall, liveness_overall, rejection_reason,
+               metadata, created_at, updated_at
+        FROM ekyc_sessions
+        WHERE id = $1`, id)
+	session, err := scanEkycSessionRow(row)
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.enrichEkycSession(ctx, session); err != nil {
+		return nil, err
+	}
+	return session, nil
+}
+
+func (repo *backofficeRepository) UpdateEkycDecision(ctx context.Context, params domain.UpdateEkycDecisionParams) (*domain.EkycSession, error) {
+	row := repo.db.QueryRow(ctx, `
+        UPDATE ekyc_sessions
+        SET final_decision = $2,
+            status = CASE WHEN $2 = 'PENDING' THEN status ELSE 'COMPLETED' END,
+            rejection_reason = $3,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, user_id, status, face_matching_status, liveness_status, final_decision,
+                  id_card_url, selfie_with_id_url, recorded_video_url,
+                  face_match_overall, liveness_overall, rejection_reason,
+                  metadata, created_at, updated_at`,
+		params.SessionID, params.FinalDecision, params.Reason,
+	)
+	session, err := scanEkycSessionRow(row)
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.enrichEkycSession(ctx, session); err != nil {
+		return nil, err
+	}
+	return session, nil
+}
+
+func (repo *backofficeRepository) enrichEkycSession(ctx context.Context, session *domain.EkycSession) error {
+	checks, err := repo.fetchFaceChecks(ctx, session.ID)
+	if err != nil {
+		return err
+	}
+	session.FaceChecks = checks
+
+	live, err := repo.fetchLiveness(ctx, session.ID)
+	if err != nil {
+		return err
+	}
+	session.LivenessCheck = live
+	return nil
+}
+
+func (repo *backofficeRepository) fetchFaceChecks(ctx context.Context, sessionID string) ([]domain.FaceCheck, error) {
+	rows, err := repo.db.Query(ctx, `
+        SELECT id, ekyc_session_id, step, similarity_score, threshold, result, raw_metadata, created_at
+        FROM face_checks
+        WHERE ekyc_session_id = $1
+        ORDER BY created_at ASC`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var checks []domain.FaceCheck
+	for rows.Next() {
+		var (
+			check      domain.FaceCheck
+			meta       []byte
+			similarity sql.NullFloat64
+			threshold  sql.NullFloat64
+		)
+		if err := rows.Scan(&check.ID, &check.SessionID, &check.Step, &similarity, &threshold, &check.Result, &meta, &check.CreatedAt); err != nil {
+			return nil, err
+		}
+		if similarity.Valid {
+			value := similarity.Float64
+			check.Similarity = &value
+		}
+		if threshold.Valid {
+			value := threshold.Float64
+			check.Threshold = &value
+		}
+		check.RawMetadata = decodeJSON(meta)
+		checks = append(checks, check)
+	}
+	return checks, rows.Err()
+}
+
+func (repo *backofficeRepository) fetchLiveness(ctx context.Context, sessionID string) (*domain.LivenessCheck, error) {
+	row := repo.db.QueryRow(ctx, `
+        SELECT id, ekyc_session_id, overall_result, per_gesture_result, recorded_video_url, raw_metadata, created_at
+        FROM liveness_checks
+        WHERE ekyc_session_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1`, sessionID)
+	var (
+		check domain.LivenessCheck
+		per   []byte
+		raw   []byte
+		video sql.NullString
+	)
+	if err := row.Scan(&check.ID, &check.SessionID, &check.OverallResult, &per, &video, &raw, &check.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	check.PerGestureResult = decodeJSON(per)
+	if video.Valid {
+		check.RecordedVideoURL = &video.String
+	}
+	check.RawMetadata = decodeJSON(raw)
+	return &check, nil
+}
+
+func scanEkycSessionRow(row pgx.Row) (*domain.EkycSession, error) {
+	var (
+		session       domain.EkycSession
+		userID        sql.NullString
+		idCard        sql.NullString
+		selfie        sql.NullString
+		video         sql.NullString
+		faceOverall   sql.NullString
+		liveOverall   sql.NullString
+		rejection     sql.NullString
+		metadataBytes []byte
+	)
+	if err := row.Scan(
+		&session.ID, &userID, &session.Status, &session.FaceMatchingStatus, &session.LivenessStatus, &session.FinalDecision,
+		&idCard, &selfie, &video, &faceOverall, &liveOverall, &rejection,
+		&metadataBytes, &session.CreatedAt, &session.UpdatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+	if userID.Valid {
+		session.UserID = &userID.String
+	}
+	if idCard.Valid {
+		session.IDCardURL = &idCard.String
+	}
+	if selfie.Valid {
+		session.SelfieWithIDURL = &selfie.String
+	}
+	if video.Valid {
+		session.RecordedVideoURL = &video.String
+	}
+	if faceOverall.Valid {
+		session.FaceMatchOverall = &faceOverall.String
+	}
+	if liveOverall.Valid {
+		session.LivenessOverall = &liveOverall.String
+	}
+	if rejection.Valid {
+		session.RejectionReason = &rejection.String
+	}
+	session.Metadata = decodeJSON(metadataBytes)
+	return &session, nil
+}
+
+func (repo *backofficeRepository) upsertBeneficiaryUser(ctx context.Context, tx pgx.Tx, params domain.ApplicantSubmission) (string, error) {
+	if params.Phone == "" && params.Nik == "" {
+		return "", fmt.Errorf("phone atau NIK wajib diisi")
+	}
+	if params.Pin == "" {
+		params.Pin = "123456"
+	}
+	var existingID string
+	if params.Phone != "" {
+		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE phone=$1 LIMIT 1`, params.Phone).Scan(&existingID); err == nil {
+			return existingID, nil
+		}
+	}
+	if params.Nik != "" && existingID == "" {
+		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE nik=$1 LIMIT 1`, params.Nik).Scan(&existingID); err == nil {
+			return existingID, nil
+		}
+	}
+
+	id := uuid.New().String()
+	var dob interface{}
+	if params.BirthDate != nil {
+		dob = params.BirthDate
+	} else {
+		dob = nil
+	}
+	meta, _ := json.Marshal(map[string]any{
+		"address": params.Address,
+	})
+	_, err := tx.Exec(ctx, `
+        INSERT INTO users (
+            id, role, nik, name, dob, phone, email, pin_hash,
+            region_prov, region_kab, region_kec, region_kel,
+            region_scope, metadata
+        ) VALUES (
+            $1,'BENEFICIARY',$2,$3,$4,$5,$6,$7,
+            '', '', '', '',
+            ARRAY[]::text[], $8::jsonb
+        )`,
+		id, nullableString(params.Nik), params.FullName, dob, nullableString(params.Phone), nullableString(params.Email),
+		fmt.Sprintf("plain:%s", params.Pin), meta,
+	)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+func nullableString(value string) interface{} {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return value
 }

@@ -4,15 +4,11 @@ use tonic::transport::{Channel, Endpoint};
 use tonic::{Code, Request, Status};
 
 use crate::internal::domain::entities::ekyc::{
-    AsyncJobHandle, BinaryImage, KtpOcrResultData, PerformOcrPayload, StartFaceMatchJobPayload,
-    StartLivenessJobPayload,
+    AsyncJobHandle, BinaryImage, StartFaceMatchJobPayload, StartLivenessJobPayload,
 };
 use crate::internal::domain::services::AiSupportPort;
 use crate::internal::infrastructure::grpc::pb::{
     self, ekyc_support_service_client::EkycSupportServiceClient,
-};
-use crate::internal::service::ocr_ktp_service::{
-    from_proto_result, map_job_handle, map_liveness_handle,
 };
 use crate::pkg::types::error::{AppError, AppResult};
 
@@ -43,21 +39,6 @@ fn normalize_target(target: &str) -> AppResult<String> {
 
 #[async_trait]
 impl AiSupportPort for AiSupportClient {
-    async fn perform_ktp_ocr(&self, payload: PerformOcrPayload) -> AppResult<KtpOcrResultData> {
-        let mut client = self.client()?;
-        let request = pb::KtpOcrRequest {
-            image: Some(to_proto_image(payload.image)),
-            locale: payload.locale.unwrap_or_default(),
-        };
-
-        let response = client
-            .perform_ktp_ocr(Request::new(request))
-            .await
-            .map_err(map_status)?;
-
-        Ok(from_proto_result(response.into_inner().result))
-    }
-
     async fn start_face_match_job(
         &self,
         payload: StartFaceMatchJobPayload,
@@ -76,7 +57,9 @@ impl AiSupportPort for AiSupportClient {
             .map_err(map_status)?
             .into_inner();
 
-        Ok(map_job_handle(response.job))
+        let job = response.job.unwrap_or_default();
+
+        Ok(map_face_job(job))
     }
 
     async fn start_liveness_job(
@@ -100,7 +83,9 @@ impl AiSupportPort for AiSupportClient {
             .map_err(map_status)?
             .into_inner();
 
-        Ok(map_liveness_handle(response.job))
+        let job = response.job.unwrap_or_default();
+
+        Ok(map_liveness_job(job))
     }
 }
 
@@ -108,6 +93,20 @@ fn map_status(status: Status) -> AppError {
     match status.code() {
         Code::InvalidArgument => AppError::BadRequest(status.message().to_string()),
         _ => AppError::Internal(anyhow!("ai support gRPC error: {status}")),
+    }
+}
+
+fn map_face_job(job: pb::FaceMatchJobHandle) -> AsyncJobHandle {
+    AsyncJobHandle {
+        job_id: job.job_id,
+        queue: job.queue,
+    }
+}
+
+fn map_liveness_job(job: pb::LivenessJobHandle) -> AsyncJobHandle {
+    AsyncJobHandle {
+        job_id: job.job_id,
+        queue: job.queue,
     }
 }
 

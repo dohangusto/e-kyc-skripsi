@@ -7,10 +7,24 @@ pub struct EnvItem {
 
 pub struct Env;
 
-const ENV_ITEMS: [EnvItem; 1] = [EnvItem {
-    key: "AI_SUPPORT_GRPC_ENDPOINT",
-    default: "http://127.0.0.1:50052",
-}];
+const ENV_ITEMS: [EnvItem; 4] = [
+    EnvItem {
+        key: "AI_SUPPORT_GRPC_ENDPOINT",
+        default: "http://127.0.0.1:50052",
+    },
+    EnvItem {
+        key: "BACKOFFICE_HTTP_ENDPOINT",
+        default: "http://127.0.0.1:8081",
+    },
+    EnvItem {
+        key: "MEDIA_STORAGE_HTTP_ENDPOINT",
+        default: "http://127.0.0.1:8090",
+    },
+    EnvItem {
+        key: "FACE_MATCH_THRESHOLD",
+        default: "0.78",
+    },
+];
 
 impl Env {
     pub fn retrieve(key: &str) -> String {

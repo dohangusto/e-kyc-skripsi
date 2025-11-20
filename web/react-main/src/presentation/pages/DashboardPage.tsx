@@ -1,13 +1,28 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { Calendar, CheckCircle2, Clock, Download, MapPin, Phone, ShieldCheck, User } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Download,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 
 import type { Applicant } from "@domain/types";
 import type { SurveyStatus } from "@domain/entities/account";
@@ -58,7 +73,10 @@ const scheduleSamples = [
 
 function maskNik(nik?: string) {
   if (!nik) return "-";
-  return nik.replace(/^(\d{4})\d{8}(\d{4})$/, (_match, prefix, suffix) => `${prefix}••••••••${suffix}`);
+  return nik.replace(
+    /^(\d{4})\d{8}(\d{4})$/,
+    (_match, prefix, suffix) => `${prefix}••••••••${suffix}`,
+  );
 }
 
 type BadgeStyle = {
@@ -66,7 +84,9 @@ type BadgeStyle = {
   className?: string;
 };
 
-function formatStatus(status: VerificationStatus): BadgeStyle & { label: string } {
+function formatStatus(
+  status: VerificationStatus,
+): BadgeStyle & { label: string } {
   switch (status) {
     case "DISETUJUI":
       return {
@@ -87,7 +107,10 @@ function formatStatus(status: VerificationStatus): BadgeStyle & { label: string 
   }
 }
 
-function formatSurveyStatus(status: SurveyStatus): { label: string; variant: "outline" | "default" | "secondary" | "destructive" } {
+function formatSurveyStatus(status: SurveyStatus): {
+  label: string;
+  variant: "outline" | "default" | "secondary" | "destructive";
+} {
   switch (status) {
     case "antrean":
       return { label: "Dalam antrean verifikasi", variant: "secondary" };
@@ -102,8 +125,19 @@ function formatSurveyStatus(status: SurveyStatus): { label: string; variant: "ou
   }
 }
 
-export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStartSurvey, onContinueSurvey, onViewSurvey }: DashboardPageProps) {
-  const status = useMemo(() => formatStatus(data.verificationStatus), [data.verificationStatus]);
+export function DashboardPage({
+  data,
+  onStartNew,
+  onLogout,
+  onCreatePin,
+  onStartSurvey,
+  onContinueSurvey,
+  onViewSurvey,
+}: DashboardPageProps) {
+  const status = useMemo(
+    () => formatStatus(data.verificationStatus),
+    [data.verificationStatus],
+  );
   const completion = useMemo(() => {
     const steps = [
       data.faceMatchPassed,
@@ -122,7 +156,10 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
   const needsPin = !data.pinSet;
   const needsSurvey = !data.surveyCompleted;
   const hasDraft = data.hasSurveyDraft;
-  const surveyStatus = useMemo(() => formatSurveyStatus(data.surveyStatus), [data.surveyStatus]);
+  const surveyStatus = useMemo(
+    () => formatSurveyStatus(data.surveyStatus),
+    [data.surveyStatus],
+  );
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
@@ -172,10 +209,15 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
       <header className="border-b bg-white/90 backdrop-blur">
         <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">Program Bansos Terpadu</p>
-            <h1 className="text-2xl font-semibold">Dashboard Penerima Bantuan</h1>
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Program Bansos Terpadu
+            </p>
+            <h1 className="text-2xl font-semibold">
+              Dashboard Penerima Bantuan
+            </h1>
             <p className="text-sm text-slate-500 mt-1">
-              ID Pengajuan: <span className="font-mono">{data.submissionId}</span>
+              ID Pengajuan:{" "}
+              <span className="font-mono">{data.submissionId}</span>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -209,7 +251,9 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
                     Keamanan Akun
                   </p>
                   <h2 className="text-xl font-semibold text-slate-900">
-                    {needsPin ? "Buat PIN 6 digit untuk mengamankan dashboard Anda" : "PIN berhasil disimpan"}
+                    {needsPin
+                      ? "Buat PIN 6 digit untuk mengamankan dashboard Anda"
+                      : "PIN berhasil disimpan"}
                   </h2>
                   <p className="text-sm text-slate-700">
                     {needsPin
@@ -219,12 +263,16 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
                 </div>
                 {pinSuccess && !needsPin && (
                   <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700">
-                    ✅ PIN tersimpan. Simpan secara pribadi dan jangan bagikan kepada pihak lain.
+                    ✅ PIN tersimpan. Simpan secara pribadi dan jangan bagikan
+                    kepada pihak lain.
                   </div>
                 )}
               </div>
               {needsPin && (
-                <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handlePinSubmit}>
+                <form
+                  className="mt-6 grid gap-4 md:grid-cols-2"
+                  onSubmit={handlePinSubmit}
+                >
                   <div className="space-y-2">
                     <Label htmlFor="pin-new">PIN (6 digit)</Label>
                     <Input
@@ -234,7 +282,9 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
                       maxLength={6}
                       placeholder="******"
                       value={pin}
-                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                      onChange={(e) =>
+                        setPin(e.target.value.replace(/\D/g, ""))
+                      }
                       required
                     />
                   </div>
@@ -247,17 +297,26 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
                       maxLength={6}
                       placeholder="******"
                       value={confirmPin}
-                      onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                      onChange={(e) =>
+                        setConfirmPin(e.target.value.replace(/\D/g, ""))
+                      }
                       required
                     />
                   </div>
                   <div className="md:col-span-2 space-y-3">
-                    {pinError && <p className="text-sm text-red-600">{pinError}</p>}
-                    <Button type="submit" className="w-full md:w-auto" disabled={pinSubmitting}>
+                    {pinError && (
+                      <p className="text-sm text-red-600">{pinError}</p>
+                    )}
+                    <Button
+                      type="submit"
+                      className="w-full md:w-auto"
+                      disabled={pinSubmitting}
+                    >
                       {pinSubmitting ? "Menyimpan..." : "Simpan PIN Sekarang"}
                     </Button>
                     <p className="text-xs text-slate-600">
-                      Simpan PIN dengan aman. Petugas tidak pernah meminta PIN Anda.
+                      Simpan PIN dengan aman. Petugas tidak pernah meminta PIN
+                      Anda.
                     </p>
                   </div>
                 </form>
@@ -271,9 +330,13 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
             <div className="rounded-3xl border border-indigo-300 bg-indigo-50 p-6 shadow-sm">
               <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
                 <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-indigo-600">Survei Sosial Ekonomi</p>
+                  <p className="text-xs uppercase tracking-wide text-indigo-600">
+                    Survei Sosial Ekonomi
+                  </p>
                   <h2 className="text-xl font-semibold text-indigo-900">
-                    {hasDraft ? "Lanjutkan survei yang belum selesai" : "Lengkapi survei keluarga Anda"}
+                    {hasDraft
+                      ? "Lanjutkan survei yang belum selesai"
+                      : "Lengkapi survei keluarga Anda"}
                   </h2>
                   <p className="text-sm text-indigo-800">
                     {hasDraft
@@ -301,17 +364,22 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
               <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <CardTitle className="text-base">Status Survei Keluarga</CardTitle>
+                    <CardTitle className="text-base">
+                      Status Survei Keluarga
+                    </CardTitle>
                     <CardDescription>
                       Terakhir dikirim {data.surveySubmittedAt ?? "-"}
                     </CardDescription>
                   </div>
-                  <Badge variant={surveyStatus.variant}>{surveyStatus.label}</Badge>
+                  <Badge variant={surveyStatus.variant}>
+                    {surveyStatus.label}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-slate-600">
-                  Data survei akan digunakan petugas TKSK sebagai dasar evaluasi kelayakan bantuan sosial Anda.
+                  Data survei akan digunakan petugas TKSK sebagai dasar evaluasi
+                  kelayakan bantuan sosial Anda.
                 </p>
                 {onViewSurvey && (
                   <Button variant="outline" onClick={onViewSurvey}>
@@ -344,27 +412,43 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
                 )}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Progress</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Progress
+                </p>
                 <div className="flex items-center gap-3 mt-2">
                   <Progress value={completion} className="h-2" />
-                  <span className="text-sm font-medium text-slate-700">{completion}%</span>
+                  <span className="text-sm font-medium text-slate-700">
+                    {completion}%
+                  </span>
                 </div>
                 <ul className="mt-3 space-y-2 text-sm text-slate-600">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className={`h-4 w-4 ${data.faceMatchPassed ? "text-emerald-500" : "text-slate-300"}`} />
+                    <CheckCircle2
+                      className={`h-4 w-4 ${data.faceMatchPassed ? "text-emerald-500" : "text-slate-300"}`}
+                    />
                     Pencocokan wajah
-                    <span className="ml-auto text-xs text-slate-400">{data.faceMatchPassed ? "Lulus" : "Menunggu"}</span>
+                    <span className="ml-auto text-xs text-slate-400">
+                      {data.faceMatchPassed ? "Lulus" : "Menunggu"}
+                    </span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className={`h-4 w-4 ${data.livenessPassed ? "text-emerald-500" : "text-slate-300"}`} />
+                    <CheckCircle2
+                      className={`h-4 w-4 ${data.livenessPassed ? "text-emerald-500" : "text-slate-300"}`}
+                    />
                     Liveness check
-                    <span className="ml-auto text-xs text-slate-400">{data.livenessPassed ? "Lulus" : "Menunggu"}</span>
+                    <span className="ml-auto text-xs text-slate-400">
+                      {data.livenessPassed ? "Lulus" : "Menunggu"}
+                    </span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className={`h-4 w-4 ${data.verificationStatus === "DISETUJUI" ? "text-emerald-500" : "text-slate-300"}`} />
+                    <CheckCircle2
+                      className={`h-4 w-4 ${data.verificationStatus === "DISETUJUI" ? "text-emerald-500" : "text-slate-300"}`}
+                    />
                     Persetujuan petugas
                     <span className="ml-auto text-xs text-slate-400">
-                      {data.verificationStatus === "DISETUJUI" ? "Disetujui" : "Dalam proses"}
+                      {data.verificationStatus === "DISETUJUI"
+                        ? "Disetujui"
+                        : "Dalam proses"}
                     </span>
                   </li>
                 </ul>
@@ -375,12 +459,16 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Ringkasan Pemohon</CardTitle>
-              <CardDescription>Data diambil dari hasil OCR dan input manual.</CardDescription>
+              <CardDescription>
+                Data diisi manual saat verifikasi.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-slate-400" />
-                <span className="font-medium text-slate-800">{data.applicant.name}</span>
+                <span className="font-medium text-slate-800">
+                  {data.applicant.name}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-slate-400" />
@@ -402,16 +490,23 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
           <Card className="lg:col-span-2 shadow-sm">
             <CardHeader>
               <CardTitle>Jadwal Penyaluran</CardTitle>
-              <CardDescription>Informasi tahap penyaluran bantuan untuk wilayah Anda.</CardDescription>
+              <CardDescription>
+                Informasi tahap penyaluran bantuan untuk wilayah Anda.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {scheduleSamples.map((item) => (
-                <div key={item.title} className="flex items-start gap-4 rounded-xl border border-slate-100 bg-white p-4">
+                <div
+                  key={item.title}
+                  className="flex items-start gap-4 rounded-xl border border-slate-100 bg-white p-4"
+                >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                     <Calendar className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">{item.title}</p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {item.title}
+                    </p>
                     <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
                       <Clock className="h-3.5 w-3.5" />
                       {item.date}
@@ -429,7 +524,9 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Rekening Penyaluran</CardTitle>
-              <CardDescription>Pastikan data bank sesuai untuk pencairan.</CardDescription>
+              <CardDescription>
+                Pastikan data bank sesuai untuk pencairan.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600">
               <div className="flex items-center gap-2">
@@ -440,9 +537,14 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
                 <CreditMask value={accountNumber} />
               </div>
               <p className="text-xs text-slate-500">
-                Jika ingin mengubah rekening, hubungi petugas Dinas Sosial dengan membawa buku tabungan asli.
+                Jika ingin mengubah rekening, hubungi petugas Dinas Sosial
+                dengan membawa buku tabungan asli.
               </p>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
                 <Download className="h-4 w-4" />
                 Unduh Surat Kuasa
               </Button>
@@ -454,7 +556,9 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Notifikasi Penting</CardTitle>
-              <CardDescription>Pemberitahuan terbaru terkait pengajuan Anda.</CardDescription>
+              <CardDescription>
+                Pemberitahuan terbaru terkait pengajuan Anda.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600">
               <NotificationItem
@@ -475,13 +579,22 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Pusat Bantuan</CardTitle>
-              <CardDescription>Hubungi petugas jika ada kendala data.</CardDescription>
+              <CardDescription>
+                Hubungi petugas jika ada kendala data.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600">
-              <p>WhatsApp Hotline: <span className="font-medium">0811-222-3344</span></p>
-              <p>Email: <span className="font-medium">layanan@dinsos.go.id</span></p>
+              <p>
+                WhatsApp Hotline:{" "}
+                <span className="font-medium">0811-222-3344</span>
+              </p>
+              <p>
+                Email: <span className="font-medium">layanan@dinsos.go.id</span>
+              </p>
               <p>Jam Operasional: Senin–Jumat pukul 08.00–16.00 WIB</p>
-              <Button variant="secondary" size="sm">Kirim Pesan ke Petugas</Button>
+              <Button variant="secondary" size="sm">
+                Kirim Pesan ke Petugas
+              </Button>
             </CardContent>
           </Card>
         </section>
@@ -492,11 +605,7 @@ export function DashboardPage({ data, onStartNew, onLogout, onCreatePin, onStart
 
 function CreditMask({ value }: { value: string }) {
   const masked = value.replace(/.(?=.{4})/g, "•");
-  return (
-    <span className="font-mono tracking-wide">
-      {masked}
-    </span>
-  );
+  return <span className="font-mono tracking-wide">{masked}</span>;
 }
 
 function NotificationItem({ title, time }: { title: string; time: string }) {

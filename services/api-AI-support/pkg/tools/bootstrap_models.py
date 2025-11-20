@@ -5,7 +5,8 @@ from pathlib import Path
 
 from PIL import Image
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+# Make sure the service root (one level above pkg/) is on sys.path so internal imports work
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 import sys
 

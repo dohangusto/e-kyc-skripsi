@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +17,20 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Applicant } from "@domain/types";
 import type { SurveyAnswers, SurveyStatus } from "@domain/entities/account";
 
-type StepKey = "A_IDENTITAS" | "B_KELUARGA" | "C_PEKERJAAN" | "D_ASET" | "E_KESEHATAN";
+type StepKey =
+  | "A_IDENTITAS"
+  | "B_KELUARGA"
+  | "C_PEKERJAAN"
+  | "D_ASET"
+  | "E_KESEHATAN";
 
-const ALL_STEPS: StepKey[] = ["A_IDENTITAS", "B_KELUARGA", "C_PEKERJAAN", "D_ASET", "E_KESEHATAN"];
+const ALL_STEPS: StepKey[] = [
+  "A_IDENTITAS",
+  "B_KELUARGA",
+  "C_PEKERJAAN",
+  "D_ASET",
+  "E_KESEHATAN",
+];
 
 const STEP_LABELS: Record<StepKey, string> = {
   A_IDENTITAS: "Identitas Diri",
@@ -95,7 +112,10 @@ export default function SurveyPage({
   const [draftSaved, setDraftSaved] = useState(false);
 
   const stepIndex = ALL_STEPS.indexOf(step);
-  const progress = useMemo(() => Math.round(((stepIndex + 1) / ALL_STEPS.length) * 100), [stepIndex]);
+  const progress = useMemo(
+    () => Math.round(((stepIndex + 1) / ALL_STEPS.length) * 100),
+    [stepIndex],
+  );
 
   useEffect(() => {
     if (!submitted || isReview) return;
@@ -105,7 +125,14 @@ export default function SurveyPage({
   }, [submitted, answers, onSubmit, isReview]);
 
   if (isReview) {
-    return <SurveySummary applicant={applicant} answers={answers} status={status} onClose={() => onCancel()} />;
+    return (
+      <SurveySummary
+        applicant={applicant}
+        answers={answers}
+        status={status}
+        onClose={() => onCancel()}
+      />
+    );
   }
 
   const disableNav = submitted;
@@ -144,13 +171,41 @@ export default function SurveyPage({
       case "A_IDENTITAS":
         return <IdentitasSection applicant={applicant} />;
       case "B_KELUARGA":
-        return <KondisiKeluargaSection value={answers.partB} onChange={(value) => setAnswers((prev) => ({ ...prev, partB: value }))} />;
+        return (
+          <KondisiKeluargaSection
+            value={answers.partB}
+            onChange={(value) =>
+              setAnswers((prev) => ({ ...prev, partB: value }))
+            }
+          />
+        );
       case "C_PEKERJAAN":
-        return <PekerjaanSection value={answers.partC} onChange={(value) => setAnswers((prev) => ({ ...prev, partC: value }))} />;
+        return (
+          <PekerjaanSection
+            value={answers.partC}
+            onChange={(value) =>
+              setAnswers((prev) => ({ ...prev, partC: value }))
+            }
+          />
+        );
       case "D_ASET":
-        return <AsetSection value={answers.partD} onChange={(value) => setAnswers((prev) => ({ ...prev, partD: value }))} />;
+        return (
+          <AsetSection
+            value={answers.partD}
+            onChange={(value) =>
+              setAnswers((prev) => ({ ...prev, partD: value }))
+            }
+          />
+        );
       case "E_KESEHATAN":
-        return <KesehatanSection value={answers.partE} onChange={(value) => setAnswers((prev) => ({ ...prev, partE: value }))} />;
+        return (
+          <KesehatanSection
+            value={answers.partE}
+            onChange={(value) =>
+              setAnswers((prev) => ({ ...prev, partE: value }))
+            }
+          />
+        );
       default:
         return null;
     }
@@ -162,12 +217,26 @@ export default function SurveyPage({
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl">Survei Kelayakan Bantuan</CardTitle>
-              <CardDescription>Lengkapi survei untuk memperbarui data keluarga Anda.</CardDescription>
+              <CardTitle className="text-2xl">
+                Survei Kelayakan Bantuan
+              </CardTitle>
+              <CardDescription>
+                Lengkapi survei untuk memperbarui data keluarga Anda.
+              </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => onCancel()} disabled={disableNav}>Batal</Button>
-              <Button variant="outline" onClick={() => handleSaveDraft(false)} disabled={disableNav}>
+              <Button
+                variant="ghost"
+                onClick={() => onCancel()}
+                disabled={disableNav}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleSaveDraft(false)}
+                disabled={disableNav}
+              >
                 Simpan &amp; Keluar
               </Button>
             </div>
@@ -180,14 +249,17 @@ export default function SurveyPage({
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Tahap {stepIndex + 1} dari {ALL_STEPS.length}
                 </p>
-                <p className="text-2xl font-semibold text-slate-900">{STEP_LABELS[step]}</p>
+                <p className="text-2xl font-semibold text-slate-900">
+                  {STEP_LABELS[step]}
+                </p>
               </div>
             </div>
             <Progress value={progress} aria-label={`Progress ${progress}%`} />
             <Stepper current={step} />
             {draftSaved && (
               <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                Draft survei tersimpan. Anda dapat melanjutkan kapan saja melalui dashboard.
+                Draft survei tersimpan. Anda dapat melanjutkan kapan saja
+                melalui dashboard.
               </div>
             )}
             {submitted && (
@@ -201,20 +273,32 @@ export default function SurveyPage({
 
           <div className="flex flex-wrap justify-between gap-2 pt-4">
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => handleSaveDraft(true)} disabled={disableNav}>
+              <Button
+                variant="outline"
+                onClick={() => handleSaveDraft(true)}
+                disabled={disableNav}
+              >
                 Simpan draft
               </Button>
               {stepIndex > 0 && (
-                <Button variant="secondary" onClick={back} disabled={disableNav}>
+                <Button
+                  variant="secondary"
+                  onClick={back}
+                  disabled={disableNav}
+                >
                   Sebelumnya
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
               {stepIndex < ALL_STEPS.length - 1 ? (
-                <Button onClick={next} disabled={disableNav}>Lanjut</Button>
+                <Button onClick={next} disabled={disableNav}>
+                  Lanjut
+                </Button>
               ) : (
-                <Button onClick={submit} disabled={disableNav}>Kirim Survei</Button>
+                <Button onClick={submit} disabled={disableNav}>
+                  Kirim Survei
+                </Button>
               )}
             </div>
           </div>
@@ -229,7 +313,11 @@ function Stepper({ current }: { current: StepKey }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
       {ALL_STEPS.map((step, index) => (
-        <Badge key={step} variant={index <= idx ? "default" : "secondary"} className="w-full justify-center rounded-2xl">
+        <Badge
+          key={step}
+          variant={index <= idx ? "default" : "secondary"}
+          className="w-full justify-center rounded-2xl"
+        >
           {index + 1}. {STEP_LABELS[step]}
         </Badge>
       ))}
@@ -241,7 +329,9 @@ function FieldRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex flex-col">
       <Label className="text-xs text-slate-500">{label}</Label>
-      <div className="rounded border bg-white px-3 py-2 text-sm text-slate-700">{value || "-"}</div>
+      <div className="rounded border bg-white px-3 py-2 text-sm text-slate-700">
+        {value || "-"}
+      </div>
     </div>
   );
 }
@@ -252,11 +342,14 @@ function IdentitasSection({ applicant }: { applicant: Applicant }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Identitas Diri</CardTitle>
-          <CardDescription>Data otomatis diambil dari hasil OCR KTP.</CardDescription>
+          <CardDescription>Data diisi manual sesuai KTP.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <FieldRow label="Nama Lengkap" value={applicant.name} />
-          <FieldRow label="Nomor Induk Kependudukan (NIK)" value={applicant.number} />
+          <FieldRow
+            label="Nomor Induk Kependudukan (NIK)"
+            value={applicant.number}
+          />
           <FieldRow label="Nomor Kartu Keluarga" value={"9212000192"} />
           <FieldRow label="Status dalam keluarga" value="Kepala Keluarga" />
           <FieldRow label="Umur" value="35" />
@@ -267,8 +360,15 @@ function IdentitasSection({ applicant }: { applicant: Applicant }) {
   );
 }
 
-function KondisiKeluargaSection({ value, onChange }: { value: SurveyAnswers["partB"]; onChange: (v: SurveyAnswers["partB"]) => void }) {
-  const update = (patch: Partial<SurveyAnswers["partB"]>) => onChange({ ...value, ...patch });
+function KondisiKeluargaSection({
+  value,
+  onChange,
+}: {
+  value: SurveyAnswers["partB"];
+  onChange: (v: SurveyAnswers["partB"]) => void;
+}) {
+  const update = (patch: Partial<SurveyAnswers["partB"]>) =>
+    onChange({ ...value, ...patch });
   const countOptions = [
     { value: "0", label: "Tidak ada" },
     { value: "1", label: "1" },
@@ -290,7 +390,12 @@ function KondisiKeluargaSection({ value, onChange }: { value: SurveyAnswers["par
                 type="number"
                 min={1}
                 value={value.householdMembers}
-                onChange={(e) => update({ householdMembers: e.target.value === "" ? "" : Number(e.target.value) })}
+                onChange={(e) =>
+                  update({
+                    householdMembers:
+                      e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
                 placeholder="contoh: 4"
               />
             </div>
@@ -303,7 +408,9 @@ function KondisiKeluargaSection({ value, onChange }: { value: SurveyAnswers["par
               >
                 <option value="">Pilih jumlah</option>
                 {countOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -316,7 +423,9 @@ function KondisiKeluargaSection({ value, onChange }: { value: SurveyAnswers["par
               >
                 <option value="">Pilih jumlah</option>
                 {countOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -329,7 +438,9 @@ function KondisiKeluargaSection({ value, onChange }: { value: SurveyAnswers["par
               >
                 <option value="">Pilih jumlah</option>
                 {countOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -352,13 +463,22 @@ function KondisiKeluargaSection({ value, onChange }: { value: SurveyAnswers["par
   );
 }
 
-function PekerjaanSection({ value, onChange }: { value: SurveyAnswers["partC"]; onChange: (v: SurveyAnswers["partC"]) => void }) {
-  const update = (patch: Partial<SurveyAnswers["partC"]>) => onChange({ ...value, ...patch });
+function PekerjaanSection({
+  value,
+  onChange,
+}: {
+  value: SurveyAnswers["partC"];
+  onChange: (v: SurveyAnswers["partC"]) => void;
+}) {
+  const update = (patch: Partial<SurveyAnswers["partC"]>) =>
+    onChange({ ...value, ...patch });
   return (
     <section className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">C. Pendidikan dan Pekerjaan</CardTitle>
+          <CardTitle className="text-base">
+            C. Pendidikan dan Pekerjaan
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
@@ -394,8 +514,12 @@ function PekerjaanSection({ value, onChange }: { value: SurveyAnswers["partC"]; 
             >
               <option value="">Pilih rentang pendapatan</option>
               <option value="< Rp 1.000.000">&lt; Rp 1.000.000</option>
-              <option value="Rp1.000.000 – Rp2.000.000">Rp1.000.000 – Rp2.000.000</option>
-              <option value="Rp2.000.000 – Rp3.000.000">Rp2.000.000 – Rp3.000.000</option>
+              <option value="Rp1.000.000 – Rp2.000.000">
+                Rp1.000.000 – Rp2.000.000
+              </option>
+              <option value="Rp2.000.000 – Rp3.000.000">
+                Rp2.000.000 – Rp3.000.000
+              </option>
               <option value="> Rp3.000.000">&gt; Rp3.000.000</option>
             </select>
           </div>
@@ -414,8 +538,15 @@ function PekerjaanSection({ value, onChange }: { value: SurveyAnswers["partC"]; 
   );
 }
 
-function AsetSection({ value, onChange }: { value: SurveyAnswers["partD"]; onChange: (v: SurveyAnswers["partD"]) => void }) {
-  const update = (patch: Partial<SurveyAnswers["partD"]>) => onChange({ ...value, ...patch });
+function AsetSection({
+  value,
+  onChange,
+}: {
+  value: SurveyAnswers["partD"];
+  onChange: (v: SurveyAnswers["partD"]) => void;
+}) {
+  const update = (patch: Partial<SurveyAnswers["partD"]>) =>
+    onChange({ ...value, ...patch });
   return (
     <section className="space-y-4">
       <Card>
@@ -439,7 +570,12 @@ function AsetSection({ value, onChange }: { value: SurveyAnswers["partD"]; onCha
             label="Jenis dinding rumah"
             value={value.wallType}
             onChange={(val) => update({ wallType: val })}
-            options={["Bambu/Triplek", "Kayu", "Tembok tanpa plester", "Tembok bata diplester"]}
+            options={[
+              "Bambu/Triplek",
+              "Kayu",
+              "Tembok tanpa plester",
+              "Tembok bata diplester",
+            ]}
           />
           <DropdownField
             label="Jenis atap rumah"
@@ -471,13 +607,24 @@ function AsetSection({ value, onChange }: { value: SurveyAnswers["partD"]; onCha
             label="Sumber energi penerangan"
             value={value.lighting}
             onChange={(val) => update({ lighting: val })}
-            options={["Listrik PLN subsidi", "Listrik PLN non-subsidi", "Non-PLN", "Tidak ada listrik"]}
+            options={[
+              "Listrik PLN subsidi",
+              "Listrik PLN non-subsidi",
+              "Non-PLN",
+              "Tidak ada listrik",
+            ]}
           />
           <DropdownField
             label="Sumber air minum"
             value={value.waterSource}
             onChange={(val) => update({ waterSource: val })}
-            options={["PDAM", "Sumur gali", "Air isi ulang", "Sungai", "Numpang"]}
+            options={[
+              "PDAM",
+              "Sumur gali",
+              "Air isi ulang",
+              "Sungai",
+              "Numpang",
+            ]}
           />
           <DropdownField
             label="Bahan bakar memasak"
@@ -489,7 +636,11 @@ function AsetSection({ value, onChange }: { value: SurveyAnswers["partD"]; onCha
             label="Tempat buang air besar"
             value={value.toilet}
             onChange={(val) => update({ toilet: val })}
-            options={["Toilet sendiri di rumah", "Toilet bersama", "Tidak ada toilet"]}
+            options={[
+              "Toilet sendiri di rumah",
+              "Toilet bersama",
+              "Tidak ada toilet",
+            ]}
           />
           <DropdownField
             label="Pembuangan limbah kamar mandi/dapur"
@@ -509,16 +660,28 @@ function AsetSection({ value, onChange }: { value: SurveyAnswers["partD"]; onCha
   );
 }
 
-function KesehatanSection({ value, onChange }: { value: SurveyAnswers["partE"]; onChange: (v: SurveyAnswers["partE"]) => void }) {
-  const update = (patch: Partial<SurveyAnswers["partE"]>) => onChange({ ...value, ...patch });
+function KesehatanSection({
+  value,
+  onChange,
+}: {
+  value: SurveyAnswers["partE"];
+  onChange: (v: SurveyAnswers["partE"]) => void;
+}) {
+  const update = (patch: Partial<SurveyAnswers["partE"]>) =>
+    onChange({ ...value, ...patch });
   return (
     <section className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">E. Kesehatan dan Kebiasaan</CardTitle>
+          <CardTitle className="text-base">
+            E. Kesehatan dan Kebiasaan
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Label>Apakah rutin melakukan pemeriksaan kesehatan (puskesmas, posyandu, dll)?</Label>
+          <Label>
+            Apakah rutin melakukan pemeriksaan kesehatan (puskesmas, posyandu,
+            dll)?
+          </Label>
           <select
             className="w-full rounded border px-3 py-2 text-sm"
             value={value.healthCheck}
@@ -535,7 +698,17 @@ function KesehatanSection({ value, onChange }: { value: SurveyAnswers["partE"]; 
   );
 }
 
-function DropdownField({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+function DropdownField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) {
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
@@ -546,14 +719,26 @@ function DropdownField({ label, value, onChange, options }: { label: string; val
       >
         <option value="">Pilih...</option>
         {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
         ))}
       </select>
     </div>
   );
 }
 
-function SurveySummary({ applicant, answers, status, onClose }: { applicant: Applicant; answers: SurveyAnswers; status: SurveyStatus; onClose: () => void }) {
+function SurveySummary({
+  applicant,
+  answers,
+  status,
+  onClose,
+}: {
+  applicant: Applicant;
+  answers: SurveyAnswers;
+  status: SurveyStatus;
+  onClose: () => void;
+}) {
   const statusInfo = formatSurveyStatus(status);
   return (
     <main className="max-w-4xl mx-auto p-6">
@@ -561,8 +746,12 @@ function SurveySummary({ applicant, answers, status, onClose }: { applicant: App
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl">Ringkasan Survei Keluarga</CardTitle>
-              <CardDescription>Periksa kembali jawaban yang telah dikirim.</CardDescription>
+              <CardTitle className="text-2xl">
+                Ringkasan Survei Keluarga
+              </CardTitle>
+              <CardDescription>
+                Periksa kembali jawaban yang telah dikirim.
+              </CardDescription>
             </div>
             <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
           </div>
@@ -572,35 +761,102 @@ function SurveySummary({ applicant, answers, status, onClose }: { applicant: App
           <SummarySection title="B. Kondisi Keluarga">
             <SummaryItem
               label="Jumlah anggota keluarga"
-              value={answers.partB.householdMembers === "" ? "-" : String(answers.partB.householdMembers)}
+              value={
+                answers.partB.householdMembers === ""
+                  ? "-"
+                  : String(answers.partB.householdMembers)
+              }
             />
-            <SummaryItem label="Tanggungan anak sekolah" value={formatCountValue(answers.partB.schoolChildren)} />
-            <SummaryItem label="Balita / anak usia dini" value={formatCountValue(answers.partB.toddlers)} />
-            <SummaryItem label="Lansia" value={formatCountValue(answers.partB.elderly)} />
-            <SummaryItem label="Disabilitas / penyakit kronis" value={answers.partB.disability || "-"} />
+            <SummaryItem
+              label="Tanggungan anak sekolah"
+              value={formatCountValue(answers.partB.schoolChildren)}
+            />
+            <SummaryItem
+              label="Balita / anak usia dini"
+              value={formatCountValue(answers.partB.toddlers)}
+            />
+            <SummaryItem
+              label="Lansia"
+              value={formatCountValue(answers.partB.elderly)}
+            />
+            <SummaryItem
+              label="Disabilitas / penyakit kronis"
+              value={answers.partB.disability || "-"}
+            />
           </SummarySection>
           <SummarySection title="C. Pendidikan dan Pekerjaan">
-            <SummaryItem label="Pendidikan terakhir" value={answers.partC.education || "-"} />
-            <SummaryItem label="Pekerjaan kepala keluarga" value={answers.partC.occupation || "-"} />
-            <SummaryItem label="Pendapatan per bulan" value={answers.partC.income || "-"} />
-            <SummaryItem label="Penghasilan tambahan" value={answers.partC.extraIncome || "-"} />
+            <SummaryItem
+              label="Pendidikan terakhir"
+              value={answers.partC.education || "-"}
+            />
+            <SummaryItem
+              label="Pekerjaan kepala keluarga"
+              value={answers.partC.occupation || "-"}
+            />
+            <SummaryItem
+              label="Pendapatan per bulan"
+              value={answers.partC.income || "-"}
+            />
+            <SummaryItem
+              label="Penghasilan tambahan"
+              value={answers.partC.extraIncome || "-"}
+            />
           </SummarySection>
           <SummarySection title="D. Kondisi Tempat Tinggal & Aset">
-            <SummaryItem label="Status kepemilikan rumah" value={answers.partD.homeOwnership || "-"} />
-            <SummaryItem label="Jenis lantai" value={answers.partD.floorType || "-"} />
-            <SummaryItem label="Jenis dinding" value={answers.partD.wallType || "-"} />
-            <SummaryItem label="Jenis atap" value={answers.partD.roofType || "-"} />
-            <SummaryItem label="Kepemilikan kendaraan" value={answers.partD.vehicle || "-"} />
-            <SummaryItem label="Tabungan / harta lancar" value={answers.partD.savings || "-"} />
-            <SummaryItem label="Energi penerangan" value={answers.partD.lighting || "-"} />
-            <SummaryItem label="Sumber air minum" value={answers.partD.waterSource || "-"} />
-            <SummaryItem label="Bahan bakar memasak" value={answers.partD.cookingFuel || "-"} />
-            <SummaryItem label="Tempat buang air besar" value={answers.partD.toilet || "-"} />
-            <SummaryItem label="Pembuangan limbah" value={answers.partD.wasteDisposal || "-"} />
-            <SummaryItem label="Kondisi sanitasi" value={answers.partD.sanitation || "-"} />
+            <SummaryItem
+              label="Status kepemilikan rumah"
+              value={answers.partD.homeOwnership || "-"}
+            />
+            <SummaryItem
+              label="Jenis lantai"
+              value={answers.partD.floorType || "-"}
+            />
+            <SummaryItem
+              label="Jenis dinding"
+              value={answers.partD.wallType || "-"}
+            />
+            <SummaryItem
+              label="Jenis atap"
+              value={answers.partD.roofType || "-"}
+            />
+            <SummaryItem
+              label="Kepemilikan kendaraan"
+              value={answers.partD.vehicle || "-"}
+            />
+            <SummaryItem
+              label="Tabungan / harta lancar"
+              value={answers.partD.savings || "-"}
+            />
+            <SummaryItem
+              label="Energi penerangan"
+              value={answers.partD.lighting || "-"}
+            />
+            <SummaryItem
+              label="Sumber air minum"
+              value={answers.partD.waterSource || "-"}
+            />
+            <SummaryItem
+              label="Bahan bakar memasak"
+              value={answers.partD.cookingFuel || "-"}
+            />
+            <SummaryItem
+              label="Tempat buang air besar"
+              value={answers.partD.toilet || "-"}
+            />
+            <SummaryItem
+              label="Pembuangan limbah"
+              value={answers.partD.wasteDisposal || "-"}
+            />
+            <SummaryItem
+              label="Kondisi sanitasi"
+              value={answers.partD.sanitation || "-"}
+            />
           </SummarySection>
           <SummarySection title="E. Kesehatan dan Kebiasaan">
-            <SummaryItem label="Pemeriksaan kesehatan rutin" value={answers.partE.healthCheck || "-"} />
+            <SummaryItem
+              label="Pemeriksaan kesehatan rutin"
+              value={answers.partE.healthCheck || "-"}
+            />
           </SummarySection>
           <div className="flex justify-end">
             <Button onClick={onClose}>Kembali ke Dashboard</Button>
@@ -611,7 +867,13 @@ function SurveySummary({ applicant, answers, status, onClose }: { applicant: App
   );
 }
 
-function SummarySection({ title, children }: { title: string; children: ReactNode }) {
+function SummarySection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -628,7 +890,9 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
       <span className="text-xs text-slate-500">{label}</span>
-      <span className="rounded border bg-white px-3 py-2 text-sm text-slate-700">{value || "-"}</span>
+      <span className="rounded border bg-white px-3 py-2 text-sm text-slate-700">
+        {value || "-"}
+      </span>
     </div>
   );
 }
@@ -636,7 +900,10 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
 function formatSurveyStatus(status: SurveyStatus) {
   switch (status) {
     case "antrean":
-      return { label: "Dalam antrean verifikasi", variant: "secondary" as const };
+      return {
+        label: "Dalam antrean verifikasi",
+        variant: "secondary" as const,
+      };
     case "diperiksa":
       return { label: "Sedang diperiksa TKSK", variant: "secondary" as const };
     case "disetujui":

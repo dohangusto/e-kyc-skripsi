@@ -218,3 +218,46 @@ CREATE INDEX IF NOT EXISTS idx_survey_completed ON survey_responses(completed);
 CREATE INDEX IF NOT EXISTS idx_distribution_schedule ON distributions(scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_distribution_user ON distribution_beneficiaries(user_id);
 CREATE INDEX IF NOT EXISTS idx_clustering_run ON clustering_candidates(run_id);
+
+CREATE TABLE IF NOT EXISTS ekyc_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    face_matching_status TEXT NOT NULL DEFAULT 'NOT_STARTED',
+    liveness_status TEXT NOT NULL DEFAULT 'NOT_STARTED',
+    final_decision TEXT NOT NULL DEFAULT 'PENDING',
+    id_card_url TEXT,
+    selfie_with_id_url TEXT,
+    recorded_video_url TEXT,
+    face_match_overall TEXT,
+    liveness_overall TEXT,
+    rejection_reason TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS face_checks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ekyc_session_id UUID NOT NULL REFERENCES ekyc_sessions(id) ON DELETE CASCADE,
+    step TEXT NOT NULL,
+    similarity_score NUMERIC(6,4),
+    threshold NUMERIC(6,4),
+    result TEXT NOT NULL,
+    raw_metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS liveness_checks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ekyc_session_id UUID NOT NULL REFERENCES ekyc_sessions(id) ON DELETE CASCADE,
+    overall_result TEXT NOT NULL,
+    per_gesture_result JSONB NOT NULL DEFAULT '{}',
+    recorded_video_url TEXT,
+    raw_metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ekyc_status ON ekyc_sessions(status, final_decision);
+CREATE INDEX IF NOT EXISTS idx_face_checks_session ON face_checks(ekyc_session_id);
+CREATE INDEX IF NOT EXISTS idx_liveness_checks_session ON liveness_checks(ekyc_session_id);

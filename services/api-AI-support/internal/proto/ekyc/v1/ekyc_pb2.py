@@ -4,48 +4,58 @@
 # source: ekyc/v1/ekyc.proto
 # Protobuf Python Version: 6.32.1
 """Generated protocol buffer code."""
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
-from google.protobuf import runtime_version as _runtime_version
+
+try:
+    from google.protobuf import runtime_version as _runtime_version
+except ImportError:  # pragma: no cover - compatibility shim
+
+    class _RuntimeVersionStub:
+        class Domain:
+            PUBLIC = 0
+
+        @staticmethod
+        def ValidateProtobufRuntimeVersion(*args, **kwargs):
+            return None
+
+    _runtime_version = _RuntimeVersionStub()
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
+
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC,
-    6,
-    32,
-    1,
-    '',
-    'ekyc/v1/ekyc.proto'
+    _runtime_version.Domain.PUBLIC, 6, 32, 1, "", "ekyc/v1/ekyc.proto"
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x12\x65kyc/v1/ekyc.proto\x12\x07\x65kyc.v1\"2\n\x0cImagePayload\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\x11\n\tmime_type\x18\x02 \x01(\t\"3\n\x12\x46\x61\x63\x65MatchJobHandle\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\r\n\x05queue\x18\x02 \x01(\t\"2\n\x11LivenessJobHandle\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\r\n\x05queue\x18\x02 \x01(\t\"\xa0\x01\n\x15StartFaceMatchRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12(\n\tktp_image\x18\x02 \x01(\x0b\x32\x15.ekyc.v1.ImagePayload\x12+\n\x0cselfie_image\x18\x03 \x01(\x0b\x32\x15.ekyc.v1.ImagePayload\x12\x1c\n\x14\x66\x61\x63\x65_match_threshold\x18\x04 \x01(\x01\"B\n\x16StartFaceMatchResponse\x12(\n\x03job\x18\x01 \x01(\x0b\x32\x1b.ekyc.v1.FaceMatchJobHandle\"l\n\x14StartLivenessRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12.\n\x0fliveness_frames\x18\x02 \x03(\x0b\x32\x15.ekyc.v1.ImagePayload\x12\x10\n\x08gestures\x18\x03 \x03(\t\"@\n\x15StartLivenessResponse\x12\'\n\x03job\x18\x01 \x01(\x0b\x32\x1a.ekyc.v1.LivenessJobHandle2\xbd\x01\n\x12\x45kycSupportService\x12T\n\x11StartFaceMatchJob\x12\x1e.ekyc.v1.StartFaceMatchRequest\x1a\x1f.ekyc.v1.StartFaceMatchResponse\x12Q\n\x10StartLivenessJob\x12\x1d.ekyc.v1.StartLivenessRequest\x1a\x1e.ekyc.v1.StartLivenessResponseB#Z!e-kyc/shared/proto/ekyc/v1;ekycv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n\x12\x65kyc/v1/ekyc.proto\x12\x07\x65kyc.v1"2\n\x0cImagePayload\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\x11\n\tmime_type\x18\x02 \x01(\t"3\n\x12\x46\x61\x63\x65MatchJobHandle\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\r\n\x05queue\x18\x02 \x01(\t"2\n\x11LivenessJobHandle\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\r\n\x05queue\x18\x02 \x01(\t"\xa0\x01\n\x15StartFaceMatchRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12(\n\tktp_image\x18\x02 \x01(\x0b\x32\x15.ekyc.v1.ImagePayload\x12+\n\x0cselfie_image\x18\x03 \x01(\x0b\x32\x15.ekyc.v1.ImagePayload\x12\x1c\n\x14\x66\x61\x63\x65_match_threshold\x18\x04 \x01(\x01"B\n\x16StartFaceMatchResponse\x12(\n\x03job\x18\x01 \x01(\x0b\x32\x1b.ekyc.v1.FaceMatchJobHandle"l\n\x14StartLivenessRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12.\n\x0fliveness_frames\x18\x02 \x03(\x0b\x32\x15.ekyc.v1.ImagePayload\x12\x10\n\x08gestures\x18\x03 \x03(\t"@\n\x15StartLivenessResponse\x12\'\n\x03job\x18\x01 \x01(\x0b\x32\x1a.ekyc.v1.LivenessJobHandle2\xbd\x01\n\x12\x45kycSupportService\x12T\n\x11StartFaceMatchJob\x12\x1e.ekyc.v1.StartFaceMatchRequest\x1a\x1f.ekyc.v1.StartFaceMatchResponse\x12Q\n\x10StartLivenessJob\x12\x1d.ekyc.v1.StartLivenessRequest\x1a\x1e.ekyc.v1.StartLivenessResponseB#Z!e-kyc/shared/proto/ekyc/v1;ekycv1b\x06proto3'
+)
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ekyc.v1.ekyc_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "ekyc.v1.ekyc_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  _globals['DESCRIPTOR']._loaded_options = None
-  _globals['DESCRIPTOR']._serialized_options = b'Z!e-kyc/shared/proto/ekyc/v1;ekycv1'
-  _globals['_IMAGEPAYLOAD']._serialized_start=31
-  _globals['_IMAGEPAYLOAD']._serialized_end=81
-  _globals['_FACEMATCHJOBHANDLE']._serialized_start=83
-  _globals['_FACEMATCHJOBHANDLE']._serialized_end=134
-  _globals['_LIVENESSJOBHANDLE']._serialized_start=136
-  _globals['_LIVENESSJOBHANDLE']._serialized_end=186
-  _globals['_STARTFACEMATCHREQUEST']._serialized_start=189
-  _globals['_STARTFACEMATCHREQUEST']._serialized_end=349
-  _globals['_STARTFACEMATCHRESPONSE']._serialized_start=351
-  _globals['_STARTFACEMATCHRESPONSE']._serialized_end=417
-  _globals['_STARTLIVENESSREQUEST']._serialized_start=419
-  _globals['_STARTLIVENESSREQUEST']._serialized_end=527
-  _globals['_STARTLIVENESSRESPONSE']._serialized_start=529
-  _globals['_STARTLIVENESSRESPONSE']._serialized_end=593
-  _globals['_EKYCSUPPORTSERVICE']._serialized_start=596
-  _globals['_EKYCSUPPORTSERVICE']._serialized_end=785
+    _globals["DESCRIPTOR"]._loaded_options = None
+    _globals["DESCRIPTOR"]._serialized_options = b"Z!e-kyc/shared/proto/ekyc/v1;ekycv1"
+    _globals["_IMAGEPAYLOAD"]._serialized_start = 31
+    _globals["_IMAGEPAYLOAD"]._serialized_end = 81
+    _globals["_FACEMATCHJOBHANDLE"]._serialized_start = 83
+    _globals["_FACEMATCHJOBHANDLE"]._serialized_end = 134
+    _globals["_LIVENESSJOBHANDLE"]._serialized_start = 136
+    _globals["_LIVENESSJOBHANDLE"]._serialized_end = 186
+    _globals["_STARTFACEMATCHREQUEST"]._serialized_start = 189
+    _globals["_STARTFACEMATCHREQUEST"]._serialized_end = 349
+    _globals["_STARTFACEMATCHRESPONSE"]._serialized_start = 351
+    _globals["_STARTFACEMATCHRESPONSE"]._serialized_end = 417
+    _globals["_STARTLIVENESSREQUEST"]._serialized_start = 419
+    _globals["_STARTLIVENESSREQUEST"]._serialized_end = 527
+    _globals["_STARTLIVENESSRESPONSE"]._serialized_start = 529
+    _globals["_STARTLIVENESSRESPONSE"]._serialized_end = 593
+    _globals["_EKYCSUPPORTSERVICE"]._serialized_start = 596
+    _globals["_EKYCSUPPORTSERVICE"]._serialized_end = 785
 # @@protoc_insertion_point(module_scope)

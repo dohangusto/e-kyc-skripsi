@@ -1,18 +1,30 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'node:path'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "node:path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: ['.ngrok-free.dev'],
+    allowedHosts: [".ngrok-free.dev"],
     fs: {
       allow: [
-        path.resolve(__dirname, '..', '..', '..'),
-        path.resolve(__dirname, '../../shared'),
-        path.resolve(__dirname, 'src'),
+        path.resolve(__dirname, "..", "..", ".."),
+        path.resolve(__dirname, "../../shared"),
+        path.resolve(__dirname, "src"),
       ],
+    },
+    proxy: {
+      "/ekyc": {
+        target: process.env.VITE_PROXY_GATEWAY ?? "http://127.0.0.1:8080",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/api": {
+        target: process.env.VITE_PROXY_GATEWAY ?? "http://127.0.0.1:8080",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
   resolve: {
@@ -27,4 +39,4 @@ export default defineConfig({
       "@dummies": path.resolve(__dirname, "../../shared/dummies"),
     },
   },
-})
+});

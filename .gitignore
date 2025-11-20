@@ -1,8 +1,11 @@
 tmp
-.env
-.envrc
 bin/
 .venv
+
+# Credentials
+.env
+.envrc
+shared/env/*
 
 # Logs
 logs

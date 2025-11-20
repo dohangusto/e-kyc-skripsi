@@ -36,6 +36,9 @@ func SeedBackoffice(ctx context.Context, pool *pgxpool.Pool) error {
 		if err := seedClustering(ctx, tx); err != nil {
 			return err
 		}
+		if err := seedEkycSessions(ctx, tx); err != nil {
+			return err
+		}
 		return nil
 	})
 }
@@ -857,6 +860,118 @@ func seedClustering(ctx context.Context, tx pgx.Tx) error {
 		}
 	}
 	return nil
+}
+
+func seedEkycSessions(ctx context.Context, tx pgx.Tx) error {
+	var count int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(1) FROM ekyc_sessions`).Scan(&count); err != nil {
+		return fmt.Errorf("count ekyc sessions: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+
+	type sessionSeed struct {
+		ID              string
+		UserID          string
+		Status          string
+		FaceStatus      string
+		LivenessStatus  string
+		FinalDecision   string
+		IDCardURL       string
+		SelfieURL       string
+		VideoURL        *string
+		FaceOverall     *string
+		LivenessOverall *string
+		RejectionReason *string
+	}
+
+	sessions := []sessionSeed{
+		{
+			ID:              "55555555-5555-5555-5555-555555555555",
+			UserID:          beneficiaries[0].ID,
+			Status:          "COMPLETED",
+			FaceStatus:      "DONE",
+			LivenessStatus:  "DONE",
+			FinalDecision:   "APPROVED",
+			IDCardURL:       "https://storage.local/ekyc/5555/id-card.jpg",
+			SelfieURL:       "https://storage.local/ekyc/5555/selfie-id.jpg",
+			VideoURL:        strPtr("https://storage.local/ekyc/5555/liveness.mp4"),
+			FaceOverall:     strPtr("PASS"),
+			LivenessOverall: strPtr("PASS"),
+		},
+		{
+			ID:             "66666666-6666-6666-6666-666666666666",
+			UserID:         beneficiaries[1].ID,
+			Status:         "UNDER_REVIEW",
+			FaceStatus:     "QUEUED",
+			LivenessStatus: "NOT_STARTED",
+			FinalDecision:  "PENDING",
+			IDCardURL:      "https://storage.local/ekyc/6666/id-card.jpg",
+			SelfieURL:      "",
+		},
+	}
+
+	for _, s := range sessions {
+		var user any
+		if s.UserID != "" {
+			user = s.UserID
+		}
+		if _, err := tx.Exec(ctx, `
+            INSERT INTO ekyc_sessions (
+                id, user_id, status, face_matching_status, liveness_status, final_decision,
+                id_card_url, selfie_with_id_url, recorded_video_url, face_match_overall,
+                liveness_overall, rejection_reason
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        `,
+			s.ID, user, s.Status, s.FaceStatus, s.LivenessStatus, s.FinalDecision,
+			s.IDCardURL, nullableText(s.SelfieURL), s.VideoURL, s.FaceOverall, s.LivenessOverall, s.RejectionReason,
+		); err != nil {
+			return fmt.Errorf("seed ekyc session %s: %w", s.ID, err)
+		}
+	}
+
+	faceChecks := []struct {
+		SessionID string
+		Step      string
+		Score     float64
+		Threshold float64
+		Result    string
+	}{
+		{"55555555-5555-5555-5555-555555555555", "ID_VS_SELFIE", 0.91, 0.80, "PASS"},
+		{"55555555-5555-5555-5555-555555555555", "ID_HAND_VS_SELFIE", 0.88, 0.80, "PASS"},
+		{"55555555-5555-5555-5555-555555555555", "ID_VS_ID_HAND", 0.86, 0.80, "PASS"},
+	}
+	for _, check := range faceChecks {
+		if _, err := tx.Exec(ctx, `
+            INSERT INTO face_checks (ekyc_session_id, step, similarity_score, threshold, result, raw_metadata)
+            VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
+			check.SessionID, check.Step, check.Score, check.Threshold, check.Result,
+			mustJSON(map[string]any{"source": "seed"}),
+		); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(ctx, `
+        INSERT INTO liveness_checks (ekyc_session_id, overall_result, per_gesture_result, recorded_video_url, raw_metadata)
+        VALUES ($1,$2,$3,$4,$5::jsonb)`,
+		"55555555-5555-5555-5555-555555555555", "PASS",
+		mustJSON(map[string]string{"BLINK": "PASS", "OPEN_MOUTH": "PASS"}),
+		"https://storage.local/ekyc/5555/liveness.mp4",
+		mustJSON(map[string]any{"source": "seed"}),
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func nullableText(val string) any {
+	if strings.TrimSpace(val) == "" {
+		return nil
+	}
+	return val
 }
 
 func hashPIN(pin string) string {

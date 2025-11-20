@@ -27,6 +27,8 @@ from internal.infrastructure.events.rabbitmq import (
 )
 from internal.infrastructure.grpc.ekyc_handler import EkycGrpcHandler
 from internal.infrastructure.grpc.server import GrpcServer
+from internal.infrastructure.http.backoffice_client import BackofficeEkycClient
+from internal.infrastructure.http.media_client import MediaStorageClient
 from internal.infrastructure.http.server import HttpServer
 from internal.infrastructure.repository.health_repository import HealthRepositoryImpl
 from internal.service.ekyc_service import EkycService
@@ -48,6 +50,8 @@ def build_runtime() -> tuple[
     service = HealthService(repository, config.service_name)
     rabbit_factory = RabbitMqConnectionFactory(config.rabbitmq_url)
     rabbit_publisher = RabbitMqPublisher(rabbit_factory)
+    backoffice_client = BackofficeEkycClient(config.backoffice_http_base)
+    media_client = MediaStorageClient(config.media_storage_url)
 
     face_embedder = FaceNetEmbedder(device=config.torch_device)
     gesture_detector = MediaPipeGestureDetector(
@@ -76,12 +80,15 @@ def build_runtime() -> tuple[
         rabbit_factory,
         face_match_service,
         face_result_publisher,
+        backoffice_client,
     )
     liveness_worker = LivenessWorker(
         config.liveness_queue,
         rabbit_factory,
         liveness_service,
         liveness_result_publisher,
+        backoffice_client,
+        media_client,
     )
 
     ekyc_service = EkycService(face_task_publisher, liveness_task_publisher)

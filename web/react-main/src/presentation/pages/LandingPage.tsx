@@ -1,5 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ShieldCheck, Smartphone, Clock, Users, MessageCircleMore } from "lucide-react";
+import {
+  ShieldCheck,
+  Smartphone,
+  Clock,
+  Users,
+  MessageCircleMore,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -24,22 +30,26 @@ const highlights = [
   {
     icon: ShieldCheck,
     title: "Keamanan Terjamin",
-    description: "Foto dan data hanya dipakai untuk verifikasi bansos dan dijaga oleh Dinas Sosial.",
+    description:
+      "Foto dan data hanya dipakai untuk verifikasi bansos dan dijaga oleh Dinas Sosial.",
   },
   {
     icon: Smartphone,
     title: "Proses dari Ponsel",
-    description: "Gunakan kamera perangkat Anda untuk foto KTP, selfie, dan liveness check.",
+    description:
+      "Gunakan kamera perangkat Anda untuk foto KTP, selfie, dan liveness check.",
   },
   {
     icon: Clock,
     title: "Bisa Lanjut Nanti",
-    description: "Progress Anda tersimpan otomatis. Tutup halaman kapan saja dan kembali lagi.",
+    description:
+      "Progress Anda tersimpan otomatis. Tutup halaman kapan saja dan kembali lagi.",
   },
   {
     icon: Users,
     title: "Pendampingan Petugas",
-    description: "Verifikasi akhir dilakukan petugas dalam 1–2 hari kerja sebelum pencairan.",
+    description:
+      "Verifikasi akhir dilakukan petugas dalam 1–2 hari kerja sebelum pencairan.",
   },
 ];
 
@@ -71,7 +81,9 @@ export function LandingPage({
 
   useEffect(() => {
     if (otpInfo) {
-      setOtpMessage(`OTP untuk ${maskPhone(otpInfo.phone)} (simulasi): ${otpInfo.code}`);
+      setOtpMessage(
+        `OTP untuk ${maskPhone(otpInfo.phone)} (simulasi): ${otpInfo.code}`,
+      );
       setOtpCode(otpInfo.code);
     } else {
       setOtpMessage(null);
@@ -87,7 +99,9 @@ export function LandingPage({
     if (!onRequestOtp) return;
     const res = onRequestOtp(otpPhone);
     if (res) {
-      setOtpMessage(`OTP untuk ${maskPhone(res.phone)} (simulasi): ${res.code}`);
+      setOtpMessage(
+        `OTP untuk ${maskPhone(res.phone)} (simulasi): ${res.code}`,
+      );
       setOtpCode(res.code);
     }
   }
@@ -103,20 +117,33 @@ export function LandingPage({
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <Badge variant="outline" className="uppercase tracking-wide text-xs">
+              <Badge
+                variant="outline"
+                className="uppercase tracking-wide text-xs"
+              >
                 Program Bansos Terpadu
               </Badge>
-              <span className="text-xs text-slate-500">Dinas Sosial Kabupaten/Kota</span>
+              <span className="text-xs text-slate-500">
+                Dinas Sosial Kabupaten/Kota
+              </span>
             </div>
-            <h1 className="text-xl font-semibold mt-1">Verifikasi Identitas Penerima Bantuan Sosial</h1>
+            <h1 className="text-xl font-semibold mt-1">
+              Verifikasi Identitas Penerima Bantuan Sosial
+            </h1>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={onStart}>
               Mulai Verifikasi
             </Button>
             {onViewDashboard && (
-              <Button variant="outline" onClick={onViewDashboard} disabled={!canAccessDashboard}>
-                {canAccessDashboard ? "Masuk / Lanjut ke Dashboard" : "Sudah punya akun? Login di bawah"}
+              <Button
+                variant="outline"
+                onClick={onViewDashboard}
+                disabled={!canAccessDashboard}
+              >
+                {canAccessDashboard
+                  ? "Masuk / Lanjut ke Dashboard"
+                  : "Sudah punya akun? Login di bawah"}
               </Button>
             )}
           </div>
@@ -132,19 +159,23 @@ export function LandingPage({
             className="space-y-6"
           >
             <h2 className="text-3xl md:text-4xl font-bold leading-tight text-slate-900">
-              Pastikan bantuan sosial tepat sasaran, dengan verifikasi identitas yang aman dan mudah.
+              Pastikan bantuan sosial tepat sasaran, dengan verifikasi identitas
+              yang aman dan mudah.
             </h2>
             <p className="text-base text-slate-600 leading-relaxed">
-              Tahapan verifikasi mengikuti standar pemerintah: foto KTP, review data, selfie, liveness check, dan konfirmasi kontak.
-              Semua langkah bisa dilakukan kurang dari 10 menit dari perangkat Anda.
+              Tahapan verifikasi mengikuti standar pemerintah: foto KTP, review
+              data, selfie, liveness check, dan konfirmasi kontak. Semua langkah
+              bisa dilakukan kurang dari 10 menit dari perangkat Anda.
             </p>
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-2">
               <p className="text-sm text-slate-600">
-                <strong className="text-slate-800">Catatan:</strong> Data Anda akan diverifikasi oleh petugas dinas sosial dalam 1–2 hari kerja.
-                Pastikan nomor HP aktif untuk menerima kabar lanjutan.
+                <strong className="text-slate-800">Catatan:</strong> Data Anda
+                akan diverifikasi oleh petugas dinas sosial dalam 1–2 hari
+                kerja. Pastikan nomor HP aktif untuk menerima kabar lanjutan.
               </p>
               <p className="text-xs text-slate-500">
-                Butuh bantuan? Hubungi pusat layanan Dinsos setempat di jam kerja.
+                Butuh bantuan? Hubungi pusat layanan Dinsos setempat di jam
+                kerja.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -157,7 +188,9 @@ export function LandingPage({
                 onClick={onViewDashboard}
                 disabled={!canAccessDashboard}
               >
-                {canAccessDashboard ? "Masuk / Lanjut ke Dashboard" : "Sudah punya akun? Login di bawah"}
+                {canAccessDashboard
+                  ? "Masuk / Lanjut ke Dashboard"
+                  : "Sudah punya akun? Login di bawah"}
               </Button>
             </div>
           </motion.div>
@@ -170,12 +203,16 @@ export function LandingPage({
             <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-emerald-100 via-emerald-50 to-white blur-2xl" />
             <div className="relative rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden">
               <div className="bg-emerald-600 text-white px-6 py-4">
-                <p className="text-sm uppercase tracking-wide">Tahapan Verifikasi</p>
-                <p className="text-lg font-semibold">Onboarding KYC Penerima Bansos</p>
+                <p className="text-sm uppercase tracking-wide">
+                  Tahapan Verifikasi
+                </p>
+                <p className="text-lg font-semibold">
+                  Onboarding KYC Penerima Bansos
+                </p>
               </div>
               <ol className="divide-y divide-slate-100">
                 {[
-                  "Ambil foto KTP dan verifikasi OCR",
+                  "Ambil foto KTP lalu isi data KTP secara manual",
                   "Selfie sambil memegang KTP",
                   "Liveness check untuk pastikan keaslian",
                   "Isi kontak dan kirim untuk review petugas",
@@ -189,7 +226,8 @@ export function LandingPage({
                 ))}
               </ol>
               <div className="px-6 py-4 bg-slate-50 text-xs text-slate-500">
-                Seluruh proses mengikuti Pedoman Verifikasi Identitas Penerima Manfaat Bansos 2024.
+                Seluruh proses mengikuti Pedoman Verifikasi Identitas Penerima
+                Manfaat Bansos 2024.
               </div>
             </div>
           </motion.div>
@@ -204,10 +242,16 @@ export function LandingPage({
             className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
           >
             <div className="space-y-1">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Login dengan PIN</p>
-              <h3 className="text-lg font-semibold text-slate-900">Gunakan Nomor HP &amp; PIN</h3>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Login dengan PIN
+              </p>
+              <h3 className="text-lg font-semibold text-slate-900">
+                Gunakan Nomor HP &amp; PIN
+              </h3>
               <p className="text-sm text-slate-600">
-                Jika sudah menyelesaikan verifikasi dan membuat PIN di dashboard, masukkan nomor HP dan PIN 6 digit untuk melihat status bansos.
+                Jika sudah menyelesaikan verifikasi dan membuat PIN di
+                dashboard, masukkan nomor HP dan PIN 6 digit untuk melihat
+                status bansos.
               </p>
             </div>
             <form className="space-y-4" onSubmit={handlePinLogin}>
@@ -231,19 +275,20 @@ export function LandingPage({
                   maxLength={6}
                   placeholder="******"
                   value={pinValue}
-                  onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) =>
+                    setPinValue(e.target.value.replace(/\D/g, ""))
+                  }
                   required
                 />
               </div>
-              {pinError && (
-                <p className="text-sm text-red-600">{pinError}</p>
-              )}
+              {pinError && <p className="text-sm text-red-600">{pinError}</p>}
               <Button type="submit" className="w-full">
                 Masuk dengan PIN
               </Button>
             </form>
             <div className="text-xs text-slate-500">
-              Belum membuat PIN? Masuk dengan opsi OTP di samping, lalu atur PIN dari dashboard.
+              Belum membuat PIN? Masuk dengan opsi OTP di samping, lalu atur PIN
+              dari dashboard.
             </div>
           </motion.div>
 
@@ -255,10 +300,15 @@ export function LandingPage({
             className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
           >
             <div className="space-y-1">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Login tanpa PIN</p>
-              <h3 className="text-lg font-semibold text-slate-900">Simulasi OTP ke Nomor HP</h3>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Login tanpa PIN
+              </p>
+              <h3 className="text-lg font-semibold text-slate-900">
+                Simulasi OTP ke Nomor HP
+              </h3>
               <p className="text-sm text-slate-600">
-                Gunakan opsi ini bila Anda belum sempat membuat PIN. Masukkan nomor HP untuk menerima kode OTP (ditampilkan sebagai simulasi).
+                Gunakan opsi ini bila Anda belum sempat membuat PIN. Masukkan
+                nomor HP untuk menerima kode OTP (ditampilkan sebagai simulasi).
               </p>
             </div>
             <div className="space-y-4">
@@ -274,7 +324,11 @@ export function LandingPage({
                 />
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={handleRequestOtp}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleRequestOtp}
+                >
                   Kirim OTP
                 </Button>
                 {otpMessage && (
@@ -292,7 +346,9 @@ export function LandingPage({
                     maxLength={6}
                     placeholder="******"
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) =>
+                      setOtpCode(e.target.value.replace(/\D/g, ""))
+                    }
                     required
                   />
                 </div>
@@ -306,7 +362,9 @@ export function LandingPage({
 
           {hasSubmission && (
             <div className="lg:col-span-2 text-xs text-slate-500 px-2">
-              Sistem mendeteksi pengajuan sebelumnya. Anda bisa masuk dengan PIN yang sudah dibuat, atau gunakan OTP di atas bila belum sempat menyetel PIN.
+              Sistem mendeteksi pengajuan sebelumnya. Anda bisa masuk dengan PIN
+              yang sudah dibuat, atau gunakan OTP di atas bila belum sempat
+              menyetel PIN.
             </div>
           )}
         </section>
@@ -325,9 +383,13 @@ export function LandingPage({
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                   <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {title}
+                </h3>
               </div>
-              <p className="mt-3 text-sm text-slate-600 leading-relaxed">{description}</p>
+              <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                {description}
+              </p>
             </motion.div>
           ))}
         </section>
@@ -342,16 +404,23 @@ export function LandingPage({
           >
             <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
               <div className="space-y-3">
-                <p className="text-sm uppercase tracking-wide text-emerald-200">Transparansi &amp; Akuntabilitas</p>
-                <h3 className="text-2xl font-semibold">Kenapa verifikasi digital ini penting?</h3>
+                <p className="text-sm uppercase tracking-wide text-emerald-200">
+                  Transparansi &amp; Akuntabilitas
+                </p>
+                <h3 className="text-2xl font-semibold">
+                  Kenapa verifikasi digital ini penting?
+                </h3>
                 <p className="text-sm text-slate-200 leading-relaxed max-w-xl">
-                  Digital onboarding membantu memastikan bantuan sosial tepat sasaran,
-                  mengurangi duplikasi penerima, dan mempercepat proses evaluasi lapangan.
-                  Setiap permohonan tetap diverifikasi manual oleh petugas sebelum pencairan.
+                  Digital onboarding membantu memastikan bantuan sosial tepat
+                  sasaran, mengurangi duplikasi penerima, dan mempercepat proses
+                  evaluasi lapangan. Setiap permohonan tetap diverifikasi manual
+                  oleh petugas sebelum pencairan.
                 </p>
               </div>
               <div className="rounded-2xl bg-white/10 p-5 border border-white/10 space-y-3">
-                <h4 className="text-sm font-semibold text-emerald-200">Dokumen Panduan</h4>
+                <h4 className="text-sm font-semibold text-emerald-200">
+                  Dokumen Panduan
+                </h4>
                 <ul className="text-xs text-slate-200 space-y-2">
                   <li>• Pedoman Verifikasi Penerima Bansos 2024</li>
                   <li>• SOP Perlindungan Data Pribadi Dinas Sosial</li>
@@ -368,7 +437,8 @@ export function LandingPage({
 
       <footer className="border-t bg-white">
         <div className="max-w-5xl mx-auto px-6 py-6 text-xs text-slate-500">
-          &copy; {new Date().getFullYear()} Dinas Sosial Kabupaten/Kota. Semua hak dilindungi.
+          &copy; {new Date().getFullYear()} Dinas Sosial Kabupaten/Kota. Semua
+          hak dilindungi.
         </div>
       </footer>
     </div>

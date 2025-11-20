@@ -6,6 +6,7 @@ from typing import Dict, Optional
 
 from internal.domain.face_match import FaceMatchJob, FaceMatchProcessorPort, FaceMatchResultPublisher
 from internal.infrastructure.events.rabbitmq import RabbitMqConnectionFactory, RabbitMqWorker
+from internal.infrastructure.http.backoffice_client import BackofficeEkycClient
 
 
 class FaceMatchWorker:
@@ -15,9 +16,11 @@ class FaceMatchWorker:
         factory: RabbitMqConnectionFactory,
         processor: FaceMatchProcessorPort,
         result_publisher: FaceMatchResultPublisher,
+        backoffice_client: BackofficeEkycClient,
     ):
         self._processor = processor
         self._result_publisher = result_publisher
+        self._backoffice = backoffice_client
         self._worker = RabbitMqWorker("face-match", queue, factory, self._handle_message, prefetch_count=1)
 
     def start(self) -> None:
@@ -38,6 +41,19 @@ class FaceMatchWorker:
         )
         result = self._processor.evaluate(job)
         self._result_publisher.publish(result)
+        status = "DONE" if result.error is None else "FAILED"
+        overall = "PASS" if result.matched else "FAIL"
+        check = {
+            "step": "ID_VS_SELFIE",
+            "similarityScore": result.similarity,
+            "threshold": result.threshold,
+            "result": "PASS" if result.matched else "FAIL",
+            "rawMetadata": {
+                "jobId": job.job_id,
+                "error": result.error,
+            },
+        }
+        self._backoffice.record_face_checks(result.session_id, [check], overall, status)
 
 
 def _decode(value: str) -> bytes:

@@ -13,7 +13,7 @@ export type StepKey = (typeof KYC_STEPS)[number];
 
 export const STEP_LABELS: Record<StepKey, string> = {
   UPLOAD_KTP: "Kamera KTP",
-  OCR_REVIEW: "Review OCR",
+  OCR_REVIEW: "Isi Data KTP",
   SELFIE: "Selfie + Pegang KTP",
   FACE_MATCH: "Komparasi Wajah",
   LIVENESS: "Liveness",

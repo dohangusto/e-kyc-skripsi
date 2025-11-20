@@ -12,6 +12,7 @@ func RegisterRoutes(
 	appHandler *ApplicationHTTPHandler,
 	backofficeHandler *BackofficeHTTPHandler,
 	authHandler *AuthHTTPHandler,
+	ekycHandler *EkycHTTPHandler,
 ) {
 	e.GET("/api/healthz", healthz)
 
@@ -59,6 +60,17 @@ func RegisterRoutes(
 
 	// Overview
 	e.GET("/api/overview", backofficeHandler.Overview)
+
+	ekyc := e.Group("/api/ekyc")
+	ekyc.POST("/sessions", ekycHandler.CreateSession)
+	ekyc.GET("/sessions", ekycHandler.ListSessions)
+	ekyc.GET("/sessions/:id", ekycHandler.GetSession)
+	ekyc.PATCH("/sessions/:id/artifacts", ekycHandler.UpdateArtifacts)
+	ekyc.POST("/sessions/:id/face-checks", ekycHandler.RecordFaceChecks)
+	ekyc.POST("/sessions/:id/liveness", ekycHandler.RecordLiveness)
+	ekyc.POST("/sessions/:id/applicant", ekycHandler.AssignApplicant)
+	ekyc.POST("/sessions/:id/finalize", ekycHandler.Finalize)
+	ekyc.PATCH("/sessions/:id/decision", ekycHandler.OverrideDecision)
 
 	e.GET("/api/debug", debugRoutesHandler(e))
 }

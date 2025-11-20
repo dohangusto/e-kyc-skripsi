@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 
 import LandingPage from "@presentation/pages/LandingPage";
-import OnboardingWizard, { type CompletionPayload } from "@presentation/pages/OnboardingWizard";
+import OnboardingWizard, {
+  type CompletionPayload,
+} from "@presentation/pages/OnboardingWizard";
 import DashboardPage from "@presentation/pages/DashboardPage";
 import SurveyPage from "@presentation/pages/SurveyPage";
 import { LocalAuthRepository } from "@infrastructure/adapters/local-auth";
-import type { Account, SurveyAnswers, SurveyStatus } from "@domain/entities/account";
-import { createSession, clearSession, loadSession, type SessionPayload } from "@shared/session";
+import type {
+  Account,
+  SurveyAnswers,
+  SurveyStatus,
+} from "@domain/entities/account";
 
 function ensureSurvey(account: Account): Account {
-  const survey = account.survey ?? { completed: false, status: "belum-dikumpulkan" };
+  const survey = account.survey ?? {
+    completed: false,
+    status: "belum-dikumpulkan",
+  };
   return {
     ...account,
     survey: {
@@ -28,6 +36,24 @@ type OtpContext = {
   createdAt: number;
 };
 
+type SessionPayload = {
+  token: string;
+  phone: string;
+  expiresAt: number;
+};
+
+const createEphemeralSession = (phone: string): SessionPayload => {
+  const token =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return {
+    token,
+    phone,
+    expiresAt: Date.now() + 6 * 60 * 60 * 1000,
+  };
+};
+
 const App = () => {
   const [view, setView] = useState<ViewState>("landing");
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -44,24 +70,7 @@ const App = () => {
       const loadedAccounts = await LocalAuthRepository.loadAccounts();
       if (!mounted) return;
 
-      const normalizedAccounts = loadedAccounts.map(ensureSurvey);
-      setAccounts(normalizedAccounts);
-
-      const storedSession = loadSession();
-      if (!storedSession) return;
-
-      const account = normalizedAccounts.find(
-        (acc) => normalizePhone(acc.phone) === normalizePhone(storedSession.phone)
-      );
-      if (!account) {
-        clearSession();
-        return;
-      }
-
-      setSession(storedSession);
-      setCurrentAccount(account);
-      setSurveyMode(account.survey?.completed ? "review" : "fill");
-      setView("dashboard");
+      setAccounts(loadedAccounts.map(ensureSurvey));
     })();
 
     return () => {
@@ -80,12 +89,16 @@ const App = () => {
   const handleComplete = (payload: CompletionPayload) => {
     const phone = normalizePhone(payload.applicant.phone);
     if (!phone) {
-      setPinLoginError("Nomor HP belum diisi. Mohon lengkapi saat verifikasi ulang.");
+      setPinLoginError(
+        "Nomor HP belum diisi. Mohon lengkapi saat verifikasi ulang.",
+      );
       setView("landing");
       return;
     }
 
-    const existing = accounts.find((acc) => normalizePhone(acc.phone) === phone);
+    const existing = accounts.find(
+      (acc) => normalizePhone(acc.phone) === phone,
+    );
     const baseAccount: Account = {
       phone,
       pin: existing?.pin ?? null,
@@ -111,7 +124,7 @@ const App = () => {
     setPinLoginError(null);
     setOtpError(null);
     setOtpContext(null);
-    const newSession = createSession(phone);
+    const newSession = createEphemeralSession(phone);
     setSession(newSession);
     setSurveyMode(account.survey?.completed ? "review" : "fill");
     setView("dashboard");
@@ -127,14 +140,16 @@ const App = () => {
       return;
     }
 
-    const fallback =
-      accounts.find((acc) => !acc.pin) ?? accounts[0];
+    const fallback = accounts.find((acc) => !acc.pin) ?? accounts[0];
 
     if (fallback) {
       setCurrentAccount(fallback);
       setOtpContext(null);
-      if (!session || normalizePhone(session.phone) !== normalizePhone(fallback.phone)) {
-        const newSession = createSession(fallback.phone);
+      if (
+        !session ||
+        normalizePhone(session.phone) !== normalizePhone(fallback.phone)
+      ) {
+        const newSession = createEphemeralSession(fallback.phone);
         setSession(newSession);
       }
       setSurveyMode(fallback.survey?.completed ? "review" : "fill");
@@ -155,12 +170,16 @@ const App = () => {
     const account = accounts.find((acc) => normalizePhone(acc.phone) === phone);
 
     if (!account) {
-      setPinLoginError("Nomor HP belum terdaftar. Silakan lakukan verifikasi terlebih dahulu.");
+      setPinLoginError(
+        "Nomor HP belum terdaftar. Silakan lakukan verifikasi terlebih dahulu.",
+      );
       return;
     }
 
     if (!account.pin) {
-      setPinLoginError("PIN belum dibuat. Gunakan opsi OTP atau masuk ke dashboard untuk membuat PIN.");
+      setPinLoginError(
+        "PIN belum dibuat. Gunakan opsi OTP atau masuk ke dashboard untuk membuat PIN.",
+      );
       return;
     }
 
@@ -169,16 +188,18 @@ const App = () => {
       return;
     }
 
-    const accountWithSurvey = account.survey ? account : { ...account, survey: { completed: false } };
+    const accountWithSurvey = account.survey
+      ? account
+      : { ...account, survey: { completed: false } };
     if (!account.survey) {
       const nextAccounts = accounts.map((acc) =>
-        normalizePhone(acc.phone) === phone ? accountWithSurvey : acc
+        normalizePhone(acc.phone) === phone ? accountWithSurvey : acc,
       );
       setAccounts(nextAccounts);
       LocalAuthRepository.saveAccounts(nextAccounts);
     }
     setCurrentAccount(accountWithSurvey);
-    const newSession = createSession(account.phone);
+    const newSession = createEphemeralSession(account.phone);
     setSession(newSession);
     setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
     setView("dashboard");
@@ -198,7 +219,9 @@ const App = () => {
 
     const account = accounts.find((acc) => normalizePhone(acc.phone) === phone);
     if (!account) {
-      setOtpError("Nomor HP belum terdaftar. Silakan lakukan verifikasi terlebih dahulu.");
+      setOtpError(
+        "Nomor HP belum terdaftar. Silakan lakukan verifikasi terlebih dahulu.",
+      );
       setOtpContext(null);
       return null;
     }
@@ -234,16 +257,18 @@ const App = () => {
       return;
     }
 
-    const accountWithSurvey = account.survey ? account : { ...account, survey: { completed: false } };
+    const accountWithSurvey = account.survey
+      ? account
+      : { ...account, survey: { completed: false } };
     if (!account.survey) {
       const nextAccounts = accounts.map((acc) =>
-        normalizePhone(acc.phone) === phone ? accountWithSurvey : acc
+        normalizePhone(acc.phone) === phone ? accountWithSurvey : acc,
       );
       setAccounts(nextAccounts);
       LocalAuthRepository.saveAccounts(nextAccounts);
     }
     setCurrentAccount(accountWithSurvey);
-    const newSession = createSession(account.phone);
+    const newSession = createEphemeralSession(account.phone);
     setSession(newSession);
     setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
     setView("dashboard");
@@ -259,7 +284,6 @@ const App = () => {
     setOtpContext(null);
     setOtpError(null);
     setSession(null);
-    clearSession();
     setSurveyMode("fill");
   };
 
@@ -275,7 +299,9 @@ const App = () => {
 
     const updatedAccount: Account = { ...currentAccount, pin: normalized };
     const nextAccounts = accounts.map((acc) =>
-      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone) ? updatedAccount : acc
+      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
+        ? updatedAccount
+        : acc,
     );
     setAccounts(nextAccounts);
     setCurrentAccount(updatedAccount);
@@ -283,7 +309,7 @@ const App = () => {
     setPinLoginError(null);
     setOtpContext(null);
     setOtpError(null);
-    const newSession = createSession(updatedAccount.phone);
+    const newSession = createEphemeralSession(updatedAccount.phone);
     setSession(newSession);
     setSurveyMode(updatedAccount.survey?.completed ? "review" : "fill");
   };
@@ -291,9 +317,14 @@ const App = () => {
   const handleStartSurvey = () => {
     if (!currentAccount) return;
     if (!currentAccount.survey) {
-      const updatedAccount = ensureSurvey({ ...currentAccount, survey: { completed: false } } as Account);
+      const updatedAccount = ensureSurvey({
+        ...currentAccount,
+        survey: { completed: false },
+      } as Account);
       const nextAccounts = accounts.map((acc) =>
-        normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone) ? updatedAccount : acc
+        normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
+          ? updatedAccount
+          : acc,
       );
       setAccounts(nextAccounts);
       setCurrentAccount(updatedAccount);
@@ -306,7 +337,10 @@ const App = () => {
     setView("survey");
   };
 
-  const handleSurveyComplete = async (answers: SurveyAnswers, status: SurveyStatus = "antrean") => {
+  const handleSurveyComplete = async (
+    answers: SurveyAnswers,
+    status: SurveyStatus = "antrean",
+  ) => {
     if (!currentAccount) return;
     const updatedAccount: Account = {
       ...currentAccount,
@@ -318,18 +352,23 @@ const App = () => {
       },
     };
     const nextAccounts = accounts.map((acc) =>
-      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone) ? updatedAccount : acc
+      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
+        ? updatedAccount
+        : acc,
     );
     setAccounts(nextAccounts);
     setCurrentAccount(updatedAccount);
     await LocalAuthRepository.saveAccounts(nextAccounts);
     setSurveyMode("review");
     setView("dashboard");
-    const newSession = createSession(updatedAccount.phone);
+    const newSession = createEphemeralSession(updatedAccount.phone);
     setSession(newSession);
   };
 
-  const handleSurveyDraft = async (answers: SurveyAnswers, stayOnSurvey = false) => {
+  const handleSurveyDraft = async (
+    answers: SurveyAnswers,
+    stayOnSurvey = false,
+  ) => {
     if (!currentAccount) return;
     const updatedAccount: Account = ensureSurvey({
       ...currentAccount,
@@ -341,7 +380,9 @@ const App = () => {
       },
     });
     const nextAccounts = accounts.map((acc) =>
-      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone) ? updatedAccount : ensureSurvey(acc)
+      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
+        ? updatedAccount
+        : ensureSurvey(acc),
     );
     setAccounts(nextAccounts);
     setCurrentAccount(updatedAccount);
@@ -358,8 +399,11 @@ const App = () => {
     setView("survey");
   };
 
-  const otpInfo = otpContext ? { phone: otpContext.phone, code: otpContext.code } : null;
-  const canAccessDashboard = !!currentAccount || !!session || accounts.some((acc) => !acc.pin);
+  const otpInfo = otpContext
+    ? { phone: otpContext.phone, code: otpContext.code }
+    : null;
+  const canAccessDashboard =
+    !!currentAccount || !!session || accounts.some((acc) => !acc.pin);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -377,9 +421,7 @@ const App = () => {
           otpInfo={otpInfo}
         />
       )}
-      {view === "wizard" && (
-        <OnboardingWizard onComplete={handleComplete} />
-      )}
+      {view === "wizard" && <OnboardingWizard onComplete={handleComplete} />}
       {view === "dashboard" && currentAccount && (
         <DashboardPage
           data={{
@@ -388,31 +430,41 @@ const App = () => {
             verificationStatus: currentAccount.verificationStatus,
             faceMatchPassed: currentAccount.faceMatchPassed,
             livenessPassed: currentAccount.livenessPassed,
-            submittedAt: new Date(currentAccount.createdAt).toLocaleDateString("id-ID", {
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-            }),
+            submittedAt: new Date(currentAccount.createdAt).toLocaleDateString(
+              "id-ID",
+              {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              },
+            ),
             pinSet: !!currentAccount.pin,
             surveyCompleted: currentAccount.survey?.completed ?? false,
             surveyStatus: currentAccount.survey?.status ?? "belum-dikumpulkan",
             surveySubmittedAt: currentAccount.survey?.submittedAt
-              ? new Date(currentAccount.survey.submittedAt).toLocaleString("id-ID", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
+              ? new Date(currentAccount.survey.submittedAt).toLocaleString(
+                  "id-ID",
+                  {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                )
               : undefined,
-            hasSurveyDraft: !!currentAccount.survey?.answers && !currentAccount.survey?.completed,
+            hasSurveyDraft:
+              !!currentAccount.survey?.answers &&
+              !currentAccount.survey?.completed,
           }}
           onStartNew={handleStartNew}
           onLogout={handleLogout}
           onCreatePin={handlePinSetup}
           onStartSurvey={handleStartSurvey}
           onContinueSurvey={handleStartSurvey}
-          onViewSurvey={currentAccount.survey?.completed ? handleViewSurvey : undefined}
+          onViewSurvey={
+            currentAccount.survey?.completed ? handleViewSurvey : undefined
+          }
         />
       )}
       {view === "survey" && currentAccount && (

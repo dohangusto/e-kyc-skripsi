@@ -139,6 +139,8 @@ type BackofficeRepository interface {
 	Overview(ctx context.Context) (map[string]any, error)
 
 	NormalizeUserIDs(ctx context.Context, ids []string) ([]string, error)
+
+	EkycRepository
 }
 
 // SERVICES
