@@ -691,14 +691,15 @@ func seedApplications(ctx context.Context, tx pgx.Tx) error {
 				submitted = &t
 			}
 			if _, err := tx.Exec(ctx, `
-                INSERT INTO survey_responses (application_id, completed, submitted_at, status, answers)
-                VALUES ($1,$2,$3,$4,$5::jsonb)
+                INSERT INTO survey_responses (application_id, beneficiary_user_id, completed, submitted_at, status, answers)
+                VALUES ($1,$2,$3,$4,$5,$6::jsonb)
                 ON CONFLICT (application_id) DO UPDATE SET
+                    beneficiary_user_id = EXCLUDED.beneficiary_user_id,
                     completed = EXCLUDED.completed,
                     submitted_at = EXCLUDED.submitted_at,
                     status = EXCLUDED.status,
                     answers = EXCLUDED.answers`,
-				app.ID, app.Survey.Completed, submitted, app.Survey.Status, mustJSON(app.Survey.Answers),
+				app.ID, bene.ID, app.Survey.Completed, submitted, app.Survey.Status, mustJSON(app.Survey.Answers),
 			); err != nil {
 				return err
 			}

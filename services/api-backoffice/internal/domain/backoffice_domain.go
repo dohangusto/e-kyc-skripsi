@@ -106,6 +106,18 @@ type ClusteringRunPayload struct {
 	SampleSize int
 }
 
+type SurveyDraftParams struct {
+	ApplicationID string
+	Answers       map[string]any
+	Status        string
+}
+
+type SurveySubmitParams struct {
+	ApplicationID string
+	Answers       map[string]any
+	Status        string
+}
+
 // REPOSITORIES
 type BackofficeRepository interface {
 	ListApplications(ctx context.Context, limit int) ([]Application, error)
@@ -141,6 +153,10 @@ type BackofficeRepository interface {
 	NormalizeUserIDs(ctx context.Context, ids []string) ([]string, error)
 
 	EkycRepository
+
+	GetSurvey(ctx context.Context, applicationID string) (*SurveyState, error)
+	SaveSurveyDraft(ctx context.Context, params SurveyDraftParams) (*SurveyState, error)
+	SubmitSurvey(ctx context.Context, params SurveySubmitParams) (*SurveyState, error)
 }
 
 // SERVICES
@@ -174,6 +190,10 @@ type BackofficeService interface {
 
 	ListAuditLogs(ctx context.Context, limit int) ([]AuditLog, error)
 	Overview(ctx context.Context) (map[string]any, error)
+
+	GetSurvey(ctx context.Context, applicationID string) (*SurveyState, error)
+	SaveSurveyDraft(ctx context.Context, params SurveyDraftParams) (*SurveyState, error)
+	SubmitSurvey(ctx context.Context, params SurveySubmitParams) (*SurveyState, error)
 }
 
 // HTTP HANDLERS

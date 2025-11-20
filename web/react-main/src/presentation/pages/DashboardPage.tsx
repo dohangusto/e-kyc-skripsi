@@ -204,6 +204,10 @@ export function DashboardPage({
     }
   };
 
+  const printData = () => {
+    console.log(data);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
       <header className="border-b bg-white/90 backdrop-blur">
@@ -214,6 +218,9 @@ export function DashboardPage({
             </p>
             <h1 className="text-2xl font-semibold">
               Dashboard Penerima Bantuan
+              <Button variant="outline" onClick={printData}>
+                Print KONTOL
+              </Button>
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               ID Pengajuan:{" "}

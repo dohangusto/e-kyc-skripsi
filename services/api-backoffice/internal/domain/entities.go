@@ -73,11 +73,12 @@ type TimelineItem struct {
 }
 
 type SurveyState struct {
-	ApplicationID string
-	Completed     bool
-	SubmittedAt   *time.Time
-	Status        *string
-	Answers       map[string]any
+	ApplicationID     string
+	BeneficiaryUserID string
+	Completed         bool
+	SubmittedAt       *time.Time
+	Status            *string
+	Answers           map[string]any
 }
 
 type PortalInfo struct {

@@ -13,13 +13,14 @@ func NewServer(
 	backofficeHandler *BackofficeHTTPHandler,
 	authHandler *AuthHTTPHandler,
 	ekycHandler *EkycHTTPHandler,
+	portalHandler *PortalHTTPHandler,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.Logger.SetLevel(gommonLog.INFO)
 
 	configureMiddleware(e)
-	RegisterRoutes(e, appHandler, backofficeHandler, authHandler, ekycHandler)
+	RegisterRoutes(e, appHandler, backofficeHandler, authHandler, ekycHandler, portalHandler)
 
 	return e
 }

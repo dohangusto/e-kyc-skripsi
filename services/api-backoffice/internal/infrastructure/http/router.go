@@ -13,6 +13,7 @@ func RegisterRoutes(
 	backofficeHandler *BackofficeHTTPHandler,
 	authHandler *AuthHTTPHandler,
 	ekycHandler *EkycHTTPHandler,
+	portalHandler *PortalHTTPHandler,
 ) {
 	e.GET("/api/healthz", healthz)
 
@@ -71,6 +72,11 @@ func RegisterRoutes(
 	ekyc.POST("/sessions/:id/applicant", ekycHandler.AssignApplicant)
 	ekyc.POST("/sessions/:id/finalize", ekycHandler.Finalize)
 	ekyc.PATCH("/sessions/:id/decision", ekycHandler.OverrideDecision)
+
+	portal := e.Group("/api/portal")
+	portal.GET("/surveys/:id", portalHandler.GetSurvey)
+	portal.PUT("/surveys/:id", portalHandler.SaveSurveyDraft)
+	portal.POST("/surveys/:id/submit", portalHandler.SubmitSurvey)
 
 	e.GET("/api/debug", debugRoutesHandler(e))
 }

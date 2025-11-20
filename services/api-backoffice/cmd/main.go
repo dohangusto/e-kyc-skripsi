@@ -49,9 +49,10 @@ func main() {
 	authHandler := httpInfra.NewAuthHTTPHandler(authSvc)
 	backofficeHandler := httpInfra.NewBackofficeHTTPHandler(backofficeSvc)
 	ekycHandler := httpInfra.NewEkycHTTPHandler(ekycSvc)
+	portalHandler := httpInfra.NewPortalHTTPHandler(backofficeSvc)
 
 	// SERVER
-	server := httpInfra.NewServer(appHandler, backofficeHandler, authHandler, ekycHandler)
+	server := httpInfra.NewServer(appHandler, backofficeHandler, authHandler, ekycHandler, portalHandler)
 
 	// GRACEFUL SHUTDOWN BY ECHO
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)

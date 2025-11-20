@@ -5,6 +5,7 @@ use axum::{
 };
 use std::{env, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::internal::domain::services::AiSupportPort;
 use crate::internal::infrastructure::http::backoffice_proxy::BackofficeClient;
@@ -59,6 +60,10 @@ where
     P: AiSupportPort + 'static,
 {
     let router_state = state.clone();
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
     let app = Router::new()
         .route("/health", get(handlers::health_check))
         .route("/ekyc/sessions", post(ekyc_handlers::create_session::<P>))
@@ -83,7 +88,8 @@ where
             "/api/*path",
             any(backoffice_proxy::forward_to_backoffice::<P>),
         )
-        .with_state(router_state);
+        .with_state(router_state)
+        .layer(cors);
 
     let app = with_http_trace(app);
 

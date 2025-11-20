@@ -12,7 +12,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 thiserror = "1.0"
 anyhow = "1.0"
-tower-http = {version = "0.5", features = ["trace"]}
+tower-http = {version = "0.5", features = ["trace", "cors"]}
 http = "1.0"
 tonic = { version = "0.11", features = ["transport"] }
 prost = "0.12"

@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 type LandingPageProps = {
   onStart: () => void;
   onViewDashboard?: () => void;
-  onLogin?: (payload: { phone: string; pin: string }) => void;
+  onLogin?: (payload: { phone: string; pin: string }) => void | Promise<void>;
   hasSubmission?: boolean;
   pinError?: string | null;
   canAccessDashboard?: boolean;
@@ -74,6 +74,7 @@ export function LandingPage({
 }: LandingPageProps) {
   const [pinPhone, setPinPhone] = useState("");
   const [pinValue, setPinValue] = useState("");
+  const [pinSubmitting, setPinSubmitting] = useState(false);
 
   const [otpPhone, setOtpPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -90,9 +91,17 @@ export function LandingPage({
     }
   }, [otpInfo]);
 
-  function handlePinLogin(e: FormEvent) {
+  async function handlePinLogin(e: FormEvent) {
     e.preventDefault();
-    onLogin?.({ phone: pinPhone, pin: pinValue });
+    if (!onLogin) return;
+    try {
+      setPinSubmitting(true);
+      await onLogin({ phone: pinPhone, pin: pinValue });
+    } catch {
+      // parent handler already surface errors via props
+    } finally {
+      setPinSubmitting(false);
+    }
   }
 
   function handleRequestOtp() {
@@ -282,8 +291,8 @@ export function LandingPage({
                 />
               </div>
               {pinError && <p className="text-sm text-red-600">{pinError}</p>}
-              <Button type="submit" className="w-full">
-                Masuk dengan PIN
+              <Button type="submit" className="w-full" disabled={pinSubmitting}>
+                {pinSubmitting ? "Memproses..." : "Masuk dengan PIN"}
               </Button>
             </form>
             <div className="text-xs text-slate-500">

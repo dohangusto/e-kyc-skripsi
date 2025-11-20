@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import LandingPage from "@presentation/pages/LandingPage";
 import OnboardingWizard, {
@@ -7,11 +7,24 @@ import OnboardingWizard, {
 import DashboardPage from "@presentation/pages/DashboardPage";
 import SurveyPage from "@presentation/pages/SurveyPage";
 import { LocalAuthRepository } from "@infrastructure/adapters/local-auth";
+import {
+  loginBeneficiary,
+  listEkycSessions,
+  type AuthResultResponse,
+  type EkycSessionResponse,
+} from "@infrastructure/services/portal-auth";
+import {
+  fetchPortalSurvey,
+  savePortalSurveyDraft,
+  submitPortalSurvey,
+  type PortalSurveyResponse,
+} from "@infrastructure/services/portal-survey";
 import type {
   Account,
   SurveyAnswers,
   SurveyStatus,
 } from "@domain/entities/account";
+import type { Applicant } from "@domain/types";
 
 function ensureSurvey(account: Account): Account {
   const survey = account.survey ?? {
@@ -40,6 +53,168 @@ type SessionPayload = {
   token: string;
   phone: string;
   expiresAt: number;
+  remote: boolean;
+};
+
+type ApplicantMetadata = {
+  name?: string;
+  nik?: string;
+  number?: string;
+  birthDate?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  userId?: string;
+};
+
+const toIsoDate = (input?: string | null) => {
+  if (!input) return "";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+};
+
+const deriveVerificationStatus = (
+  decision?: string | null,
+): Account["verificationStatus"] => {
+  const normalized = (decision ?? "").toUpperCase();
+  if (normalized === "APPROVED") return "DISETUJUI";
+  if (normalized === "REJECTED") return "DITOLAK";
+  return "SEDANG_DITINJAU";
+};
+
+const detectPassFromSignals = (
+  overall?: string | null,
+  status?: string | null,
+) => {
+  const normalized = (overall ?? "").toUpperCase();
+  if (normalized === "PASS") return true;
+  if (normalized === "FAIL") return false;
+  const statusText = (status ?? "").toUpperCase();
+  if (statusText === "FAILED") return false;
+  if (statusText === "DONE") return true;
+  return true;
+};
+
+const buildAccountFromSession = (
+  session: EkycSessionResponse,
+  user: AuthResultResponse["user"],
+  pin: string,
+): Account => {
+  const applicantMeta =
+    (session.metadata?.applicant as ApplicantMetadata | undefined) ?? {};
+  const phone = applicantMeta.phone ?? user.Phone ?? "";
+  const applicant: Applicant = {
+    number:
+      applicantMeta.number ?? applicantMeta.nik ?? user.NIK ?? session.id ?? "",
+    name: applicantMeta.name ?? user.Name ?? "",
+    birthDate: applicantMeta.birthDate ?? toIsoDate(user.DOB) ?? toIsoDate(),
+    address: applicantMeta.address ?? "",
+    phone,
+    email: applicantMeta.email ?? user.Email ?? "",
+    pin,
+  };
+
+  return {
+    phone,
+    pin,
+    submissionId: session.id,
+    applicant,
+    createdAt: session.createdAt ?? new Date().toISOString(),
+    faceMatchPassed: detectPassFromSignals(
+      session.faceMatchOverall,
+      session.faceMatchingStatus,
+    ),
+    livenessPassed: detectPassFromSignals(
+      session.livenessOverall,
+      session.livenessStatus,
+    ),
+    verificationStatus: deriveVerificationStatus(session.finalDecision),
+  };
+};
+
+const findLatestSessionForUser = async (
+  userId: string,
+  normalizedPhone: string,
+) => {
+  const sessions = await listEkycSessions(400);
+  const matches = sessions.filter((session) => {
+    const meta =
+      (session.metadata?.applicant as ApplicantMetadata | undefined) ?? {};
+    if (session.userId && session.userId === userId) {
+      return true;
+    }
+    if (meta.userId && meta.userId === userId) {
+      return true;
+    }
+    const metaPhone = meta.phone?.replace(/\D/g, "");
+    if (metaPhone && normalizedPhone && metaPhone === normalizedPhone) {
+      return true;
+    }
+    return false;
+  });
+  if (!matches.length) {
+    return null;
+  }
+  matches.sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
+  return matches[0];
+};
+
+const mergePortalSurvey = (
+  account: Account,
+  survey?: PortalSurveyResponse | null,
+): Account => {
+  if (!survey) {
+    return ensureSurvey(account);
+  }
+  const normalizedStatus =
+    (survey.status as SurveyStatus) ?? "belum-dikumpulkan";
+  return ensureSurvey({
+    ...account,
+    survey: {
+      completed: survey.completed ?? false,
+      status: normalizedStatus,
+      submittedAt: survey.submittedAt ?? undefined,
+      answers: survey.answers as SurveyAnswers | undefined,
+    },
+  });
+};
+
+const fetchAccountFromGateway = async (
+  phone: string,
+  pin: string,
+): Promise<{ account: Account; session: SessionPayload }> => {
+  const auth = await loginBeneficiary({ phone, pin });
+  const session = await findLatestSessionForUser(auth.user.ID, phone);
+  if (!session) {
+    throw new Error(
+      "Belum ditemukan pengajuan e-KYC untuk nomor ini. Selesaikan verifikasi terlebih dahulu.",
+    );
+  }
+  let account = buildAccountFromSession(session, auth.user, pin);
+  try {
+    const remoteSurvey = await fetchPortalSurvey(
+      session.id,
+      auth.session.token,
+    );
+    account = mergePortalSurvey(account, remoteSurvey);
+  } catch (err) {
+    console.error("Failed to load survey from gateway", err);
+  }
+  const issuedAt = new Date(auth.session.issuedAt).getTime();
+  const expiresAt =
+    (Number.isNaN(issuedAt) ? Date.now() : issuedAt) + 6 * 60 * 60 * 1000;
+  return {
+    account,
+    session: {
+      token: auth.session.token,
+      phone: account.phone,
+      expiresAt,
+      remote: true,
+    },
+  };
 };
 
 const createEphemeralSession = (phone: string): SessionPayload => {
@@ -51,6 +226,7 @@ const createEphemeralSession = (phone: string): SessionPayload => {
     token,
     phone,
     expiresAt: Date.now() + 6 * 60 * 60 * 1000,
+    remote: false,
   };
 };
 
@@ -63,6 +239,7 @@ const App = () => {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [surveyMode, setSurveyMode] = useState<"fill" | "review">("fill");
+  const syncedSurveyIdsRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -80,11 +257,53 @@ const App = () => {
 
   const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
 
+  const replaceAccount = (next: Account) => {
+    const ensured = ensureSurvey(next);
+    setAccounts((prev) => {
+      const normalized = normalizePhone(ensured.phone);
+      const rest = prev
+        .filter((acc) => normalizePhone(acc.phone) !== normalized)
+        .map(ensureSurvey);
+      const updated = [ensured, ...rest];
+      LocalAuthRepository.saveAccounts(updated);
+      return updated;
+    });
+    setCurrentAccount(ensured);
+  };
+
+  const shouldSyncSurvey = (account: Account | null) => {
+    if (!account || !session?.remote) return false;
+    if (!session.token || session.expiresAt < Date.now()) return false;
+    return normalizePhone(session.phone) === normalizePhone(account.phone);
+  };
+
   const handleStart = () => {
     setPinLoginError(null);
     setOtpError(null);
     setView("wizard");
   };
+
+  useEffect(() => {
+    if (!currentAccount || !shouldSyncSurvey(currentAccount)) {
+      return;
+    }
+    const submissionId = currentAccount.submissionId;
+    if (!submissionId || syncedSurveyIdsRef.current[submissionId]) {
+      return;
+    }
+    syncedSurveyIdsRef.current[submissionId] = true;
+    (async () => {
+      try {
+        const remote = await fetchPortalSurvey(submissionId, session?.token);
+        if (remote) {
+          replaceAccount(mergePortalSurvey(currentAccount, remote));
+        }
+      } catch (err) {
+        console.error("Failed to refresh survey from portal", err);
+        delete syncedSurveyIdsRef.current[submissionId];
+      }
+    })();
+  }, [currentAccount, session?.token]);
 
   const handleComplete = (payload: CompletionPayload) => {
     const phone = normalizePhone(payload.applicant.phone);
@@ -112,15 +331,7 @@ const App = () => {
     };
     const account = ensureSurvey(baseAccount);
 
-    const nextAccounts = [
-      account,
-      ...accounts
-        .filter((acc) => normalizePhone(acc.phone) !== phone)
-        .map(ensureSurvey),
-    ];
-
-    setAccounts(nextAccounts);
-    setCurrentAccount(account);
+    replaceAccount(account);
     setPinLoginError(null);
     setOtpError(null);
     setOtpContext(null);
@@ -128,7 +339,6 @@ const App = () => {
     setSession(newSession);
     setSurveyMode(account.survey?.completed ? "review" : "fill");
     setView("dashboard");
-    LocalAuthRepository.saveAccounts(nextAccounts);
   };
 
   const handleViewDashboard = () => {
@@ -165,13 +375,37 @@ const App = () => {
     setView("wizard");
   };
 
-  const handlePinLogin = (credentials: { phone: string; pin: string }) => {
+  const handlePinLogin = async (credentials: {
+    phone: string;
+    pin: string;
+  }) => {
     const phone = normalizePhone(credentials.phone);
+    setPinLoginError(null);
+    setOtpError(null);
+    setOtpContext(null);
+
+    let remoteError: string | null = null;
+    try {
+      const { account, session: remoteSession } = await fetchAccountFromGateway(
+        phone,
+        credentials.pin,
+      );
+      const accountWithSurvey = ensureSurvey(account);
+      replaceAccount(accountWithSurvey);
+      setSession(remoteSession);
+      setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
+      setView("dashboard");
+      return;
+    } catch (err: any) {
+      remoteError = err?.message ?? "Gagal login. Coba lagi sebentar.";
+    }
+
     const account = accounts.find((acc) => normalizePhone(acc.phone) === phone);
 
     if (!account) {
       setPinLoginError(
-        "Nomor HP belum terdaftar. Silakan lakukan verifikasi terlebih dahulu.",
+        remoteError ??
+          "Nomor HP belum terdaftar. Silakan lakukan verifikasi terlebih dahulu.",
       );
       return;
     }
@@ -184,27 +418,19 @@ const App = () => {
     }
 
     if (account.pin !== credentials.pin) {
-      setPinLoginError("Nomor HP atau PIN tidak sesuai.");
+      setPinLoginError(remoteError ?? "Nomor HP atau PIN tidak sesuai.");
       return;
     }
 
     const accountWithSurvey = account.survey
-      ? account
-      : { ...account, survey: { completed: false } };
-    if (!account.survey) {
-      const nextAccounts = accounts.map((acc) =>
-        normalizePhone(acc.phone) === phone ? accountWithSurvey : acc,
-      );
-      setAccounts(nextAccounts);
-      LocalAuthRepository.saveAccounts(nextAccounts);
-    }
-    setCurrentAccount(accountWithSurvey);
+      ? ensureSurvey(account)
+      : ensureSurvey({ ...account, survey: { completed: false } });
+    replaceAccount(accountWithSurvey);
     const newSession = createEphemeralSession(account.phone);
     setSession(newSession);
     setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
     setView("dashboard");
     setPinLoginError(null);
-    setOtpError(null);
     setOtpContext(null);
   };
 
@@ -258,16 +484,9 @@ const App = () => {
     }
 
     const accountWithSurvey = account.survey
-      ? account
-      : { ...account, survey: { completed: false } };
-    if (!account.survey) {
-      const nextAccounts = accounts.map((acc) =>
-        normalizePhone(acc.phone) === phone ? accountWithSurvey : acc,
-      );
-      setAccounts(nextAccounts);
-      LocalAuthRepository.saveAccounts(nextAccounts);
-    }
-    setCurrentAccount(accountWithSurvey);
+      ? ensureSurvey(account)
+      : ensureSurvey({ ...account, survey: { completed: false } });
+    replaceAccount(accountWithSurvey);
     const newSession = createEphemeralSession(account.phone);
     setSession(newSession);
     setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
@@ -285,6 +504,7 @@ const App = () => {
     setOtpError(null);
     setSession(null);
     setSurveyMode("fill");
+    syncedSurveyIdsRef.current = {};
   };
 
   const handlePinSetup = async (pin: string) => {
@@ -298,14 +518,7 @@ const App = () => {
     }
 
     const updatedAccount: Account = { ...currentAccount, pin: normalized };
-    const nextAccounts = accounts.map((acc) =>
-      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
-        ? updatedAccount
-        : acc,
-    );
-    setAccounts(nextAccounts);
-    setCurrentAccount(updatedAccount);
-    await LocalAuthRepository.saveAccounts(nextAccounts);
+    replaceAccount(updatedAccount);
     setPinLoginError(null);
     setOtpContext(null);
     setOtpError(null);
@@ -321,14 +534,7 @@ const App = () => {
         ...currentAccount,
         survey: { completed: false },
       } as Account);
-      const nextAccounts = accounts.map((acc) =>
-        normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
-          ? updatedAccount
-          : acc,
-      );
-      setAccounts(nextAccounts);
-      setCurrentAccount(updatedAccount);
-      LocalAuthRepository.saveAccounts(nextAccounts);
+      replaceAccount(updatedAccount);
       setSurveyMode("fill");
       setView("survey");
       return;
@@ -342,23 +548,31 @@ const App = () => {
     status: SurveyStatus = "antrean",
   ) => {
     if (!currentAccount) return;
+    const submittedAt = new Date().toISOString();
     const updatedAccount: Account = {
       ...currentAccount,
       survey: {
         completed: true,
-        submittedAt: new Date().toISOString(),
+        submittedAt,
         answers,
         status,
       },
     };
-    const nextAccounts = accounts.map((acc) =>
-      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
-        ? updatedAccount
-        : acc,
-    );
-    setAccounts(nextAccounts);
-    setCurrentAccount(updatedAccount);
-    await LocalAuthRepository.saveAccounts(nextAccounts);
+    replaceAccount(updatedAccount);
+    if (shouldSyncSurvey(updatedAccount)) {
+      try {
+        const remote = await submitPortalSurvey(
+          updatedAccount.submissionId,
+          { answers, status },
+          session?.token,
+        );
+        if (remote) {
+          replaceAccount(mergePortalSurvey(updatedAccount, remote));
+        }
+      } catch (err) {
+        console.error("Failed to submit survey", err);
+      }
+    }
     setSurveyMode("review");
     setView("dashboard");
     const newSession = createEphemeralSession(updatedAccount.phone);
@@ -370,23 +584,31 @@ const App = () => {
     stayOnSurvey = false,
   ) => {
     if (!currentAccount) return;
+    const status = currentAccount.survey?.status ?? "belum-dikumpulkan";
     const updatedAccount: Account = ensureSurvey({
       ...currentAccount,
       survey: {
         completed: false,
         submittedAt: currentAccount.survey?.submittedAt,
         answers,
-        status: currentAccount.survey?.status ?? "belum-dikumpulkan",
+        status,
       },
     });
-    const nextAccounts = accounts.map((acc) =>
-      normalizePhone(acc.phone) === normalizePhone(updatedAccount.phone)
-        ? updatedAccount
-        : ensureSurvey(acc),
-    );
-    setAccounts(nextAccounts);
-    setCurrentAccount(updatedAccount);
-    await LocalAuthRepository.saveAccounts(nextAccounts);
+    replaceAccount(updatedAccount);
+    if (shouldSyncSurvey(updatedAccount)) {
+      try {
+        const remote = await savePortalSurveyDraft(
+          updatedAccount.submissionId,
+          { answers, status },
+          session?.token,
+        );
+        if (remote) {
+          replaceAccount(mergePortalSurvey(updatedAccount, remote));
+        }
+      } catch (err) {
+        console.error("Failed to save survey draft", err);
+      }
+    }
     setSurveyMode("fill");
     if (!stayOnSurvey) {
       setView("dashboard");

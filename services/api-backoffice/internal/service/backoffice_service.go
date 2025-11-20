@@ -333,6 +333,41 @@ func (s *BackofficeService) ListVisits(ctx context.Context, params domain.ListVi
 	return s.repo.ListVisits(ctx, params)
 }
 
+func (s *BackofficeService) GetSurvey(ctx context.Context, appID string) (*domain.SurveyState, error) {
+	if strings.TrimSpace(appID) == "" {
+		return nil, errors.New("application id required")
+	}
+	return s.repo.GetSurvey(ctx, appID)
+}
+
+func (s *BackofficeService) SaveSurveyDraft(ctx context.Context, params domain.SurveyDraftParams) (*domain.SurveyState, error) {
+	params.ApplicationID = strings.TrimSpace(params.ApplicationID)
+	if params.ApplicationID == "" {
+		return nil, errors.New("application id required")
+	}
+	if params.Answers == nil {
+		params.Answers = map[string]any{}
+	}
+	if strings.TrimSpace(params.Status) == "" {
+		params.Status = "belum-dikumpulkan"
+	}
+	return s.repo.SaveSurveyDraft(ctx, params)
+}
+
+func (s *BackofficeService) SubmitSurvey(ctx context.Context, params domain.SurveySubmitParams) (*domain.SurveyState, error) {
+	params.ApplicationID = strings.TrimSpace(params.ApplicationID)
+	if params.ApplicationID == "" {
+		return nil, errors.New("application id required")
+	}
+	if params.Answers == nil {
+		params.Answers = map[string]any{}
+	}
+	if strings.TrimSpace(params.Status) == "" {
+		params.Status = "antrean"
+	}
+	return s.repo.SubmitSurvey(ctx, params)
+}
+
 func timelineEntry(appID, actor, action, reason string, metadata map[string]any) domain.TimelineEntry {
 	return domain.TimelineEntry{
 		ApplicationID: appID,

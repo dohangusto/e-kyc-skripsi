@@ -111,7 +111,8 @@ CREATE TABLE IF NOT EXISTS application_timeline (
 );
 
 CREATE TABLE IF NOT EXISTS survey_responses (
-    application_id TEXT PRIMARY KEY REFERENCES applications(id) ON DELETE CASCADE,
+    application_id TEXT PRIMARY KEY,
+    beneficiary_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     completed BOOLEAN NOT NULL DEFAULT FALSE,
     submitted_at TIMESTAMPTZ,
     status TEXT,
@@ -215,6 +216,7 @@ CREATE INDEX IF NOT EXISTS idx_applications_beneficiary ON applications(benefici
 CREATE INDEX IF NOT EXISTS idx_visits_application ON application_visits(application_id);
 CREATE INDEX IF NOT EXISTS idx_timeline_application ON application_timeline(application_id);
 CREATE INDEX IF NOT EXISTS idx_survey_completed ON survey_responses(completed);
+CREATE INDEX IF NOT EXISTS idx_survey_beneficiary ON survey_responses(beneficiary_user_id);
 CREATE INDEX IF NOT EXISTS idx_distribution_schedule ON distributions(scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_distribution_user ON distribution_beneficiaries(user_id);
 CREATE INDEX IF NOT EXISTS idx_clustering_run ON clustering_candidates(run_id);

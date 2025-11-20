@@ -1052,24 +1052,130 @@ func (repo *backofficeRepository) fetchTimeline(ctx context.Context, appID strin
 	return items, rows.Err()
 }
 
-func (repo *backofficeRepository) fetchSurvey(ctx context.Context, appID string) (*domain.SurveyState, error) {
+func scanSurveyRow(row pgx.Row) (*domain.SurveyState, error) {
 	var (
-		state   domain.SurveyState
-		answers []byte
+		state       domain.SurveyState
+		submittedAt *time.Time
+		status      *string
+		answers     []byte
 	)
+	if err := row.Scan(&state.ApplicationID, &state.BeneficiaryUserID, &state.Completed, &submittedAt, &status, &answers); err != nil {
+		return nil, err
+	}
+	state.SubmittedAt = submittedAt
+	state.Status = status
+	state.Answers = decodeJSON(answers)
+	return &state, nil
+}
 
+func (repo *backofficeRepository) fetchSurvey(ctx context.Context, appID string) (*domain.SurveyState, error) {
 	row := repo.db.QueryRow(ctx, `
-        SELECT application_id, completed, submitted_at, status, answers
+        SELECT application_id, beneficiary_user_id, completed, submitted_at, status, answers
         FROM survey_responses
         WHERE application_id = $1`, appID)
-	if err := row.Scan(&state.ApplicationID, &state.Completed, &state.SubmittedAt, &state.Status, &answers); err != nil {
+	state, err := scanSurveyRow(row)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	state.Answers = decodeJSON(answers)
-	return &state, nil
+	return state, nil
+}
+
+func (repo *backofficeRepository) getBeneficiaryUserID(ctx context.Context, appID string) (string, error) {
+	if strings.TrimSpace(appID) == "" {
+		return "", domain.ErrNotFound
+	}
+	var userID string
+	if err := repo.db.QueryRow(ctx, `SELECT beneficiary_user_id FROM applications WHERE id = $1`, appID).Scan(&userID); err == nil {
+		if strings.TrimSpace(userID) != "" {
+			return userID, nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+
+	if err := repo.db.QueryRow(ctx, `SELECT user_id FROM ekyc_sessions WHERE id = $1`, appID).Scan(&userID); err == nil {
+		if strings.TrimSpace(userID) != "" {
+			return userID, nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+
+	if err := repo.db.QueryRow(ctx, `SELECT beneficiary_user_id FROM survey_responses WHERE application_id = $1`, appID).Scan(&userID); err == nil {
+		if strings.TrimSpace(userID) != "" {
+			return userID, nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+	return "", domain.ErrNotFound
+}
+
+func (repo *backofficeRepository) GetSurvey(ctx context.Context, appID string) (*domain.SurveyState, error) {
+	if _, err := repo.getBeneficiaryUserID(ctx, appID); err != nil {
+		return nil, err
+	}
+	return repo.fetchSurvey(ctx, appID)
+}
+
+func (repo *backofficeRepository) SaveSurveyDraft(ctx context.Context, params domain.SurveyDraftParams) (*domain.SurveyState, error) {
+	userID, err := repo.getBeneficiaryUserID(ctx, params.ApplicationID)
+	if err != nil {
+		return nil, err
+	}
+	status := strings.TrimSpace(params.Status)
+	if status == "" {
+		status = "belum-dikumpulkan"
+	}
+	answers := params.Answers
+	if answers == nil {
+		answers = map[string]any{}
+	}
+	answersBytes, _ := json.Marshal(answers)
+	row := repo.db.QueryRow(ctx, `
+        INSERT INTO survey_responses (application_id, beneficiary_user_id, completed, submitted_at, status, answers)
+        VALUES ($1,$2,false,NULL,$3,$4::jsonb)
+        ON CONFLICT (application_id) DO UPDATE SET
+            completed = false,
+            submitted_at = NULL,
+            status = $3,
+            answers = $4::jsonb
+        RETURNING application_id, beneficiary_user_id, completed, submitted_at, status, answers`,
+		params.ApplicationID, userID, status, answersBytes,
+	)
+	return scanSurveyRow(row)
+}
+
+func (repo *backofficeRepository) SubmitSurvey(ctx context.Context, params domain.SurveySubmitParams) (*domain.SurveyState, error) {
+	userID, err := repo.getBeneficiaryUserID(ctx, params.ApplicationID)
+	if err != nil {
+		return nil, err
+	}
+	status := strings.TrimSpace(params.Status)
+	if status == "" {
+		status = "antrean"
+	}
+	answers := params.Answers
+	if answers == nil {
+		answers = map[string]any{}
+	}
+	answersBytes, _ := json.Marshal(answers)
+	submittedAt := time.Now().UTC()
+	row := repo.db.QueryRow(ctx, `
+        INSERT INTO survey_responses (application_id, beneficiary_user_id, completed, submitted_at, status, answers)
+        VALUES ($1,$2,true,$3,$4,$5::jsonb)
+        ON CONFLICT (application_id) DO UPDATE SET
+            completed = true,
+            submitted_at = $3,
+            status = $4,
+            answers = $5::jsonb
+        RETURNING application_id, beneficiary_user_id, completed, submitted_at, status, answers`,
+		params.ApplicationID, userID, submittedAt, status, answersBytes,
+	)
+	return scanSurveyRow(row)
 }
 
 func (repo *backofficeRepository) CreateEkycSession(ctx context.Context, params domain.CreateEkycSessionParams) (*domain.EkycSession, error) {
