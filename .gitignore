@@ -1,6 +1,7 @@
 tmp
 bin/
 .venv
+.venv-ds/
 
 # Credentials
 .env
