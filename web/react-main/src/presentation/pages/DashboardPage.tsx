@@ -28,6 +28,22 @@ import type { Applicant } from "@domain/types";
 import type { SurveyStatus } from "@domain/entities/account";
 
 type VerificationStatus = "SEDANG_DITINJAU" | "DISETUJUI" | "DITOLAK";
+type DisbursementStatus = "dalam antrian" | "sedang disalurkan" | "disalurkan";
+
+export type DashboardSchedule = {
+  id?: string;
+  title: string;
+  date?: string;
+  location?: string;
+  note?: string;
+};
+
+export type DashboardNotification = {
+  id?: string;
+  title: string;
+  time?: string;
+  description?: string;
+};
 
 export type DashboardData = {
   submissionId: string;
@@ -41,6 +57,9 @@ export type DashboardData = {
   surveyStatus: SurveyStatus;
   surveySubmittedAt?: string;
   hasSurveyDraft: boolean;
+  schedules?: DashboardSchedule[];
+  notifications?: DashboardNotification[];
+  disbursementStatus?: DisbursementStatus;
 };
 
 type DashboardPageProps = {
@@ -52,24 +71,6 @@ type DashboardPageProps = {
   onContinueSurvey?: () => void;
   onViewSurvey?: () => void;
 };
-
-const scheduleSamples = [
-  {
-    title: "Verifikasi Lapangan",
-    date: "12 Maret 2025",
-    location: "Kel. Cempaka Putih, Jakarta Pusat",
-  },
-  {
-    title: "Rapat Penetapan Penerima",
-    date: "18 Maret 2025",
-    location: "Dinas Sosial Kota",
-  },
-  {
-    title: "Penyaluran Tahap I",
-    date: "22 Maret 2025",
-    location: "Kantor POS Cempaka Putih",
-  },
-];
 
 function maskNik(nik?: string) {
   if (!nik) return "-";
@@ -138,20 +139,102 @@ export function DashboardPage({
     () => formatStatus(data.verificationStatus),
     [data.verificationStatus],
   );
+  const identityComplete = data.faceMatchPassed && data.livenessPassed;
+  const pinComplete = data.pinSet;
+  const surveyComplete = data.surveyCompleted;
+  const surveyReviewComplete = ["diperiksa", "disetujui", "ditolak"].includes(
+    data.surveyStatus,
+  );
+  const agreementComplete = data.verificationStatus === "DISETUJUI";
+  const disbursementState: DisbursementStatus =
+    data.disbursementStatus ??
+    (agreementComplete ? "dalam antrian" : "dalam antrian");
+  const disbursementComplete = disbursementState === "disalurkan";
+
+  const stageItems = useMemo(
+    () => [
+      {
+        label: "Verifikasi Identitas Penerima",
+        done: identityComplete,
+        description: identityComplete
+          ? "Verifikasi selesai"
+          : "Menunggu pencocokan KTP & selfie",
+      },
+      {
+        label: "Buat PIN baru",
+        done: pinComplete,
+        description: pinComplete ? "PIN tersimpan" : "Belum membuat PIN",
+      },
+      {
+        label: "Lengkapi survei TKSK",
+        done: surveyComplete,
+        description: surveyComplete
+          ? "Survei sudah dikirim"
+          : data.hasSurveyDraft
+            ? "Masih berupa draft"
+            : "Belum mengisi survei",
+      },
+      {
+        label: "Pengecekan survei oleh petugas",
+        done: surveyReviewComplete,
+        description: (() => {
+          switch (data.surveyStatus) {
+            case "antrean":
+              return "Menunggu antrean petugas";
+            case "diperiksa":
+              return "Sedang diperiksa petugas";
+            case "disetujui":
+              return "Survei disetujui";
+            case "ditolak":
+              return "Survei ditolak, hubungi petugas";
+            default:
+              return "Belum diperiksa";
+          }
+        })(),
+      },
+      {
+        label: "Persetujuan kesepakatan penyaluran",
+        done: agreementComplete,
+        description: agreementComplete
+          ? "Kesepakatan selesai"
+          : "Menunggu persetujuan Dinas Sosial",
+      },
+      {
+        label: "Penyaluran bantuan",
+        done: disbursementComplete,
+        description:
+          disbursementState === "disalurkan"
+            ? "Bantuan sudah disalurkan"
+            : disbursementState === "sedang disalurkan"
+              ? "Sedang proses penyaluran"
+              : "Dalam antrian penyaluran",
+      },
+    ],
+    [
+      agreementComplete,
+      data.hasSurveyDraft,
+      data.surveyStatus,
+      disbursementComplete,
+      disbursementState,
+      identityComplete,
+      pinComplete,
+      surveyComplete,
+      surveyReviewComplete,
+    ],
+  );
+
   const completion = useMemo(() => {
-    const steps = [
-      data.faceMatchPassed,
-      data.livenessPassed,
-      data.verificationStatus === "DISETUJUI",
-    ];
-    const value = (steps.filter(Boolean).length / steps.length) * 100;
+    const total = stageItems.length;
+    const value = (stageItems.filter((item) => item.done).length / total) * 100;
     return Math.round(value);
-  }, [data.faceMatchPassed, data.livenessPassed, data.verificationStatus]);
+  }, [stageItems]);
   const accountNumber = useMemo(() => {
     const digits = data.applicant.phone?.replace(/\D/g, "") ?? "";
     if (digits.length >= 8) return `62${digits.slice(-8)}`;
     return "620001234567";
   }, [data.applicant.phone]);
+  const schedules = data.schedules ?? [];
+  const notifications = data.notifications ?? [];
 
   const needsPin = !data.pinSet;
   const needsSurvey = !data.surveyCompleted;
@@ -204,10 +287,6 @@ export function DashboardPage({
     }
   };
 
-  const printData = () => {
-    console.log(data);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
       <header className="border-b bg-white/90 backdrop-blur">
@@ -218,9 +297,6 @@ export function DashboardPage({
             </p>
             <h1 className="text-2xl font-semibold">
               Dashboard Penerima Bantuan
-              <Button variant="outline" onClick={printData}>
-                Print KONTOL
-              </Button>
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               ID Pengajuan:{" "}
@@ -401,9 +477,9 @@ export function DashboardPage({
         <section className="grid md:grid-cols-3 gap-6">
           <Card className="md:col-span-2 shadow-sm">
             <CardHeader>
-              <CardTitle>Status Verifikasi</CardTitle>
+              <CardTitle>Tahapan Penyaluran BANSOS</CardTitle>
               <CardDescription>
-                Proses validasi identitas oleh petugas Dinas Sosial.
+                Pantau progres setiap langkah hingga bantuan diterima.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -429,35 +505,22 @@ export function DashboardPage({
                   </span>
                 </div>
                 <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2
-                      className={`h-4 w-4 ${data.faceMatchPassed ? "text-emerald-500" : "text-slate-300"}`}
-                    />
-                    Pencocokan wajah
-                    <span className="ml-auto text-xs text-slate-400">
-                      {data.faceMatchPassed ? "Lulus" : "Menunggu"}
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2
-                      className={`h-4 w-4 ${data.livenessPassed ? "text-emerald-500" : "text-slate-300"}`}
-                    />
-                    Liveness check
-                    <span className="ml-auto text-xs text-slate-400">
-                      {data.livenessPassed ? "Lulus" : "Menunggu"}
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2
-                      className={`h-4 w-4 ${data.verificationStatus === "DISETUJUI" ? "text-emerald-500" : "text-slate-300"}`}
-                    />
-                    Persetujuan petugas
-                    <span className="ml-auto text-xs text-slate-400">
-                      {data.verificationStatus === "DISETUJUI"
-                        ? "Disetujui"
-                        : "Dalam proses"}
-                    </span>
-                  </li>
+                  {stageItems.map((stage) => (
+                    <li
+                      key={stage.label}
+                      className="flex items-center gap-2 text-sm text-slate-600"
+                    >
+                      <CheckCircle2
+                        className={`h-4 w-4 ${stage.done ? "text-emerald-500" : "text-slate-300"}`}
+                      />
+                      <span className="font-medium text-slate-700">
+                        {stage.label}
+                      </span>
+                      <span className="ml-auto text-xs text-slate-400 text-right">
+                        {stage.description}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </CardContent>
@@ -502,29 +565,16 @@ export function DashboardPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {scheduleSamples.map((item) => (
-                <div
-                  key={item.title}
-                  className="flex items-start gap-4 rounded-xl border border-slate-100 bg-white p-4"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                    <Calendar className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">
-                      {item.title}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5" />
-                      {item.date}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {item.location}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              {schedules.length === 0 ? (
+                <EmptyPlaceholder message="Belum ada jadwal penyaluran untuk akun ini. Jadwal akan tampil otomatis begitu petugas memasukkannya." />
+              ) : (
+                schedules.map((item) => (
+                  <ScheduleItemCard
+                    key={item.id ?? `${item.title}-${item.date ?? "date"}`}
+                    item={item}
+                  />
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -568,18 +618,16 @@ export function DashboardPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600">
-              <NotificationItem
-                title="Sedang dijadwalkan survei lapangan"
-                time="Dikirim 10 Maret 2025"
-              />
-              <NotificationItem
-                title="Dokumen selfie sudah divalidasi"
-                time="Dikirim 8 Maret 2025"
-              />
-              <NotificationItem
-                title="Pengajuan berhasil dikirim"
-                time="Dikirim 7 Maret 2025"
-              />
+              {notifications.length === 0 ? (
+                <EmptyPlaceholder message="Belum ada notifikasi penting. Kami akan menampilkan kabar terbaru begitu ada pembaruan dari petugas." />
+              ) : (
+                notifications.map((item) => (
+                  <NotificationItem
+                    key={item.id ?? `${item.title}-${item.time ?? "time"}`}
+                    item={item}
+                  />
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -615,11 +663,50 @@ function CreditMask({ value }: { value: string }) {
   return <span className="font-mono tracking-wide">{masked}</span>;
 }
 
-function NotificationItem({ title, time }: { title: string; time: string }) {
+function ScheduleItemCard({ item }: { item: DashboardSchedule }) {
+  return (
+    <div className="flex items-start gap-4 rounded-xl border border-slate-100 bg-white p-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+        <Calendar className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-slate-800">{item.title}</p>
+        {item.date && (
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5" />
+            {item.date}
+          </p>
+        )}
+        {item.location && (
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+            <MapPin className="h-3.5 w-3.5" />
+            {item.location}
+          </p>
+        )}
+        {item.note && (
+          <p className="text-xs text-slate-500 mt-1">{item.note}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NotificationItem({ item }: { item: DashboardNotification }) {
   return (
     <div className="rounded-xl border border-slate-100 bg-white p-4">
-      <p className="font-medium text-slate-800">{title}</p>
-      <p className="text-xs text-slate-500 mt-1">{time}</p>
+      <p className="font-medium text-slate-800">{item.title}</p>
+      {item.description && (
+        <p className="text-xs text-slate-500 mt-1">{item.description}</p>
+      )}
+      <p className="text-xs text-slate-500 mt-1">{item.time ?? "-"}</p>
+    </div>
+  );
+}
+
+function EmptyPlaceholder({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+      {message}
     </div>
   );
 }

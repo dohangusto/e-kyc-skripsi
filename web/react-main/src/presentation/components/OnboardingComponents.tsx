@@ -24,6 +24,8 @@ import {
   Check,
   User2,
   Repeat,
+  Search,
+  Loader2,
 } from "lucide-react";
 import { PencilLine } from "lucide-react";
 
@@ -53,6 +55,129 @@ function Section({
       </CardHeader>
       <CardContent className="space-y-4">{children}</CardContent>
     </Card>
+  );
+}
+
+/**************************
+ * 0) IDENTITY LOOKUP
+ **************************/
+export function IdentityLookupStep({
+  initialName = "",
+  initialNik = "",
+  onVerify,
+  externalError,
+  onRedirectLanding,
+}: {
+  initialName?: string;
+  initialNik?: string;
+  onVerify: (payload: { name: string; nik: string }) => Promise<void> | void;
+  externalError?: string | null;
+  onRedirectLanding?: () => void;
+}) {
+  const [name, setName] = useState(initialName ?? "");
+  const [nik, setNik] = useState(initialNik ?? "");
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setName(initialName ?? "");
+  }, [initialName]);
+  useEffect(() => {
+    setNik(initialNik ?? "");
+  }, [initialNik]);
+
+  const nikMasked = maskNik(nik ?? "");
+  const nikRaw = unmaskNik(nik ?? "");
+  const nameTrimmed = (name ?? "").trim();
+  const nikValid = /^\d{16}$/.test(nikRaw);
+  const isValid = nameTrimmed.length >= 3 && nikValid;
+  const canSubmit = isValid && !checking;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValid) {
+      setError("Nama lengkap dan 16 digit NIK wajib diisi.");
+      return;
+    }
+    setError(null);
+    setChecking(true);
+    try {
+      await sleep(900 + Math.random() * 600);
+      await onVerify({ name: nameTrimmed, nik: nikRaw });
+      setError(null);
+    } catch (err: any) {
+      setError(err?.message ?? "Gagal memeriksa data penduduk.");
+    }
+    setChecking(false);
+  };
+
+  return (
+    <Section
+      icon={<Search className="w-5 h-5" />}
+      title="Cek Nama & NIK"
+      desc="Langkah awal: sistem memeriksa apakah Anda terdaftar di data kependudukan sebelum lanjut ke foto KTP."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Label>Nama Lengkap</Label>
+          <Input
+            placeholder="Sesuai KTP (huruf besar/kecil bebas)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={checking}
+          />
+        </div>
+        <div>
+          <Label>NIK</Label>
+          <Input
+            inputMode="numeric"
+            placeholder="16 digit NIK"
+            value={nikMasked}
+            onChange={(e) => setNik(unmaskNik(e.target.value).slice(0, 16))}
+            disabled={checking}
+            className={!nikValid && nikRaw.length > 0 ? "border-red-500" : ""}
+          />
+          {!nikValid && nikRaw.length > 0 && (
+            <p className="text-xs text-red-600 mt-1">
+              NIK harus terdiri dari 16 digit angka.
+            </p>
+          )}
+        </div>
+        {checking && (
+          <Alert>
+            <AlertTitle className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Mengecek data kependudukan
+            </AlertTitle>
+            <AlertDescription>
+              Sistem sedang menghubungkan ke database Dukcapil/DTKS untuk
+              memastikan nama dan NIK Anda valid.
+            </AlertDescription>
+          </Alert>
+        )}
+        {(error || externalError) && !checking && (
+          <Alert variant="destructive">
+            <AlertDescription>{error ?? externalError}</AlertDescription>
+            {onRedirectLanding && (
+              <div className="mt-3">
+                <Button variant="secondary" onClick={onRedirectLanding}>
+                  Kembali ke halaman login
+                </Button>
+              </div>
+            )}
+          </Alert>
+        )}
+        <div className="flex gap-2">
+          <Button type="submit" disabled={!canSubmit}>
+            {checking ? "Memeriksa..." : "Periksa Data"}
+          </Button>
+        </div>
+        <p className="text-xs text-slate-500">
+          Data hanya dipakai untuk verifikasi bansos. Tidak ada data sensitif
+          yang disimpan di perangkat ini.
+        </p>
+      </form>
+    </Section>
   );
 }
 
@@ -675,9 +800,11 @@ function Verdict({
 export function DoneStep({
   id,
   applicant,
+  onGoLanding,
 }: {
   id: string;
   applicant?: { phone?: string; name?: string };
+  onGoLanding?: () => void;
 }) {
   return (
     <div className="text-center space-y-4 py-8">
@@ -705,6 +832,9 @@ export function DoneStep({
           instruksi yang tampil di sana.
         </p>
       </div>
+      {onGoLanding && (
+        <Button onClick={onGoLanding}>Kembali ke halaman login</Button>
+      )}
     </div>
   );
 }

@@ -12,7 +12,6 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import type { Applicant } from "@domain/types";
 import type { SurveyAnswers, SurveyStatus } from "@domain/entities/account";
@@ -22,27 +21,28 @@ type StepKey =
   | "B_KELUARGA"
   | "C_PEKERJAAN"
   | "D_ASET"
-  | "E_KESEHATAN";
+  | "E_ASET";
 
 const ALL_STEPS: StepKey[] = [
   "A_IDENTITAS",
   "B_KELUARGA",
   "C_PEKERJAAN",
   "D_ASET",
-  "E_KESEHATAN",
+  "E_ASET",
 ];
 
 const STEP_LABELS: Record<StepKey, string> = {
   A_IDENTITAS: "Identitas Diri",
   B_KELUARGA: "Kondisi Keluarga",
-  C_PEKERJAAN: "Pendidikan & Pekerjaan",
-  D_ASET: "Tempat Tinggal & Aset",
-  E_KESEHATAN: "Kesehatan & Kebiasaan",
+  C_PEKERJAAN: "Pendidikan & Ekonomi",
+  D_ASET: "Hunian & Sanitasi",
+  E_ASET: "Aset & Lahan",
 };
 
 const defaultAnswers: SurveyAnswers = {
   partB: {
-    householdMembers: "",
+    householdRole: "",
+    dependents: "",
     schoolChildren: "",
     toddlers: "",
     elderly: "",
@@ -52,24 +52,25 @@ const defaultAnswers: SurveyAnswers = {
     education: "",
     occupation: "",
     income: "",
-    extraIncome: "",
   },
   partD: {
     homeOwnership: "",
     floorType: "",
     wallType: "",
     roofType: "",
-    vehicle: "",
-    savings: "",
-    lighting: "",
-    waterSource: "",
     cookingFuel: "",
-    toilet: "",
-    wasteDisposal: "",
-    sanitation: "",
+    toiletType: "",
+    toiletFacility: "",
+    sewageDisposal: "",
+    waterSource: "",
+    lighting: "",
   },
   partE: {
-    healthCheck: "",
+    movableAssets: "",
+    movableAssetCount: "",
+    immovableAssets: "",
+    immovableAssetCount: "",
+    landOwnership: "",
   },
 };
 
@@ -197,9 +198,9 @@ export default function SurveyPage({
             }
           />
         );
-      case "E_KESEHATAN":
+      case "E_ASET":
         return (
-          <KesehatanSection
+          <AsetLahanSection
             value={answers.partE}
             onChange={(value) =>
               setAnswers((prev) => ({ ...prev, partE: value }))
@@ -369,64 +370,79 @@ function KondisiKeluargaSection({
 }) {
   const update = (patch: Partial<SurveyAnswers["partB"]>) =>
     onChange({ ...value, ...patch });
-  const countOptions = [
-    { value: "0", label: "Tidak ada" },
-    { value: "1", label: "1" },
-    { value: "2", label: "2" },
-    { value: "3", label: "3" },
-    { value: "10", label: "10" },
+  const statusOptions = [
+    "Kepala Keluarga",
+    "Istri/Suami",
+    "Anak",
+    "Anggota keluarga lain",
   ];
   return (
     <section className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">B. Kondisi Keluarga</CardTitle>
+          <CardTitle className="text-base">
+            B. Kondisi Keluarga & Demografi
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
-              <Label>Jumlah anggota keluarga dalam KK</Label>
+              <Label>Status dalam keluarga</Label>
+              <Input
+                list="family-status"
+                value={value.householdRole}
+                onChange={(e) => update({ householdRole: e.target.value })}
+                placeholder="contoh: Kepala Keluarga"
+              />
+              <datalist id="family-status">
+                {statusOptions.map((opt) => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
+            </div>
+            <div className="space-y-1">
+              <Label>Jumlah tanggungan</Label>
               <Input
                 type="number"
-                min={1}
-                value={value.householdMembers}
+                min={0}
+                value={value.dependents}
                 onChange={(e) =>
                   update({
-                    householdMembers:
+                    dependents:
                       e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
-                placeholder="contoh: 4"
+                placeholder="contoh: 3"
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Jumlah anak sekolah</Label>
+              <Input
+                type="number"
+                min={0}
+                value={value.schoolChildren}
+                onChange={(e) =>
+                  update({
+                    schoolChildren:
+                      e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+                placeholder="contoh: 2"
               />
             </div>
             <div className="space-y-1">
-              <Label>Jumlah tanggungan anak sekolah</Label>
-              <select
-                className="w-full rounded border px-3 py-2 text-sm"
-                value={value.schoolChildren}
-                onChange={(e) => update({ schoolChildren: e.target.value })}
-              >
-                <option value="">Pilih jumlah</option>
-                {countOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label>Anggota balita / anak usia dini</Label>
+              <Label>Balita / anak usia dini</Label>
               <select
                 className="w-full rounded border px-3 py-2 text-sm"
                 value={value.toddlers}
                 onChange={(e) => update({ toddlers: e.target.value })}
               >
-                <option value="">Pilih jumlah</option>
-                {countOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
+                <option value="">Pilih jawaban</option>
+                <option value="Tidak Ada">Tidak Ada</option>
+                <option value="Ada">Ada</option>
+                <option value="Lebih dari 1">Lebih dari 1</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -436,24 +452,23 @@ function KondisiKeluargaSection({
                 value={value.elderly}
                 onChange={(e) => update({ elderly: e.target.value })}
               >
-                <option value="">Pilih jumlah</option>
-                {countOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
+                <option value="">Pilih jawaban</option>
+                <option value="Tidak Ada">Tidak Ada</option>
+                <option value="Ada">Ada</option>
+                <option value="Lebih dari 1">Lebih dari 1</option>
               </select>
             </div>
             <div className="space-y-1 md:col-span-2">
-              <Label>Anggota dengan disabilitas/penyakit kronis</Label>
+              <Label>Disabilitas / penyakit kronis</Label>
               <select
                 className="w-full rounded border px-3 py-2 text-sm"
                 value={value.disability}
                 onChange={(e) => update({ disability: e.target.value })}
               >
                 <option value="">Pilih jawaban</option>
-                <option value="Tidak ada">Tidak ada</option>
-                <option value="Ada">Ada</option>
+                <option value="Tidak Ada">Tidak Ada</option>
+                <option value="Ringan">Ringan</option>
+                <option value="Berat">Berat</option>
               </select>
             </div>
           </div>
@@ -477,7 +492,7 @@ function PekerjaanSection({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            C. Pendidikan dan Pekerjaan
+            C. Pendidikan & Mata Pencaharian
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -522,15 +537,6 @@ function PekerjaanSection({
               </option>
               <option value="> Rp3.000.000">&gt; Rp3.000.000</option>
             </select>
-          </div>
-          <div className="space-y-1">
-            <Label>Sumber penghasilan tambahan (opsional)</Label>
-            <Textarea
-              rows={3}
-              value={value.extraIncome}
-              onChange={(e) => update({ extraIncome: e.target.value })}
-              placeholder="Tuliskan jika ada"
-            />
           </div>
         </CardContent>
       </Card>
@@ -588,21 +594,9 @@ function AsetSection({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">D. Aset & Fasilitas</CardTitle>
+          <CardTitle className="text-base">D. Sarana Sanitasi</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <DropdownField
-            label="Kepemilikan kendaraan"
-            value={value.vehicle}
-            onChange={(val) => update({ vehicle: val })}
-            options={["Motor", "Mobil", "Tidak punya"]}
-          />
-          <DropdownField
-            label="Kepemilikan tabungan/harta lancar"
-            value={value.savings}
-            onChange={(val) => update({ savings: val })}
-            options={["Ada", "Tidak"]}
-          />
           <DropdownField
             label="Sumber energi penerangan"
             value={value.lighting}
@@ -633,9 +627,19 @@ function AsetSection({
             options={["Gas LPG", "Kayu bakar", "Minyak tanah", "Lainnya"]}
           />
           <DropdownField
-            label="Tempat buang air besar"
-            value={value.toilet}
-            onChange={(val) => update({ toilet: val })}
+            label="Jenis kloset"
+            value={value.toiletType}
+            onChange={(val) => update({ toiletType: val })}
+            options={[
+              "Leher angsa",
+              "Plengsengan dengan tutup",
+              "Plengsengan terbuka",
+            ]}
+          />
+          <DropdownField
+            label="Fasilitas MCK"
+            value={value.toiletFacility}
+            onChange={(val) => update({ toiletFacility: val })}
             options={[
               "Toilet sendiri di rumah",
               "Toilet bersama",
@@ -643,16 +647,10 @@ function AsetSection({
             ]}
           />
           <DropdownField
-            label="Pembuangan limbah kamar mandi/dapur"
-            value={value.wasteDisposal}
-            onChange={(val) => update({ wasteDisposal: val })}
-            options={["Got tertutup", "Got terbuka", "Dibiarkan mengalir"]}
-          />
-          <DropdownField
-            label="Kondisi sanitasi"
-            value={value.sanitation}
-            onChange={(val) => update({ sanitation: val })}
-            options={["Sehat", "Kurang sehat", "Tidak sehat"]}
+            label="Pembuangan akhir tinja"
+            value={value.sewageDisposal}
+            onChange={(val) => update({ sewageDisposal: val })}
+            options={["Tangki septik", "Selokan terbuka", "Kolam/sungai"]}
           />
         </CardContent>
       </Card>
@@ -660,7 +658,7 @@ function AsetSection({
   );
 }
 
-function KesehatanSection({
+function AsetLahanSection({
   value,
   onChange,
 }: {
@@ -673,25 +671,68 @@ function KesehatanSection({
     <section className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            E. Kesehatan dan Kebiasaan
-          </CardTitle>
+          <CardTitle className="text-base">E. Aset & Lahan</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Label>
-            Apakah rutin melakukan pemeriksaan kesehatan (puskesmas, posyandu,
-            dll)?
-          </Label>
-          <select
-            className="w-full rounded border px-3 py-2 text-sm"
-            value={value.healthCheck}
-            onChange={(e) => update({ healthCheck: e.target.value })}
-          >
-            <option value="">Pilih jawaban</option>
-            <option value="Ya">Ya</option>
-            <option value="Kadang-kadang">Kadang-kadang</option>
-            <option value="Tidak">Tidak</option>
-          </select>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1">
+            <Label>Aset bergerak (motor, sepeda, dll)</Label>
+            <Input
+              value={value.movableAssets}
+              onChange={(e) => update({ movableAssets: e.target.value })}
+              placeholder="contoh: Motor, Sepeda"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Jumlah aset bergerak</Label>
+            <Input
+              type="number"
+              min={0}
+              value={value.movableAssetCount}
+              onChange={(e) =>
+                update({
+                  movableAssetCount:
+                    e.target.value === "" ? "" : Number(e.target.value),
+                })
+              }
+              placeholder="contoh: 1"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Aset tidak bergerak (rumah, toko, dll)</Label>
+            <Input
+              value={value.immovableAssets}
+              onChange={(e) => update({ immovableAssets: e.target.value })}
+              placeholder="contoh: Kios, Sawah"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Jumlah aset tidak bergerak</Label>
+            <Input
+              type="number"
+              min={0}
+              value={value.immovableAssetCount}
+              onChange={(e) =>
+                update({
+                  immovableAssetCount:
+                    e.target.value === "" ? "" : Number(e.target.value),
+                })
+              }
+              placeholder="contoh: 1"
+            />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label>Kepemilikan lahan / ternak</Label>
+            <select
+              className="w-full rounded border px-3 py-2 text-sm"
+              value={value.landOwnership}
+              onChange={(e) => update({ landOwnership: e.target.value })}
+            >
+              <option value="">Pilih jawaban</option>
+              <option value="Tidak Ada">Tidak Ada</option>
+              <option value="Ada">Ada</option>
+              <option value="Lebih Dari 1">Lebih Dari 1</option>
+            </select>
+          </div>
         </CardContent>
       </Card>
     </section>
@@ -760,25 +801,30 @@ function SurveySummary({
           <IdentitasSection applicant={applicant} />
           <SummarySection title="B. Kondisi Keluarga">
             <SummaryItem
-              label="Jumlah anggota keluarga"
+              label="Status dalam keluarga"
+              value={answers.partB.householdRole || "-"}
+            />
+            <SummaryItem
+              label="Jumlah tanggungan"
               value={
-                answers.partB.householdMembers === ""
+                answers.partB.dependents === ""
                   ? "-"
-                  : String(answers.partB.householdMembers)
+                  : String(answers.partB.dependents)
               }
             />
             <SummaryItem
-              label="Tanggungan anak sekolah"
-              value={formatCountValue(answers.partB.schoolChildren)}
+              label="Jumlah anak sekolah"
+              value={
+                answers.partB.schoolChildren === ""
+                  ? "-"
+                  : String(answers.partB.schoolChildren)
+              }
             />
             <SummaryItem
               label="Balita / anak usia dini"
-              value={formatCountValue(answers.partB.toddlers)}
+              value={answers.partB.toddlers || "-"}
             />
-            <SummaryItem
-              label="Lansia"
-              value={formatCountValue(answers.partB.elderly)}
-            />
+            <SummaryItem label="Lansia" value={answers.partB.elderly || "-"} />
             <SummaryItem
               label="Disabilitas / penyakit kronis"
               value={answers.partB.disability || "-"}
@@ -796,10 +842,6 @@ function SurveySummary({
             <SummaryItem
               label="Pendapatan per bulan"
               value={answers.partC.income || "-"}
-            />
-            <SummaryItem
-              label="Penghasilan tambahan"
-              value={answers.partC.extraIncome || "-"}
             />
           </SummarySection>
           <SummarySection title="D. Kondisi Tempat Tinggal & Aset">
@@ -820,42 +862,58 @@ function SurveySummary({
               value={answers.partD.roofType || "-"}
             />
             <SummaryItem
-              label="Kepemilikan kendaraan"
-              value={answers.partD.vehicle || "-"}
+              label="Bahan bakar memasak"
+              value={answers.partD.cookingFuel || "-"}
             />
             <SummaryItem
-              label="Tabungan / harta lancar"
-              value={answers.partD.savings || "-"}
+              label="Jenis kloset"
+              value={answers.partD.toiletType || "-"}
             />
             <SummaryItem
-              label="Energi penerangan"
-              value={answers.partD.lighting || "-"}
+              label="Fasilitas MCK"
+              value={answers.partD.toiletFacility || "-"}
+            />
+            <SummaryItem
+              label="Pembuangan akhir tinja"
+              value={answers.partD.sewageDisposal || "-"}
             />
             <SummaryItem
               label="Sumber air minum"
               value={answers.partD.waterSource || "-"}
             />
             <SummaryItem
-              label="Bahan bakar memasak"
-              value={answers.partD.cookingFuel || "-"}
-            />
-            <SummaryItem
-              label="Tempat buang air besar"
-              value={answers.partD.toilet || "-"}
-            />
-            <SummaryItem
-              label="Pembuangan limbah"
-              value={answers.partD.wasteDisposal || "-"}
-            />
-            <SummaryItem
-              label="Kondisi sanitasi"
-              value={answers.partD.sanitation || "-"}
+              label="Energi penerangan"
+              value={answers.partD.lighting || "-"}
             />
           </SummarySection>
-          <SummarySection title="E. Kesehatan dan Kebiasaan">
+          <SummarySection title="E. Aset & Lahan">
             <SummaryItem
-              label="Pemeriksaan kesehatan rutin"
-              value={answers.partE.healthCheck || "-"}
+              label="Aset bergerak"
+              value={answers.partE.movableAssets || "-"}
+            />
+            <SummaryItem
+              label="Jumlah aset bergerak"
+              value={
+                answers.partE.movableAssetCount === ""
+                  ? "-"
+                  : String(answers.partE.movableAssetCount)
+              }
+            />
+            <SummaryItem
+              label="Aset tidak bergerak"
+              value={answers.partE.immovableAssets || "-"}
+            />
+            <SummaryItem
+              label="Jumlah aset tidak bergerak"
+              value={
+                answers.partE.immovableAssetCount === ""
+                  ? "-"
+                  : String(answers.partE.immovableAssetCount)
+              }
+            />
+            <SummaryItem
+              label="Kepemilikan lahan / ternak"
+              value={answers.partE.landOwnership || "-"}
             />
           </SummarySection>
           <div className="flex justify-end">
@@ -913,17 +971,4 @@ function formatSurveyStatus(status: SurveyStatus) {
     default:
       return { label: "Belum dikumpulkan", variant: "outline" as const };
   }
-}
-
-const COUNT_LABELS: Record<string, string> = {
-  "0": "Tidak ada",
-  "1": "1",
-  "2": "2",
-  "3": "3",
-  "10": "10",
-};
-
-function formatCountValue(value: string) {
-  if (!value) return "-";
-  return COUNT_LABELS[value] ?? value;
 }

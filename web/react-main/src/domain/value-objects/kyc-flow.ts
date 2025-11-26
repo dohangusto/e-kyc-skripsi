@@ -1,4 +1,5 @@
 export const KYC_STEPS = [
+  "IDENTITY_LOOKUP",
   "UPLOAD_KTP",
   "OCR_REVIEW",
   "SELFIE",
@@ -12,6 +13,7 @@ export const KYC_STEPS = [
 export type StepKey = (typeof KYC_STEPS)[number];
 
 export const STEP_LABELS: Record<StepKey, string> = {
+  IDENTITY_LOOKUP: "Cek Nama & NIK",
   UPLOAD_KTP: "Kamera KTP",
   OCR_REVIEW: "Isi Data KTP",
   SELFIE: "Selfie + Pegang KTP",

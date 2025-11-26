@@ -4,10 +4,11 @@ import "time"
 
 type Beneficiary struct {
 	User
-	HouseholdSize   int
-	ClusterCategory *string
-	ClusterPriority *string
-	PortalFlags     map[string]any
+	BansosUtama            *string
+	RankingBansosUtama     *int
+	BansosPendukung        *string
+	RankingBansosPendukung *int
+	PortalFlags            map[string]any
 }
 
 type Application struct {

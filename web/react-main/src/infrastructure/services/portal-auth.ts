@@ -6,6 +6,7 @@ export type AuthSessionResponse = {
   role: string;
   regionScope: string[];
   issuedAt: string;
+  expiresAt: string;
 };
 
 export type RegionResponse = {
@@ -33,6 +34,12 @@ export type AuthUserResponse = {
 export type AuthResultResponse = {
   session: AuthSessionResponse;
   user: AuthUserResponse;
+};
+
+export type EligibilityResponse = {
+  eligible: boolean;
+  reason?: string;
+  user?: AuthUserResponse;
 };
 
 export type LoginBeneficiaryPayload = {
@@ -63,6 +70,29 @@ export function loginBeneficiary(payload: LoginBeneficiaryPayload) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+}
+
+export function checkBeneficiaryEligibility(payload: {
+  name: string;
+  nik: string;
+}) {
+  return gatewayRequest<EligibilityResponse>(
+    "/api/auth/beneficiary/eligibility",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function fetchActiveSession(token: string) {
+  return gatewayRequest<AuthSessionResponse>("/api/auth/me", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }
 

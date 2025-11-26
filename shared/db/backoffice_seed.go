@@ -51,17 +51,18 @@ type regionSeed struct {
 }
 
 type beneficiarySeed struct {
-	ID              string
-	Nik             string
-	Name            string
-	DOB             string
-	Phone           string
-	Email           string
-	Region          regionSeed
-	HouseholdSize   int
-	ClusterCategory string
-	ClusterPriority string
-	Portal          portalSeed
+	ID                     string
+	Nik                    string
+	Name                   string
+	DOB                    string
+	Phone                  string
+	Email                  string
+	Region                 regionSeed
+	BansosUtama            string
+	RankingBansosUtama     int
+	BansosPendukung        string
+	RankingBansosPendukung int
+	Portal                 portalSeed
 }
 
 type portalSeed struct {
@@ -81,16 +82,17 @@ const (
 
 var beneficiaries = []beneficiarySeed{
 	{
-		ID:              "11111111-1111-1111-1111-111111111111",
-		Nik:             "3271011234560001",
-		Name:            "Siti Aminah",
-		DOB:             "1987-04-12",
-		Phone:           "08123450001",
-		Email:           "siti.aminah@contoh.id",
-		Region:          regionSeed{"Kepri", "Batam", "Sekupang", "Tg Riau"},
-		HouseholdSize:   4,
-		ClusterCategory: "PKH",
-		ClusterPriority: "TINGGI",
+		ID:                     "11111111-1111-1111-1111-111111111111",
+		Nik:                    "3271011234560001",
+		Name:                   "Siti Aminah",
+		DOB:                    "1987-04-12",
+		Phone:                  "08123450001",
+		Email:                  "siti.aminah@contoh.id",
+		Region:                 regionSeed{"Kepri", "Batam", "Sekupang", "Tg Riau"},
+		BansosUtama:            "PBI",
+		RankingBansosUtama:     1,
+		BansosPendukung:        "PKH",
+		RankingBansosPendukung: 12,
 		Portal: portalSeed{
 			Phone:              "08123450001",
 			Email:              "siti.aminah@contoh.id",
@@ -101,16 +103,17 @@ var beneficiaries = []beneficiarySeed{
 		},
 	},
 	{
-		ID:              "22222222-2222-2222-2222-222222222222",
-		Nik:             "3271012234560002",
-		Name:            "Rahmat Hidayat",
-		DOB:             "1984-06-21",
-		Phone:           "08123450002",
-		Email:           "rahmat.hidayat@contoh.id",
-		Region:          regionSeed{"Kepri", "Batam", "Batam Kota", "Belian"},
-		HouseholdSize:   3,
-		ClusterCategory: "BPNT",
-		ClusterPriority: "SEDANG",
+		ID:                     "22222222-2222-2222-2222-222222222222",
+		Nik:                    "3271012234560002",
+		Name:                   "Rahmat Hidayat",
+		DOB:                    "1984-06-21",
+		Phone:                  "08123450002",
+		Email:                  "rahmat.hidayat@contoh.id",
+		Region:                 regionSeed{"Kepri", "Batam", "Batam Kota", "Belian"},
+		BansosUtama:            "PBI",
+		RankingBansosUtama:     2,
+		BansosPendukung:        "BPNT",
+		RankingBansosPendukung: 28,
 		Portal: portalSeed{
 			Phone:              "08123450002",
 			Email:              "rahmat.hidayat@contoh.id",
@@ -121,16 +124,17 @@ var beneficiaries = []beneficiarySeed{
 		},
 	},
 	{
-		ID:              "33333333-3333-3333-3333-333333333333",
-		Nik:             "3271013234560003",
-		Name:            "Andi Pratama",
-		DOB:             "1990-01-19",
-		Phone:           "08123450003",
-		Email:           "andi.pratama@contoh.id",
-		Region:          regionSeed{"Kepri", "Batam", "Sagulung", "Sungai Langkai"},
-		HouseholdSize:   5,
-		ClusterCategory: "PKH",
-		ClusterPriority: "TINGGI",
+		ID:                     "33333333-3333-3333-3333-333333333333",
+		Nik:                    "3271013234560003",
+		Name:                   "Andi Pratama",
+		DOB:                    "1990-01-19",
+		Phone:                  "08123450003",
+		Email:                  "andi.pratama@contoh.id",
+		Region:                 regionSeed{"Kepri", "Batam", "Sagulung", "Sungai Langkai"},
+		BansosUtama:            "BPNT",
+		RankingBansosUtama:     3,
+		BansosPendukung:        "PKH",
+		RankingBansosPendukung: 35,
 		Portal: portalSeed{
 			Phone:              "08123450003",
 			Email:              "andi.pratama@contoh.id",
@@ -141,16 +145,17 @@ var beneficiaries = []beneficiarySeed{
 		},
 	},
 	{
-		ID:              "44444444-4444-4444-4444-444444444444",
-		Nik:             "3271014234560004",
-		Name:            "Lestari Dewi",
-		DOB:             "1994-09-02",
-		Phone:           "08123450004",
-		Email:           "lestari.dewi@contoh.id",
-		Region:          regionSeed{"Kepri", "Batam", "Batu Aji", "Buliang"},
-		HouseholdSize:   2,
-		ClusterCategory: "BPNT",
-		ClusterPriority: "SEDANG",
+		ID:                     "44444444-4444-4444-4444-444444444444",
+		Nik:                    "3271014234560004",
+		Name:                   "Lestari Dewi",
+		DOB:                    "1994-09-02",
+		Phone:                  "08123450004",
+		Email:                  "lestari.dewi@contoh.id",
+		Region:                 regionSeed{"Kepri", "Batam", "Batu Aji", "Buliang"},
+		BansosUtama:            "PBI",
+		RankingBansosUtama:     4,
+		BansosPendukung:        "PKH",
+		RankingBansosPendukung: 40,
 		Portal: portalSeed{
 			Phone:              "08123450004",
 			Email:              "lestari.dewi@contoh.id",
@@ -273,11 +278,36 @@ var applicationSeeds = []applicationSeed{
 			SubmittedAt: strPtr("2025-10-19T08:45:00Z"),
 			Answers: map[string]any{
 				"partB": map[string]any{
-					"householdMembers": 3,
-					"schoolChildren":   "Ada (1 SD)",
-					"toddlers":         "Tidak ada",
-					"elderly":          "Ada (1 lansia)",
-					"disability":       "Tidak ada",
+					"householdRole":  "Kepala Keluarga",
+					"dependents":     3,
+					"schoolChildren": 1,
+					"toddlers":       "Tidak Ada",
+					"elderly":        "Ada",
+					"disability":     "Tidak Ada",
+				},
+				"partC": map[string]any{
+					"education":  "SMA/SMK",
+					"occupation": "Pekerja lepas",
+					"income":     "Rp1.000.000 – Rp2.000.000",
+				},
+				"partD": map[string]any{
+					"homeOwnership":  "Milik sendiri",
+					"floorType":      "Keramik",
+					"wallType":       "Tembok plester",
+					"roofType":       "Genteng/Beton",
+					"cookingFuel":    "Gas LPG",
+					"toiletType":     "Leher angsa",
+					"toiletFacility": "Toilet sendiri di rumah",
+					"sewageDisposal": "Tangki septik",
+					"waterSource":    "PDAM",
+					"lighting":       "Listrik PLN subsidi",
+				},
+				"partE": map[string]any{
+					"movableAssets":       "Motor",
+					"movableAssetCount":   1,
+					"immovableAssets":     "Tidak ada",
+					"immovableAssetCount": 0,
+					"landOwnership":       "Tidak Ada",
 				},
 			},
 		},
@@ -308,7 +338,38 @@ var applicationSeeds = []applicationSeed{
 			Status:      strPtr("diperiksa"),
 			SubmittedAt: strPtr("2025-10-11T09:20:00Z"),
 			Answers: map[string]any{
-				"partB": map[string]any{"householdMembers": 5, "schoolChildren": "Ada (2 SD)", "toddlers": "Ada (1 balita)", "elderly": "Tidak ada", "disability": "Tidak ada"},
+				"partB": map[string]any{
+					"householdRole":  "Kepala Keluarga",
+					"dependents":     5,
+					"schoolChildren": 2,
+					"toddlers":       "Ada",
+					"elderly":        "Tidak Ada",
+					"disability":     "Tidak Ada",
+				},
+				"partC": map[string]any{
+					"education":  "SMP",
+					"occupation": "Buruh harian",
+					"income":     "< Rp 1.000.000",
+				},
+				"partD": map[string]any{
+					"homeOwnership":  "Kontrak",
+					"floorType":      "Semen",
+					"wallType":       "Kayu",
+					"roofType":       "Seng",
+					"cookingFuel":    "Kayu bakar",
+					"toiletType":     "Plengsengan",
+					"toiletFacility": "Toilet bersama",
+					"sewageDisposal": "Dibiarkan mengalir",
+					"waterSource":    "Sumur gali",
+					"lighting":       "Listrik PLN non-subsidi",
+				},
+				"partE": map[string]any{
+					"movableAssets":       "Tidak punya kendaraan",
+					"movableAssetCount":   0,
+					"immovableAssets":     "Tidak ada",
+					"immovableAssetCount": 0,
+					"landOwnership":       "Tidak Ada",
+				},
 			},
 		},
 	},
@@ -468,14 +529,26 @@ var candidateSeeds = []clusteringCandidateSeed{
 func seedBeneficiaries(ctx context.Context, tx pgx.Tx) error {
 	for _, b := range beneficiaries {
 		if _, err := tx.Exec(ctx, `
-            INSERT INTO beneficiaries (user_id, household_size, cluster_category, cluster_priority, portal_flags)
-            VALUES ($1,$2,$3,$4,$5::jsonb)
+            INSERT INTO beneficiaries (
+                user_id,
+                bansos_utama,
+                ranking_bansos_utama,
+                bansos_pendukung,
+                ranking_bansos_pendukung,
+                portal_flags
+            )
+            VALUES ($1,$2,$3,$4,$5,$6::jsonb)
             ON CONFLICT (user_id) DO UPDATE SET
-                household_size = EXCLUDED.household_size,
-                cluster_category = EXCLUDED.cluster_category,
-                cluster_priority = EXCLUDED.cluster_priority,
+                bansos_utama = EXCLUDED.bansos_utama,
+                ranking_bansos_utama = EXCLUDED.ranking_bansos_utama,
+                bansos_pendukung = EXCLUDED.bansos_pendukung,
+                ranking_bansos_pendukung = EXCLUDED.ranking_bansos_pendukung,
                 portal_flags = EXCLUDED.portal_flags`,
-			b.ID, b.HouseholdSize, b.ClusterCategory, b.ClusterPriority,
+			b.ID,
+			b.BansosUtama,
+			b.RankingBansosUtama,
+			b.BansosPendukung,
+			b.RankingBansosPendukung,
 			mustJSON(map[string]any{
 				"verificationStatus": b.Portal.VerificationStatus,
 				"faceMatchPassed":    b.Portal.FaceMatchPassed,
@@ -826,6 +899,12 @@ func seedClustering(ctx context.Context, tx pgx.Tx) error {
 
 	for _, candidate := range candidateSeeds {
 		bene := beneMap[candidate.UserID]
+		cluster := strings.ToUpper(strings.TrimSpace(bene.BansosUtama))
+		if cluster == "" {
+			cluster = "LAINNYA"
+		}
+		priority := rankingToPriority(bene.RankingBansosUtama)
+		score := priorityScore(priority)
 		var reviewedAt *time.Time
 		if candidate.ReviewedAt != nil {
 			t, err := time.Parse(time.RFC3339, *candidate.ReviewedAt)
@@ -854,7 +933,7 @@ func seedClustering(ctx context.Context, tx pgx.Tx) error {
                 notes = EXCLUDED.notes`,
 			candidate.UserID, candidate.RunID, candidate.UserID,
 			mustJSON(map[string]string{"prov": bene.Region.Prov, "kab": bene.Region.Kab, "kec": bene.Region.Kec, "kel": bene.Region.Kel}),
-			bene.ClusterCategory, bene.ClusterPriority, priorityScore(bene.ClusterPriority), bene.HouseholdSize,
+			cluster, priority, score, 1,
 			candidate.Status, candidate.AssignedTo, candidate.Reviewer, reviewedAt, candidate.Notes,
 		); err != nil {
 			return err
@@ -1006,6 +1085,17 @@ func mustJSON(value any) []byte {
 		panic(err)
 	}
 	return b
+}
+
+func rankingToPriority(rank int) string {
+	switch {
+	case rank > 0 && rank <= 100:
+		return "TINGGI"
+	case rank > 100 && rank <= 400:
+		return "SEDANG"
+	default:
+		return "RENDAH"
+	}
 }
 
 func priorityScore(priority string) float64 {

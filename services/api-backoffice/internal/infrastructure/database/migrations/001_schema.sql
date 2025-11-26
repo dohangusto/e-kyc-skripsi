@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS system_config CASCADE;
 DROP TABLE IF EXISTS beneficiary_notifications CASCADE;
 DROP TABLE IF EXISTS beneficiaries CASCADE;
+DROP TABLE IF EXISTS beneficiary_dataset CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 CREATE TABLE IF NOT EXISTS users (
@@ -44,9 +45,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS
 
 CREATE TABLE IF NOT EXISTS beneficiaries (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    household_size INTEGER NOT NULL DEFAULT 1,
-    cluster_category TEXT,
-    cluster_priority TEXT,
+    bansos_utama TEXT,
+    ranking_bansos_utama INTEGER,
+    bansos_pendukung TEXT,
+    ranking_bansos_pendukung INTEGER,
     portal_flags JSONB NOT NULL DEFAULT '{}'
 );
 

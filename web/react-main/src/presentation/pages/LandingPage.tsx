@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+export const LANDING_LOGIN_SECTION_ID = "landing-login-section";
+
 type LandingPageProps = {
   onStart: () => void;
   onViewDashboard?: () => void;
@@ -120,6 +122,44 @@ export function LandingPage({
     onVerifyOtp?.({ phone: otpPhone, code: otpCode });
   }
 
+  const scrollToLoginSection = ({
+    behavior = "smooth",
+    preserveHash = false,
+  }: {
+    behavior?: ScrollBehavior;
+    preserveHash?: boolean;
+  } = {}) => {
+    if (typeof document === "undefined") return;
+    const section = document.getElementById(LANDING_LOGIN_SECTION_ID);
+    if (section) {
+      section.scrollIntoView({ behavior, block: "start" });
+      if (!preserveHash && typeof window !== "undefined") {
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === `#${LANDING_LOGIN_SECTION_ID}`) {
+      requestAnimationFrame(() => {
+        scrollToLoginSection({ behavior: "smooth" });
+      });
+    }
+  }, []);
+
+  const handleDashboardCTA = () => {
+    if (canAccessDashboard && onViewDashboard) {
+      onViewDashboard();
+    } else {
+      scrollToLoginSection();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
       <header className="border-b bg-white/80 backdrop-blur">
@@ -145,11 +185,7 @@ export function LandingPage({
               Mulai Verifikasi
             </Button>
             {onViewDashboard && (
-              <Button
-                variant="outline"
-                onClick={onViewDashboard}
-                disabled={!canAccessDashboard}
-              >
+              <Button variant="outline" onClick={handleDashboardCTA}>
                 {canAccessDashboard
                   ? "Masuk / Lanjut ke Dashboard"
                   : "Sudah punya akun? Login di bawah"}
@@ -191,12 +227,7 @@ export function LandingPage({
               <Button size="lg" onClick={onStart}>
                 Mulai Verifikasi Sekarang
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={onViewDashboard}
-                disabled={!canAccessDashboard}
-              >
+              <Button size="lg" variant="outline" onClick={handleDashboardCTA}>
                 {canAccessDashboard
                   ? "Masuk / Lanjut ke Dashboard"
                   : "Sudah punya akun? Login di bawah"}
@@ -242,7 +273,10 @@ export function LandingPage({
           </motion.div>
         </section>
 
-        <section className="grid lg:grid-cols-2 gap-8">
+        <section
+          id={LANDING_LOGIN_SECTION_ID}
+          className="grid lg:grid-cols-2 gap-8"
+        >
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}

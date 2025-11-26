@@ -1,89 +1,79 @@
-import type { Account, SurveyState } from "@domain/entities/account";
+import type { Account } from "@domain/entities/account";
 import type { AuthRepository } from "@domain/repositories/auth-repository";
-import { beneficiaries } from "@dummies/beneficiaries";
-import type { PortalInfo, VerificationStatus } from "@dummies/schema";
+import { PIN_FLAG } from "@shared/security";
 
-const formatAddress = (region: { prov: string; kab: string; kec: string; kel: string }) =>
-  `${region.kel}, ${region.kec}, ${region.kab}, ${region.prov}`;
+const STORAGE_KEY = "ekyc.portal.accounts";
+const DUMMY_PHONES = new Set(
+  [
+    "08123450001",
+    "08123450002",
+    "08123450003",
+    "08123450004",
+    "08123450005",
+    "08123450006",
+  ].map((phone) => phone.replace(/\D/g, "")),
+);
 
-const verificationFromStatus = (status: string | undefined): VerificationStatus => {
-  switch (status) {
-    case "FINAL_APPROVED":
-    case "DISBURSED":
-    case "DISBURSEMENT_READY":
-      return "DISETUJUI";
-    case "FINAL_REJECTED":
-    case "DISBURSEMENT_FAILED":
-      return "DITOLAK";
-    default:
-      return "SEDANG_DITINJAU";
-  }
-};
+const supportsStorage = () =>
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
-const normalizeSurvey = (
-  source?: {
-    completed: boolean;
-    submittedAt?: string;
-    status?: SurveyState["status"];
-    answers?: SurveyState["answers"];
-  },
-): SurveyState | undefined => {
-  if (source) {
-    return {
-      completed: source.completed ?? false,
-      status: source.status ?? "belum-dikumpulkan",
-      submittedAt: source.submittedAt,
-      answers: source.answers,
-    };
-  }
-  return undefined;
-};
+const normalizePhone = (value?: string | null) =>
+  value ? value.replace(/\D/g, "") : "";
 
-const defaultEmail = (name: string) =>
-  `${name.toLowerCase().replace(/\s+/g, ".") || "user"}@contoh.id`;
-
-const buildAccount = (seed: (typeof beneficiaries)[number]): Account => {
-  const mergedPortal: PortalInfo = {
-    phone: seed.portal?.phone ?? seed.phone,
-    email: seed.portal?.email ?? defaultEmail(seed.name),
-    pin: seed.portal?.pin ?? null,
-    verificationStatus:
-      seed.portal?.verificationStatus ?? verificationFromStatus(seed.status),
-    faceMatchPassed: seed.portal?.faceMatchPassed ?? seed.scores.face >= 0.8,
-    livenessPassed: seed.portal?.livenessPassed ?? seed.scores.liveness === "OK",
-  };
-
-  const survey =
-    normalizeSurvey(
-      seed.survey && {
-        completed: seed.survey.completed,
-        submittedAt: seed.survey.submittedAt,
-        status: seed.survey.status,
-        answers: seed.survey.answers,
-      },
-    ) ?? {
-      completed: false,
-      status: "belum-dikumpulkan",
-    };
-
+const cloneSurvey = (survey: Account["survey"]) => {
+  if (!survey) return undefined;
+  type StoredAnswers = NonNullable<Account["survey"]>["answers"];
   return {
-    phone: mergedPortal.phone,
-    pin: mergedPortal.pin ?? null,
-    submissionId: seed.applicationId,
-    applicant: {
-      number: seed.nik,
-      name: seed.name,
-      birthDate: seed.dob,
-      address: formatAddress(seed.region),
-      phone: mergedPortal.phone,
-      email: mergedPortal.email ?? defaultEmail(seed.name),
-    },
-    createdAt: seed.createdAt,
-    faceMatchPassed: mergedPortal.faceMatchPassed ?? true,
-    livenessPassed: mergedPortal.livenessPassed ?? true,
-    verificationStatus: mergedPortal.verificationStatus ?? "SEDANG_DITINJAU",
-    survey,
+    completed: survey.completed,
+    status: survey.status,
+    submittedAt: survey.submittedAt,
+    answers: survey.answers
+      ? (JSON.parse(JSON.stringify(survey.answers)) as StoredAnswers)
+      : undefined,
   };
+};
+
+const sanitizeApplicant = (applicant: Account["applicant"]) => {
+  const { pin: _ignored, ...rest } = applicant;
+  return { ...rest };
+};
+
+const sanitizeAccount = (account: Account): Account => ({
+  ...account,
+  pin: account.pin ? PIN_FLAG : null,
+  applicant: sanitizeApplicant(account.applicant),
+  survey: cloneSurvey(account.survey),
+});
+
+const readFromStorage = (): Account[] => {
+  if (!supportsStorage()) {
+    return [];
+  }
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((account) => {
+      const phone = normalizePhone(account?.phone);
+      if (!phone) return true;
+      return !DUMMY_PHONES.has(phone);
+    });
+  } catch (err) {
+    console.warn("Failed to parse stored accounts", err);
+    return [];
+  }
+};
+
+const persistToStorage = (accounts: Account[]) => {
+  if (!supportsStorage()) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+  } catch (err) {
+    console.warn("Failed to persist accounts", err);
+  }
 };
 
 let cachedAccounts: Account[] | null = null;
@@ -91,14 +81,16 @@ let cachedAccounts: Account[] | null = null;
 export const LocalAuthRepository: AuthRepository = {
   async loadAccounts() {
     if (!cachedAccounts) {
-      cachedAccounts = beneficiaries
-        .filter((seed) => !!seed.phone && !!seed.applicationId)
-        .map(buildAccount);
+      cachedAccounts = readFromStorage().map((account) =>
+        sanitizeAccount(account),
+      );
+      persistToStorage(cachedAccounts);
     }
-    return cachedAccounts.map((account) => ({ ...account }));
+    return cachedAccounts.map((account) => sanitizeAccount(account));
   },
 
   async saveAccounts(accounts) {
-    cachedAccounts = accounts.map((account) => ({ ...account }));
+    cachedAccounts = accounts.map((account) => sanitizeAccount(account));
+    persistToStorage(cachedAccounts);
   },
 };

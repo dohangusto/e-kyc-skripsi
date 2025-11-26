@@ -20,6 +20,7 @@ func RegisterRoutes(
 	auth := e.Group("/api/auth")
 	auth.POST("/admin/login", authHandler.LoginAdmin)
 	auth.POST("/beneficiary/login", authHandler.LoginBeneficiary)
+	auth.POST("/beneficiary/eligibility", authHandler.CheckEligibility)
 	auth.GET("/me", authHandler.Me)
 
 	// Applications

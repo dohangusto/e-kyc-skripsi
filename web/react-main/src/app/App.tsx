@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
-import LandingPage from "@presentation/pages/LandingPage";
+import LandingPage, {
+  LANDING_LOGIN_SECTION_ID,
+} from "@presentation/pages/LandingPage";
 import OnboardingWizard, {
   type CompletionPayload,
 } from "@presentation/pages/OnboardingWizard";
 import DashboardPage from "@presentation/pages/DashboardPage";
 import SurveyPage from "@presentation/pages/SurveyPage";
 import { LocalAuthRepository } from "@infrastructure/adapters/local-auth";
+import { SessionStorage } from "@infrastructure/adapters/session-storage";
 import {
+  fetchActiveSession,
   loginBeneficiary,
   listEkycSessions,
   type AuthResultResponse,
@@ -25,14 +29,29 @@ import type {
   SurveyStatus,
 } from "@domain/entities/account";
 import type { Applicant } from "@domain/types";
+import { PIN_FLAG } from "@shared/security";
+
+const sanitizeApplicant = (applicant: Applicant): Applicant => {
+  const { pin: _ignored, ...rest } = applicant;
+  return rest as Applicant;
+};
+
+const sanitizeAccount = (account: Account): Account => {
+  return {
+    ...account,
+    pin: account.pin ? PIN_FLAG : null,
+    applicant: sanitizeApplicant(account.applicant),
+  };
+};
 
 function ensureSurvey(account: Account): Account {
-  const survey = account.survey ?? {
+  const sanitized = sanitizeAccount(account);
+  const survey = sanitized.survey ?? {
     completed: false,
     status: "belum-dikumpulkan",
   };
   return {
-    ...account,
+    ...sanitized,
     survey: {
       completed: survey.completed ?? false,
       status: survey.status ?? "belum-dikumpulkan",
@@ -54,6 +73,9 @@ type SessionPayload = {
   phone: string;
   expiresAt: number;
   remote: boolean;
+  userId?: string;
+  role?: string;
+  regionScope?: string[];
 };
 
 type ApplicantMetadata = {
@@ -112,12 +134,11 @@ const buildAccountFromSession = (
     address: applicantMeta.address ?? "",
     phone,
     email: applicantMeta.email ?? user.Email ?? "",
-    pin,
   };
 
   return {
     phone,
-    pin,
+    pin: pin ? PIN_FLAG : null,
     submissionId: session.id,
     applicant,
     createdAt: session.createdAt ?? new Date().toISOString(),
@@ -204,8 +225,11 @@ const fetchAccountFromGateway = async (
     console.error("Failed to load survey from gateway", err);
   }
   const issuedAt = new Date(auth.session.issuedAt).getTime();
-  const expiresAt =
-    (Number.isNaN(issuedAt) ? Date.now() : issuedAt) + 6 * 60 * 60 * 1000;
+  const parsedExpires = new Date(auth.session.expiresAt).getTime();
+  const fallbackDuration = 48 * 60 * 60 * 1000;
+  const expiresAt = Number.isNaN(parsedExpires)
+    ? (Number.isNaN(issuedAt) ? Date.now() : issuedAt) + fallbackDuration
+    : parsedExpires;
   return {
     account,
     session: {
@@ -213,6 +237,9 @@ const fetchAccountFromGateway = async (
       phone: account.phone,
       expiresAt,
       remote: true,
+      userId: auth.session.userId,
+      role: auth.session.role,
+      regionScope: auth.session.regionScope,
     },
   };
 };
@@ -230,9 +257,25 @@ const createEphemeralSession = (phone: string): SessionPayload => {
   };
 };
 
+const persistRemoteSession = (payload: SessionPayload | null) => {
+  if (payload?.remote) {
+    SessionStorage.save({
+      token: payload.token,
+      phone: payload.phone,
+      expiresAt: payload.expiresAt,
+      userId: payload.userId,
+      role: payload.role,
+      regionScope: payload.regionScope,
+    });
+  } else {
+    SessionStorage.clear();
+  }
+};
+
 const App = () => {
   const [view, setView] = useState<ViewState>("landing");
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [currentAccount, setCurrentAccount] = useState<Account | null>(null);
   const [pinLoginError, setPinLoginError] = useState<string | null>(null);
   const [otpContext, setOtpContext] = useState<OtpContext | null>(null);
@@ -240,6 +283,36 @@ const App = () => {
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [surveyMode, setSurveyMode] = useState<"fill" | "review">("fill");
   const syncedSurveyIdsRef = useRef<Record<string, boolean>>({});
+  const [restoredSession, setRestoredSession] = useState(false);
+  const landingLoginHash = `#${LANDING_LOGIN_SECTION_ID}`;
+
+  const scrollLoginSectionIfVisible = () => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById(LANDING_LOGIN_SECTION_ID);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const goToLanding = () => {
+    if (typeof window !== "undefined") {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+    }
+    setView("landing");
+  };
+
+  const goToLandingLogin = () => {
+    if (view === "landing") {
+      scrollLoginSectionIfVisible();
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.location.hash = landingLoginHash;
+    }
+    setView("landing");
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -248,6 +321,7 @@ const App = () => {
       if (!mounted) return;
 
       setAccounts(loadedAccounts.map(ensureSurvey));
+      setAccountsLoaded(true);
     })();
 
     return () => {
@@ -277,6 +351,66 @@ const App = () => {
     return normalizePhone(session.phone) === normalizePhone(account.phone);
   };
 
+  useEffect(() => {
+    if (!accountsLoaded || restoredSession) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const stored = SessionStorage.load();
+      if (!stored) {
+        if (!cancelled) {
+          setRestoredSession(true);
+        }
+        return;
+      }
+      if (stored.expiresAt <= Date.now()) {
+        persistRemoteSession(null);
+        if (!cancelled) {
+          setRestoredSession(true);
+        }
+        return;
+      }
+      try {
+        const remoteSession = await fetchActiveSession(stored.token);
+        if (cancelled) return;
+        const expiresAt = new Date(
+          remoteSession.expiresAt ?? remoteSession.issuedAt,
+        ).getTime();
+        const hydratedSession: SessionPayload = {
+          token: stored.token,
+          phone: stored.phone,
+          expiresAt: Number.isNaN(expiresAt) ? stored.expiresAt : expiresAt,
+          remote: true,
+          userId: remoteSession.userId,
+          role: remoteSession.role,
+          regionScope: remoteSession.regionScope,
+        };
+        setSession(hydratedSession);
+        persistRemoteSession(hydratedSession);
+        const normalized = normalizePhone(stored.phone);
+        const matched = accounts.find(
+          (acc) => normalizePhone(acc.phone) === normalized,
+        );
+        if (matched && !currentAccount) {
+          setCurrentAccount(matched);
+          setSurveyMode(matched.survey?.completed ? "review" : "fill");
+          setView((prev) => (prev === "landing" ? "dashboard" : prev));
+        }
+      } catch (err) {
+        console.error("Failed to restore session from storage", err);
+        persistRemoteSession(null);
+      } finally {
+        if (!cancelled) {
+          setRestoredSession(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountsLoaded, restoredSession, accounts, currentAccount]);
+
   const handleStart = () => {
     setPinLoginError(null);
     setOtpError(null);
@@ -305,6 +439,28 @@ const App = () => {
     })();
   }, [currentAccount, session?.token]);
 
+  useEffect(() => {
+    if (!session?.remote) {
+      return;
+    }
+    const msRemaining = session.expiresAt - Date.now();
+    if (msRemaining <= 0) {
+      persistRemoteSession(null);
+      setSession(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      persistRemoteSession(null);
+      setSession((prev) => {
+        if (!prev?.remote) return prev;
+        return null;
+      });
+    }, msRemaining);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [session]);
+
   const handleComplete = (payload: CompletionPayload) => {
     const phone = normalizePhone(payload.applicant.phone);
     if (!phone) {
@@ -318,11 +474,17 @@ const App = () => {
     const existing = accounts.find(
       (acc) => normalizePhone(acc.phone) === phone,
     );
+    const { pin: _ignoredPin, ...restApplicant } = payload.applicant;
+    const sanitizedApplicant: Applicant = {
+      ...restApplicant,
+      phone,
+    } as Applicant;
+
     const baseAccount: Account = {
       phone,
-      pin: existing?.pin ?? null,
+      pin: PIN_FLAG,
       submissionId: payload.submissionId,
-      applicant: { ...payload.applicant, phone },
+      applicant: sanitizedApplicant,
       createdAt: new Date().toISOString(),
       faceMatchPassed: payload.faceMatchPassed,
       livenessPassed: payload.livenessPassed,
@@ -337,6 +499,7 @@ const App = () => {
     setOtpContext(null);
     const newSession = createEphemeralSession(phone);
     setSession(newSession);
+    persistRemoteSession(null);
     setSurveyMode(account.survey?.completed ? "review" : "fill");
     setView("dashboard");
   };
@@ -361,6 +524,7 @@ const App = () => {
       ) {
         const newSession = createEphemeralSession(fallback.phone);
         setSession(newSession);
+        persistRemoteSession(null);
       }
       setSurveyMode(fallback.survey?.completed ? "review" : "fill");
       setView("dashboard");
@@ -373,6 +537,7 @@ const App = () => {
     setOtpContext(null);
     setCurrentAccount(null);
     setView("wizard");
+    persistRemoteSession(null);
   };
 
   const handlePinLogin = async (credentials: {
@@ -384,7 +549,6 @@ const App = () => {
     setOtpError(null);
     setOtpContext(null);
 
-    let remoteError: string | null = null;
     try {
       const { account, session: remoteSession } = await fetchAccountFromGateway(
         phone,
@@ -393,45 +557,14 @@ const App = () => {
       const accountWithSurvey = ensureSurvey(account);
       replaceAccount(accountWithSurvey);
       setSession(remoteSession);
+      persistRemoteSession(remoteSession);
       setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
       setView("dashboard");
       return;
     } catch (err: any) {
-      remoteError = err?.message ?? "Gagal login. Coba lagi sebentar.";
-    }
-
-    const account = accounts.find((acc) => normalizePhone(acc.phone) === phone);
-
-    if (!account) {
-      setPinLoginError(
-        remoteError ??
-          "Nomor HP belum terdaftar. Silakan lakukan verifikasi terlebih dahulu.",
-      );
+      setPinLoginError(err?.message ?? "Gagal login. Coba lagi sebentar.");
       return;
     }
-
-    if (!account.pin) {
-      setPinLoginError(
-        "PIN belum dibuat. Gunakan opsi OTP atau masuk ke dashboard untuk membuat PIN.",
-      );
-      return;
-    }
-
-    if (account.pin !== credentials.pin) {
-      setPinLoginError(remoteError ?? "Nomor HP atau PIN tidak sesuai.");
-      return;
-    }
-
-    const accountWithSurvey = account.survey
-      ? ensureSurvey(account)
-      : ensureSurvey({ ...account, survey: { completed: false } });
-    replaceAccount(accountWithSurvey);
-    const newSession = createEphemeralSession(account.phone);
-    setSession(newSession);
-    setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
-    setView("dashboard");
-    setPinLoginError(null);
-    setOtpContext(null);
   };
 
   const handleRequestOtp = (phoneRaw: string) => {
@@ -489,6 +622,7 @@ const App = () => {
     replaceAccount(accountWithSurvey);
     const newSession = createEphemeralSession(account.phone);
     setSession(newSession);
+    persistRemoteSession(null);
     setSurveyMode(accountWithSurvey.survey?.completed ? "review" : "fill");
     setView("dashboard");
     setPinLoginError(null);
@@ -503,6 +637,7 @@ const App = () => {
     setOtpContext(null);
     setOtpError(null);
     setSession(null);
+    persistRemoteSession(null);
     setSurveyMode("fill");
     syncedSurveyIdsRef.current = {};
   };
@@ -517,13 +652,16 @@ const App = () => {
       throw new Error("PIN harus 6 digit angka.");
     }
 
-    const updatedAccount: Account = { ...currentAccount, pin: normalized };
+    const updatedAccount: Account = { ...currentAccount, pin: PIN_FLAG };
     replaceAccount(updatedAccount);
     setPinLoginError(null);
     setOtpContext(null);
     setOtpError(null);
-    const newSession = createEphemeralSession(updatedAccount.phone);
-    setSession(newSession);
+    if (!session?.remote) {
+      const newSession = createEphemeralSession(updatedAccount.phone);
+      setSession(newSession);
+      persistRemoteSession(null);
+    }
     setSurveyMode(updatedAccount.survey?.completed ? "review" : "fill");
   };
 
@@ -575,8 +713,11 @@ const App = () => {
     }
     setSurveyMode("review");
     setView("dashboard");
-    const newSession = createEphemeralSession(updatedAccount.phone);
-    setSession(newSession);
+    if (!session?.remote) {
+      const newSession = createEphemeralSession(updatedAccount.phone);
+      setSession(newSession);
+      persistRemoteSession(null);
+    }
   };
 
   const handleSurveyDraft = async (
@@ -643,7 +784,13 @@ const App = () => {
           otpInfo={otpInfo}
         />
       )}
-      {view === "wizard" && <OnboardingWizard onComplete={handleComplete} />}
+      {view === "wizard" && (
+        <OnboardingWizard
+          onComplete={handleComplete}
+          onNavigateLanding={goToLanding}
+          onLoginShortcut={goToLandingLogin}
+        />
+      )}
       {view === "dashboard" && currentAccount && (
         <DashboardPage
           data={{

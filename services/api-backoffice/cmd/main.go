@@ -38,9 +38,15 @@ func main() {
 	authRepo := repository.NewAuthRepository(pool)
 	backofficeRepo := repository.NewBackofficeRepository(pool)
 
+	jwtSecret := resolveJWTSecret()
+	sessionManager, err := service.NewJWTSessionManager(jwtSecret)
+	if err != nil {
+		log.Fatalf("api-backoffice: init jwt manager: %v", err)
+	}
+
 	// SERVICES
 	applicationService := service.NewApplicationService(appRepo)
-	authSvc := service.NewAuthService(authRepo)
+	authSvc := service.NewAuthService(authRepo, sessionManager)
 	backofficeSvc := service.NewBackofficeService(backofficeRepo)
 	ekycSvc := service.NewEkycService(backofficeRepo)
 
@@ -104,4 +110,14 @@ func resolveDSN() string {
 		return fromEnv
 	}
 	return defaultDSN
+}
+
+const defaultJWTSecret = "change-me-in-production"
+
+func resolveJWTSecret() string {
+	if fromEnv := os.Getenv("BACKOFFICE_JWT_SECRET"); fromEnv != "" {
+		return fromEnv
+	}
+	log.Println("api-backoffice: BACKOFFICE_JWT_SECRET not set, using default development secret")
+	return defaultJWTSecret
 }

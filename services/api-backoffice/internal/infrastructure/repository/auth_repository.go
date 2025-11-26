@@ -44,6 +44,23 @@ func (repo *authRepository) FindBeneficiaryByPhone(ctx context.Context, phone st
 	return scanUserCredential(row)
 }
 
+func (repo *authRepository) FindEligibleBeneficiary(ctx context.Context, name, nik string) (*domain.UserCredential, error) {
+	query := `SELECT id, role, nik, name, dob, phone, email, pin_hash,
+        region_prov, region_kab, region_kec, region_kel,
+        region_scope, metadata
+        FROM users
+        WHERE role = 'BENEFICIARY'
+          AND nik = $1
+          AND LOWER(name) = LOWER($2)
+          AND (phone IS NULL OR phone = '')
+          AND dob IS NULL
+          AND (pin_hash IS NULL OR pin_hash = '')
+        LIMIT 1`
+
+	row := repo.db.QueryRow(ctx, query, nik, name)
+	return scanUserCredential(row)
+}
+
 func scanUserCredential(row pgx.Row) (*domain.UserCredential, error) {
 	var (
 		u             domain.User

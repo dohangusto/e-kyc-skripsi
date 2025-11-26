@@ -249,7 +249,7 @@ func (s *BackofficeService) TriggerClusteringRun(ctx context.Context, operator s
 	var tinggi, sedang, rendah int
 	candidates := make([]domain.ClusteringCandidate, 0, len(beneficiaries))
 	for _, bene := range beneficiaries {
-		priority := normalizePriority(bene.ClusterPriority)
+		priority := priorityFromRanking(bene.RankingBansosUtama)
 		switch priority {
 		case "TINGGI":
 			tinggi++
@@ -259,14 +259,11 @@ func (s *BackofficeService) TriggerClusteringRun(ctx context.Context, operator s
 			rendah++
 		}
 		cluster := "LAINNYA"
-		if bene.ClusterCategory != nil && strings.TrimSpace(*bene.ClusterCategory) != "" {
-			cluster = strings.ToUpper(strings.TrimSpace(*bene.ClusterCategory))
+		if bene.BansosUtama != nil && strings.TrimSpace(*bene.BansosUtama) != "" {
+			cluster = strings.ToUpper(strings.TrimSpace(*bene.BansosUtama))
 		}
 		score := scoreForPriority(priority, randSrc)
-		household := bene.HouseholdSize
-		if household <= 0 {
-			household = 1
-		}
+		household := 1
 		candidate := domain.ClusteringCandidate{
 			ID:            uuid.NewString(),
 			UserID:        bene.User.ID,
@@ -400,16 +397,17 @@ func maskNikPointer(nik *string) string {
 	return strings.Repeat("*", maskLen) + value[maskLen:]
 }
 
-func normalizePriority(priority *string) string {
-	if priority == nil {
+func priorityFromRanking(rank *int) string {
+	if rank == nil || *rank <= 0 {
 		return "SEDANG"
 	}
-	normalized := strings.ToUpper(strings.TrimSpace(*priority))
-	switch normalized {
-	case "TINGGI", "SEDANG", "RENDAH":
-		return normalized
-	default:
+	switch {
+	case *rank <= 100:
+		return "TINGGI"
+	case *rank <= 400:
 		return "SEDANG"
+	default:
+		return "RENDAH"
 	}
 }
 

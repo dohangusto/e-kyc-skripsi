@@ -269,7 +269,9 @@ func (repo *backofficeRepository) ListBeneficiaries(ctx context.Context, limit i
         SELECT u.id, u.role, u.nik, u.name, u.dob, u.phone, u.email,
                u.region_prov, u.region_kab, u.region_kec, u.region_kel,
                u.region_scope, u.metadata, u.created_at, u.updated_at,
-               b.household_size, b.cluster_category, b.cluster_priority, b.portal_flags
+               b.bansos_utama, b.ranking_bansos_utama,
+               b.bansos_pendukung, b.ranking_bansos_pendukung,
+               b.portal_flags
         FROM beneficiaries b
         JOIN users u ON u.id = b.user_id
         ORDER BY u.created_at DESC
@@ -289,12 +291,22 @@ func (repo *backofficeRepository) ListBeneficiaries(ctx context.Context, limit i
 			regionScope  []string
 			metadataJSON []byte
 			portalJSON   []byte
+			mainRank     *int32
+			supportRank  *int32
 		)
 		if err := rows.Scan(&bene.User.ID, &bene.User.Role, &bene.User.NIK, &bene.User.Name, &dob, &phone, &email,
 			&bene.User.Region.Prov, &bene.User.Region.Kab, &bene.User.Region.Kec, &bene.User.Region.Kel,
 			&regionScope, &metadataJSON, &bene.User.CreatedAt, &bene.User.UpdatedAt,
-			&bene.HouseholdSize, &bene.ClusterCategory, &bene.ClusterPriority, &portalJSON); err != nil {
+			&bene.BansosUtama, &mainRank, &bene.BansosPendukung, &supportRank, &portalJSON); err != nil {
 			return nil, err
+		}
+		if mainRank != nil {
+			r := int(*mainRank)
+			bene.RankingBansosUtama = &r
+		}
+		if supportRank != nil {
+			r := int(*supportRank)
+			bene.RankingBansosPendukung = &r
 		}
 		bene.User.DOB = dob
 		bene.User.Phone = phone

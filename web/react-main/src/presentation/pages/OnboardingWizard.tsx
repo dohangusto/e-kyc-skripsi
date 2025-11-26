@@ -18,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  IdentityLookupStep,
   KtpCaptureStep,
   OcrReviewStep,
   FaceReviewStep,
@@ -32,6 +33,7 @@ import { toImagePayload } from "@infrastructure/services/ekyc-api";
 import { motion, AnimatePresence } from "framer-motion";
 import { STEP_LABELS } from "@domain/value-objects/kyc-flow";
 import type { Applicant, OcrResult } from "@domain/types";
+import { checkBeneficiaryEligibility } from "@infrastructure/services/portal-auth";
 
 export type CompletionPayload = {
   submissionId: string;
@@ -42,27 +44,31 @@ export type CompletionPayload = {
 
 type OnboardingWizardProps = {
   onComplete?: (payload: CompletionPayload) => void;
+  onNavigateLanding?: () => void;
+  onLoginShortcut?: () => void;
 };
-
-const createEmptyOcr = (): OcrResult => ({
-  confidence: 0,
-  number: "",
-  name: "",
-  birthDate: "",
-  address: "",
-});
 
 export default function OnboardingWizard({
   onComplete,
+  onNavigateLanding,
+  onLoginShortcut,
 }: OnboardingWizardProps) {
   return (
     <KycFlowProvider>
-      <WizardSurface onComplete={onComplete} />
+      <WizardSurface
+        onComplete={onComplete}
+        onNavigateLanding={onNavigateLanding}
+        onLoginShortcut={onLoginShortcut}
+      />
     </KycFlowProvider>
   );
 }
 
-function WizardSurface({ onComplete }: OnboardingWizardProps) {
+function WizardSurface({
+  onComplete,
+  onNavigateLanding,
+  onLoginShortcut,
+}: OnboardingWizardProps) {
   const { state, dispatch, api } = useKycFlow();
   const {
     step,
@@ -76,6 +82,7 @@ function WizardSurface({ onComplete }: OnboardingWizardProps) {
     error,
   } = state;
   const [completion, setCompletion] = useState<CompletionPayload | null>(null);
+  const [eligibilityError, setEligibilityError] = useState<string | null>(null);
   const stepIndex = ALL_STEPS.indexOf(step);
   const progress = useMemo(
     () => Math.round(((stepIndex + 1) / ALL_STEPS.length) * 100),
@@ -84,6 +91,43 @@ function WizardSurface({ onComplete }: OnboardingWizardProps) {
   const stepLabel = STEP_LABELS[step];
 
   const busy = state.syncing;
+
+  const handleIdentityVerify = async ({
+    name,
+    nik,
+  }: {
+    name: string;
+    nik: string;
+  }) => {
+    setEligibilityError(null);
+    dispatch({
+      type: "PATCH_APPLICANT",
+      patch: { name, number: nik },
+    });
+    dispatch({
+      type: "PATCH_OCR",
+      patch: { name, number: nik },
+    });
+    dispatch({ type: "SET_ERROR", error: undefined });
+    try {
+      const res = await checkBeneficiaryEligibility({ name, nik });
+      if (!res.eligible) {
+        const msg =
+          res.reason ??
+          "Akun sudah terdaftar atau tidak memenuhi kriteria. Silakan login dari halaman landing.";
+        setEligibilityError(msg);
+        throw new Error(msg);
+      }
+      setEligibilityError(null);
+      dispatch({ type: "NEXT" });
+    } catch (err: any) {
+      const msg =
+        err?.message ??
+        "Tidak dapat memverifikasi data. Silakan kembali ke halaman login.";
+      setEligibilityError(msg);
+      throw err;
+    }
+  };
 
   const handleKtpUpload = async (blob: Blob) => {
     if (!state.sessionId) {
@@ -98,7 +142,26 @@ function WizardSurface({ onComplete }: OnboardingWizardProps) {
     dispatch({ type: "SET_SYNCING", syncing: true });
     try {
       await api.uploadIdCard(state.sessionId, file);
-      dispatch({ type: "SET_OCR", ocr: createEmptyOcr() });
+      const baseline: OcrResult = {
+        confidence: state.ocr?.confidence ?? 0,
+        number:
+          state.ocr?.number ??
+          (state.applicantDraft.number as string | undefined) ??
+          "",
+        name:
+          state.ocr?.name ??
+          (state.applicantDraft.name as string | undefined) ??
+          "",
+        birthDate:
+          state.ocr?.birthDate ??
+          (state.applicantDraft.birthDate as string | undefined) ??
+          "",
+        address:
+          state.ocr?.address ??
+          (state.applicantDraft.address as string | undefined) ??
+          "",
+      };
+      dispatch({ type: "SET_OCR", ocr: baseline });
       dispatch({ type: "SET_ERROR", error: undefined });
       dispatch({ type: "NEXT" });
     } catch (err: any) {
@@ -162,6 +225,20 @@ function WizardSurface({ onComplete }: OnboardingWizardProps) {
 
   const stepContent = (() => {
     switch (step) {
+      case "IDENTITY_LOOKUP":
+        return (
+          <IdentityLookupStep
+            initialName={
+              state.ocr?.name ?? (applicantDraft.name as string | undefined)
+            }
+            initialNik={
+              state.ocr?.number ?? (applicantDraft.number as string | undefined)
+            }
+            onVerify={handleIdentityVerify}
+            externalError={eligibilityError}
+            onRedirectLanding={onLoginShortcut ?? onNavigateLanding}
+          />
+        );
       case "UPLOAD_KTP":
         return <KtpCaptureStep onCapture={handleKtpUpload} />;
       case "OCR_REVIEW":
@@ -299,96 +376,151 @@ function WizardSurface({ onComplete }: OnboardingWizardProps) {
         );
       case "DONE":
         return (
-          <DoneStep id={submissionId!} applicant={completion?.applicant} />
+          <DoneStep
+            id={submissionId!}
+            applicant={completion?.applicant}
+            onGoLanding={onNavigateLanding ?? onLoginShortcut}
+          />
         );
       default:
         return null;
     }
   })();
 
-  return (
-    <main className="max-w-4xl mx-auto p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <Card className="rounded-2xl shadow-xl">
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <CardTitle className="text-2xl">E-KYC Onboarding</CardTitle>
-                <CardDescription>
-                  Verifikasi digital penerima bantuan sosial
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <DarkModeToggle />
-                <Badge variant="secondary" className="rounded-full">
-                  {labelFor(step)}
-                </Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {state.error && (
-              <Alert variant="destructive">
-                <AlertDescription>{state.error}</AlertDescription>
-              </Alert>
-            )}
-            {busy && (
-              <Alert>
-                <AlertDescription>
-                  Sedang sinkronisasi dengan server...
-                </AlertDescription>
-              </Alert>
-            )}
-            {state.session && (
-              <div className="text-sm text-slate-500">
-                Status proses:{" "}
-                <span className="font-semibold text-slate-700">
-                  {state.session.status}
-                </span>{" "}
-                · Face match: {state.session.faceMatchingStatus} · Liveness:{" "}
-                {state.session.livenessStatus}
-              </div>
-            )}
-            <section className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Tahap {stepIndex + 1} dari {ALL_STEPS.length}
-                  </p>
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                    {stepLabel}
-                  </p>
-                </div>
-                {step !== "DONE" && (
-                  <p className="text-xs text-slate-500 max-w-xs text-right">
-                    Proses diverifikasi otomatis di server—tetap ikuti langkah
-                    hingga selesai.
-                  </p>
-                )}
-              </div>
-              <Progress value={progress} aria-label={`Progress ${progress}%`} />
-              <Stepper current={state.step} />
-            </section>
+  const goToLanding = () => {
+    onNavigateLanding?.();
+  };
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className="space-y-6"
+  const goToLogin = () => {
+    if (onLoginShortcut) {
+      onLoginShortcut();
+    } else if (typeof window !== "undefined") {
+      window.location.hash = "#landing-login-section";
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900 flex flex-col">
+      <header className="border-b bg-white/80 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={goToLanding}
+            className="text-left"
+            aria-label="Kembali ke Landing Page"
+          >
+            <div className="flex items-center gap-3">
+              <Badge
+                variant="outline"
+                className="uppercase tracking-wide text-xs"
               >
-                {stepContent}
-              </motion.div>
-            </AnimatePresence>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </main>
+                Program Bansos Terpadu
+              </Badge>
+              <span className="text-xs text-slate-500">
+                Dinas Sosial Kabupaten/Kota
+              </span>
+            </div>
+            <h1 className="text-xl font-semibold mt-1">
+              Verifikasi Identitas Penerima Bantuan Sosial
+            </h1>
+          </button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={goToLanding}>
+              Mulai Verifikasi
+            </Button>
+            <Button variant="outline" onClick={goToLogin}>
+              Sudah punya akun? Login di bawah
+            </Button>
+          </div>
+        </div>
+      </header>
+      <main className="flex-1 w-full py-10 px-4 sm:px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-4xl mx-auto"
+        >
+          <Card className="rounded-2xl shadow-xl">
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="text-2xl">E-KYC Onboarding</CardTitle>
+                  <CardDescription>
+                    Verifikasi digital penerima bantuan sosial
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DarkModeToggle />
+                  <Badge variant="secondary" className="rounded-full">
+                    {labelFor(step)}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {state.error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{state.error}</AlertDescription>
+                </Alert>
+              )}
+              {busy && (
+                <Alert>
+                  <AlertDescription>
+                    Sedang sinkronisasi dengan server...
+                  </AlertDescription>
+                </Alert>
+              )}
+              {state.session && (
+                <div className="text-sm text-slate-500">
+                  Status proses:{" "}
+                  <span className="font-semibold text-slate-700">
+                    {state.session.status}
+                  </span>{" "}
+                  · Face match: {state.session.faceMatchingStatus} · Liveness:{" "}
+                  {state.session.livenessStatus}
+                </div>
+              )}
+              <section className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Tahap {stepIndex + 1} dari {ALL_STEPS.length}
+                    </p>
+                    <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                      {stepLabel}
+                    </p>
+                  </div>
+                  {step !== "DONE" && (
+                    <p className="text-xs text-slate-500 max-w-xs text-right">
+                      Proses diverifikasi otomatis di server—tetap ikuti langkah
+                      hingga selesai.
+                    </p>
+                  )}
+                </div>
+                <Progress
+                  value={progress}
+                  aria-label={`Progress ${progress}%`}
+                />
+                <Stepper current={state.step} />
+              </section>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className="space-y-6"
+                >
+                  {stepContent}
+                </motion.div>
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
+    </div>
   );
 }
 

@@ -5,12 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	domain "e-kyc/services/api-backoffice/internal/domain"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -18,14 +15,38 @@ var (
 )
 
 type AuthService struct {
-	repo     domain.AuthRepository
-	sessions *SessionStore
+	repo           domain.AuthRepository
+	tokenManager   SessionTokenManager
+	adminTTL       time.Duration
+	beneficiaryTTL time.Duration
+}
+
+type SessionTokenManager interface {
+	Create(userID, role string, regionScope []string, ttl time.Duration) (domain.Session, error)
+	Parse(token string) (*domain.Session, error)
 }
 
 var _ domain.AuthService = (*AuthService)(nil)
 
-func NewAuthService(repo domain.AuthRepository) *AuthService {
-	return &AuthService{repo: repo, sessions: NewSessionStore()}
+func NewAuthService(repo domain.AuthRepository, tokenManager SessionTokenManager) *AuthService {
+	return &AuthService{
+		repo:           repo,
+		tokenManager:   tokenManager,
+		adminTTL:       12 * time.Hour,
+		beneficiaryTTL: 48 * time.Hour,
+	}
+}
+
+func (s *AuthService) SetAdminTTL(ttl time.Duration) {
+	if ttl > 0 {
+		s.adminTTL = ttl
+	}
+}
+
+func (s *AuthService) SetBeneficiaryTTL(ttl time.Duration) {
+	if ttl > 0 {
+		s.beneficiaryTTL = ttl
+	}
 }
 
 func (s *AuthService) LoginAdmin(ctx context.Context, nik, pin string) (*domain.AuthResult, error) {
@@ -47,7 +68,10 @@ func (s *AuthService) LoginAdmin(ctx context.Context, nik, pin string) (*domain.
 		return nil, ErrInvalidCredential
 	}
 
-	sess := s.sessions.Create(cred.User.ID, cred.User.Role, cred.User.RegionScope)
+	sess, err := s.tokenManager.Create(cred.User.ID, cred.User.Role, cred.User.RegionScope, s.adminTTL)
+	if err != nil {
+		return nil, err
+	}
 	return &domain.AuthResult{Session: sess, User: cred.User}, nil
 }
 
@@ -70,46 +94,35 @@ func (s *AuthService) LoginBeneficiary(ctx context.Context, phone, pin string) (
 		return nil, ErrInvalidCredential
 	}
 
-	sess := s.sessions.Create(cred.User.ID, cred.User.Role, cred.User.RegionScope)
+	sess, err := s.tokenManager.Create(cred.User.ID, cred.User.Role, cred.User.RegionScope, s.beneficiaryTTL)
+	if err != nil {
+		return nil, err
+	}
 	return &domain.AuthResult{Session: sess, User: cred.User}, nil
 }
 
 func (s *AuthService) Validate(token string) (*domain.Session, bool) {
-	return s.sessions.Get(token)
-}
-
-type SessionStore struct {
-	mu   sync.RWMutex
-	data map[string]domain.Session
-}
-
-func NewSessionStore() *SessionStore {
-	return &SessionStore{data: make(map[string]domain.Session)}
-}
-
-func (s *SessionStore) Create(userID, role string, regionScope []string) domain.Session {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	sess := domain.Session{
-		Token:       uuid.NewString(),
-		UserID:      userID,
-		Role:        role,
-		RegionScope: append([]string{}, regionScope...),
-		IssuedAt:    time.Now().UTC(),
-	}
-	s.data[sess.Token] = sess
-	return sess
-}
-
-func (s *SessionStore) Get(token string) (*domain.Session, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	sess, ok := s.data[token]
-	if !ok {
+	sess, err := s.tokenManager.Parse(token)
+	if err != nil {
 		return nil, false
 	}
-	return &sess, true
+	return sess, true
+}
+
+func (s *AuthService) CheckBeneficiaryEligibility(ctx context.Context, name, nik string) (*domain.User, error) {
+	name = strings.TrimSpace(name)
+	nik = strings.TrimSpace(nik)
+	if name == "" || nik == "" {
+		return nil, ErrInvalidCredential
+	}
+	cred, err := s.repo.FindEligibleBeneficiary(ctx, name, nik)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, ErrInvalidCredential
+		}
+		return nil, err
+	}
+	return &cred.User, nil
 }
 
 func verifyPIN(hash, provided string) bool {
