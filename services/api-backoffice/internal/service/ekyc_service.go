@@ -60,6 +60,7 @@ func (s *EkycService) FinalizeSession(ctx context.Context, id string) (*domain.E
 	if err != nil {
 		return nil, err
 	}
+	_ = s.repo.EnsureApplicationFromSession(ctx, id)
 	if !strings.EqualFold(session.FaceMatchingStatus, "DONE") || session.FaceMatchOverall == nil {
 		return nil, fmt.Errorf("face matching belum selesai")
 	}

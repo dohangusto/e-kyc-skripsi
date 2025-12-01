@@ -26,6 +26,11 @@ func NewBackofficeRepository(db *pgxpool.Pool) domain.BackofficeRepository {
 	return &backofficeRepository{db: db}
 }
 
+// EnsureApplicationFromSession is exposed to satisfy the EkycRepository interface and allow service-level calls.
+func (repo *backofficeRepository) EnsureApplicationFromSession(ctx context.Context, sessionID string) error {
+	return repo.ensureApplicationFromSession(ctx, sessionID)
+}
+
 func (repo *backofficeRepository) withTx(ctx context.Context, fn func(pgx.Tx) error) error {
 	tx, err := repo.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -96,6 +101,14 @@ func maskNikValue(nik string) string {
 	}
 	maskLen := len(nik) - 4
 	return strings.Repeat("*", maskLen) + nik[maskLen:]
+}
+
+func maskPhoneValue(phone string) string {
+	if len(phone) <= 4 {
+		return phone
+	}
+	maskLen := len(phone) - 4
+	return strings.Repeat("*", maskLen) + phone[maskLen:]
 }
 
 func (repo *backofficeRepository) ListApplications(ctx context.Context, limit int) ([]domain.Application, error) {
@@ -241,11 +254,15 @@ func (repo *backofficeRepository) ListUsers(ctx context.Context) ([]domain.User,
 			dob          *time.Time
 			phone        *string
 			email        *string
+			regionProv   *string
+			regionKab    *string
+			regionKec    *string
+			regionKel    *string
 			regionScope  []string
 			metadataJSON []byte
 		)
 		if err := rows.Scan(&user.ID, &user.Role, &user.NIK, &user.Name, &dob, &phone, &email,
-			&user.Region.Prov, &user.Region.Kab, &user.Region.Kec, &user.Region.Kel,
+			&regionProv, &regionKab, &regionKec, &regionKel,
 			&regionScope, &metadataJSON, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -253,6 +270,10 @@ func (repo *backofficeRepository) ListUsers(ctx context.Context) ([]domain.User,
 		user.Phone = phone
 		user.Email = email
 		user.RegionScope = regionScope
+		user.Region.Prov = derefString(regionProv)
+		user.Region.Kab = derefString(regionKab)
+		user.Region.Kec = derefString(regionKec)
+		user.Region.Kel = derefString(regionKel)
 		if len(metadataJSON) > 0 {
 			if err := json.Unmarshal(metadataJSON, &user.Metadata); err != nil {
 				user.Metadata = map[string]any{}
@@ -1278,11 +1299,16 @@ func (repo *backofficeRepository) SaveFaceChecks(ctx context.Context, params dom
 			return err
 		}
 		session = result
+
+		if err := repo.updateApplicationProgress(ctx, tx, params.SessionID, params.Overall, nil); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+	_ = repo.ensureApplicationFromSession(ctx, params.SessionID)
 	if err := repo.enrichEkycSession(ctx, session); err != nil {
 		return nil, err
 	}
@@ -1328,11 +1354,16 @@ func (repo *backofficeRepository) SaveLivenessResult(ctx context.Context, params
 			return err
 		}
 		session = result
+
+		if err := repo.updateApplicationProgress(ctx, tx, params.SessionID, "", &params.Overall); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+	_ = repo.ensureApplicationFromSession(ctx, params.SessionID)
 	if err := repo.enrichEkycSession(ctx, session); err != nil {
 		return nil, err
 	}
@@ -1378,6 +1409,10 @@ func (repo *backofficeRepository) AssignUserToSession(ctx context.Context, param
 			return err
 		}
 		session = result
+
+		if err := repo.upsertApplicationFromSession(ctx, tx, params.SessionID, userID, params); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -1458,6 +1493,9 @@ func (repo *backofficeRepository) UpdateEkycDecision(ctx context.Context, params
 	if err != nil {
 		return nil, err
 	}
+	// sync application status to reflect latest decision
+	_ = repo.ensureApplicationFromSession(ctx, session.ID)
+	_ = repo.syncApplicationStatus(ctx, session.ID, params.FinalDecision)
 	if err := repo.enrichEkycSession(ctx, session); err != nil {
 		return nil, err
 	}
@@ -1701,9 +1739,191 @@ func (repo *backofficeRepository) findLatestSessionByUser(ctx context.Context, u
 	return scanEkycSessionRow(row)
 }
 
-var phoneDigits = regexp.MustCompile(`\\D+`)
+var phoneDigits = regexp.MustCompile(`\D+`)
 
 func normalizePhone(input string) string {
 	trimmed := strings.TrimSpace(input)
 	return phoneDigits.ReplaceAllString(trimmed, "")
+}
+
+func (repo *backofficeRepository) ensureApplicationFromSession(ctx context.Context, sessionID string) error {
+	var (
+		userID    sql.NullString
+		metadata  []byte
+		createdAt time.Time
+	)
+	if err := repo.db.QueryRow(ctx, `
+        SELECT user_id, metadata, COALESCE(updated_at, created_at)
+        FROM ekyc_sessions
+        WHERE id = $1`, sessionID).Scan(&userID, &metadata, &createdAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+
+	type applicantMeta struct {
+		Name        string     `json:"name"`
+		Nik         string     `json:"nik"`
+		BirthDate   *time.Time `json:"birthDate"`
+		Address     string     `json:"address"`
+		Phone       string     `json:"phone"`
+		Email       string     `json:"email"`
+		UserID      string     `json:"userId"`
+		SubmittedAt *time.Time `json:"submittedAt"`
+	}
+
+	var app applicantMeta
+	if len(metadata) > 0 {
+		metaMap := decodeJSON(metadata)
+		if raw, ok := metaMap["applicant"]; ok {
+			if b, err := json.Marshal(raw); err == nil {
+				_ = json.Unmarshal(b, &app)
+			}
+		}
+	}
+
+	// fallback: use user row when metadata is incomplete
+	if app.UserID == "" && userID.Valid {
+		app.UserID = userID.String
+	}
+	if app.UserID == "" {
+		return nil
+	}
+
+	userFallback, _ := repo.fetchUserBasics(ctx, app.UserID)
+	if app.Name == "" && userFallback != nil {
+		app.Name = userFallback.Name
+	}
+	if app.Nik == "" && userFallback != nil && userFallback.NIK != nil {
+		app.Nik = *userFallback.NIK
+	}
+	if app.BirthDate == nil && userFallback != nil {
+		app.BirthDate = userFallback.DOB
+	}
+	if app.Phone == "" && userFallback != nil && userFallback.Phone != nil {
+		app.Phone = *userFallback.Phone
+	}
+	if app.Email == "" && userFallback != nil && userFallback.Email != nil {
+		app.Email = *userFallback.Email
+	}
+
+	return repo.upsertApplicationFromSession(ctx, nil, sessionID, app.UserID, domain.ApplicantSubmission{
+		SessionID: sessionID,
+		FullName:  app.Name,
+		Nik:       app.Nik,
+		BirthDate: app.BirthDate,
+		Address:   app.Address,
+		Phone:     app.Phone,
+		Email:     app.Email,
+	})
+}
+
+func (repo *backofficeRepository) updateApplicationProgress(ctx context.Context, tx pgx.Tx, sessionID string, faceOverall string, liveOverall *string) error {
+	var faceScore interface{}
+	if faceOverall != "" {
+		if strings.ToUpper(faceOverall) == "PASS" {
+			faceScore = 1.0
+		} else {
+			faceScore = 0.0
+		}
+	}
+
+	_, err := tx.Exec(ctx, `
+        UPDATE applications
+           SET score_face = COALESCE($2, score_face),
+               score_liveness = COALESCE($3, score_liveness),
+               updated_at = NOW()
+         WHERE id = $1`,
+		sessionID, faceScore, liveOverall)
+	return err
+}
+
+func (repo *backofficeRepository) upsertApplicationFromSession(ctx context.Context, tx pgx.Tx, sessionID, userID string, params domain.ApplicantSubmission) error {
+	var dob interface{}
+	if params.BirthDate != nil {
+		dob = params.BirthDate
+	}
+	nikMask := maskNikValue(params.Nik)
+	phoneMask := maskPhoneValue(params.Phone)
+	flags := []byte(`{}`)
+
+	execFn := repo.db.Exec
+	if tx != nil {
+		execFn = tx.Exec
+	}
+
+	_, err := execFn(ctx, `
+        INSERT INTO applications (
+            id, beneficiary_user_id, applicant_name, applicant_nik_mask, applicant_dob,
+            applicant_phone_mask, status, stage, assigned_to, aging_days,
+            score_ocr, score_face, score_liveness, flags, created_at, updated_at
+        ) VALUES (
+            $1, $2, $3, $4, $5,
+            $6, 'DESK_REVIEW', 'KYC', NULL, 0,
+            0, 0, '', $7::jsonb, NOW(), NOW()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+            beneficiary_user_id = EXCLUDED.beneficiary_user_id,
+            applicant_name = EXCLUDED.applicant_name,
+            applicant_nik_mask = EXCLUDED.applicant_nik_mask,
+            applicant_dob = EXCLUDED.applicant_dob,
+            applicant_phone_mask = EXCLUDED.applicant_phone_mask,
+            status = EXCLUDED.status,
+            stage = EXCLUDED.stage,
+            updated_at = NOW()`,
+		sessionID, userID, params.FullName, nikMask, dob,
+		phoneMask, flags,
+	)
+	return err
+}
+
+func (repo *backofficeRepository) syncApplicationStatus(ctx context.Context, sessionID, finalDecision string) error {
+	status := "DESK_REVIEW"
+	stage := "KYC"
+	switch strings.ToUpper(finalDecision) {
+	case "APPROVED":
+		status = "FINAL_APPROVED"
+		stage = "DISBURSEMENT"
+	case "REJECTED":
+		status = "REJECTED"
+		stage = "CLOSED"
+	}
+	_, err := repo.db.Exec(ctx, `
+        UPDATE applications
+           SET status = $2,
+               stage = $3,
+               updated_at = NOW()
+         WHERE id = $1`, sessionID, status, stage)
+	return err
+}
+
+type userBasics struct {
+	ID    string
+	Name  string
+	NIK   *string
+	DOB   *time.Time
+	Phone *string
+	Email *string
+}
+
+func (repo *backofficeRepository) fetchUserBasics(ctx context.Context, userID string) (*userBasics, error) {
+	var (
+		u     userBasics
+		dob   *time.Time
+		phone *string
+		email *string
+	)
+	err := repo.db.QueryRow(ctx, `
+        SELECT id, name, nik, dob, phone, email
+          FROM users
+         WHERE id = $1
+         LIMIT 1`, userID).Scan(&u.ID, &u.Name, &u.NIK, &dob, &phone, &email)
+	if err != nil {
+		return nil, err
+	}
+	u.DOB = dob
+	u.Phone = phone
+	u.Email = email
+	return &u, nil
 }

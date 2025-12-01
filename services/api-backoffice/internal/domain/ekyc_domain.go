@@ -118,6 +118,7 @@ type EkycRepository interface {
 	ListEkycSessions(ctx context.Context, params ListEkycSessionsParams) ([]EkycSession, error)
 	GetEkycSession(ctx context.Context, id string) (*EkycSession, error)
 	UpdateEkycDecision(ctx context.Context, params UpdateEkycDecisionParams) (*EkycSession, error)
+	EnsureApplicationFromSession(ctx context.Context, sessionID string) error
 }
 
 type EkycService interface {
