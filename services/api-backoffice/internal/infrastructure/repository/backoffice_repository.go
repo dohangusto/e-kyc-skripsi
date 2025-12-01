@@ -134,12 +134,16 @@ func (repo *backofficeRepository) ListApplications(ctx context.Context, limit in
 			app        domain.Application
 			phone      string
 			assignedTo *string
+			regionProv *string
+			regionKab  *string
+			regionKec  *string
+			regionKel  *string
 		)
 
 		if err := rows.Scan(
 			&app.ID, &app.ApplicantName, &app.ApplicantNikMask, &app.ApplicantDOB,
 			&phone,
-			&app.Region.Prov, &app.Region.Kab, &app.Region.Kec, &app.Region.Kel,
+			&regionProv, &regionKab, &regionKec, &regionKel,
 			&app.Status, &assignedTo, &app.AgingDays,
 			&app.ScoreOCR, &app.ScoreFace, &app.ScoreLiveness,
 			&app.Flags, &app.CreatedAt, &app.UpdatedAt,
@@ -148,6 +152,10 @@ func (repo *backofficeRepository) ListApplications(ctx context.Context, limit in
 		}
 		app.ApplicantPhone = phone
 		app.AssignedTo = assignedTo
+		app.Region.Prov = derefString(regionProv)
+		app.Region.Kab = derefString(regionKab)
+		app.Region.Kec = derefString(regionKec)
+		app.Region.Kel = derefString(regionKel)
 		apps = append(apps, app)
 	}
 	if err := rows.Err(); err != nil {
