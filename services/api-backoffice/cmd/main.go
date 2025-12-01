@@ -29,10 +29,6 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := db.SetupSchemaAndSeed(ctx, pool); err != nil {
-		log.Fatalf("api-backoffice: setup schema: %v", err)
-	}
-
 	// REPOSITORIES
 	appRepo := repository.NewApplicationRepository(nil, pool)
 	authRepo := repository.NewAuthRepository(pool)

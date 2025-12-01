@@ -33,6 +33,7 @@ func (repo *authRepository) FindAdminByNIK(ctx context.Context, nik string) (*do
 }
 
 func (repo *authRepository) FindBeneficiaryByPhone(ctx context.Context, phone string) (*domain.UserCredential, error) {
+	phone = normalizePhone(phone)
 	query := `SELECT id, role, nik, name, dob, phone, email, pin_hash,
         region_prov, region_kab, region_kec, region_kel,
         region_scope, metadata
@@ -61,19 +62,28 @@ func (repo *authRepository) FindEligibleBeneficiary(ctx context.Context, name, n
 	return scanUserCredential(row)
 }
 
+func (repo *authRepository) UpdateLastLogin(ctx context.Context, userID string) error {
+	_, err := repo.db.Exec(ctx, `UPDATE users SET last_login = NOW() WHERE id = $1`, userID)
+	return err
+}
+
 func scanUserCredential(row pgx.Row) (*domain.UserCredential, error) {
 	var (
 		u             domain.User
 		dob           *time.Time
 		phone         *string
 		email         *string
+		regionProv    *string
+		regionKab     *string
+		regionKec     *string
+		regionKel     *string
 		regionScope   []string
 		metadataBytes []byte
-		pinHash       string
+		pinHash       *string
 	)
 
 	if err := row.Scan(&u.ID, &u.Role, &u.NIK, &u.Name, &dob, &phone, &email, &pinHash,
-		&u.Region.Prov, &u.Region.Kab, &u.Region.Kec, &u.Region.Kel,
+		&regionProv, &regionKab, &regionKec, &regionKel,
 		&regionScope, &metadataBytes); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -85,12 +95,28 @@ func scanUserCredential(row pgx.Row) (*domain.UserCredential, error) {
 	u.Phone = phone
 	u.Email = email
 	u.RegionScope = regionScope
+	u.Region.Prov = derefString(regionProv)
+	u.Region.Kab = derefString(regionKab)
+	u.Region.Kec = derefString(regionKec)
+	u.Region.Kel = derefString(regionKel)
 	if len(metadataBytes) > 0 {
 		_ = json.Unmarshal(metadataBytes, &u.Metadata)
 	}
 
-	return &domain.UserCredential{
+	cred := &domain.UserCredential{
 		User:    u,
-		PINHash: pinHash,
-	}, nil
+		PINHash: "",
+	}
+	if pinHash != nil {
+		cred.PINHash = *pinHash
+	}
+
+	return cred, nil
+}
+
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

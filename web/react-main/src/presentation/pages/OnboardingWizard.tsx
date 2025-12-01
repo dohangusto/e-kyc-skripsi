@@ -100,6 +100,7 @@ function WizardSurface({
     nik: string;
   }) => {
     setEligibilityError(null);
+    dispatch({ type: "SET_SYNCING", syncing: true });
     dispatch({
       type: "PATCH_APPLICANT",
       patch: { name, number: nik },
@@ -118,14 +119,28 @@ function WizardSurface({
         setEligibilityError(msg);
         throw new Error(msg);
       }
+      if (!res.user?.ID) {
+        const msg =
+          "Data tidak valid. Mohon kembali ke halaman login dan ulangi verifikasi.";
+        setEligibilityError(msg);
+        throw new Error(msg);
+      }
       setEligibilityError(null);
+      const session = await api.createSession(res.user.ID);
+      dispatch({ type: "SET_SESSION", session });
       dispatch({ type: "NEXT" });
     } catch (err: any) {
       const msg =
         err?.message ??
         "Tidak dapat memverifikasi data. Silakan kembali ke halaman login.";
       setEligibilityError(msg);
+      dispatch({
+        type: "SET_ERROR",
+        error: msg,
+      });
       throw err;
+    } finally {
+      dispatch({ type: "SET_SYNCING", syncing: false });
     }
   };
 

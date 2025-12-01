@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -72,11 +73,14 @@ func (s *AuthService) LoginAdmin(ctx context.Context, nik, pin string) (*domain.
 	if err != nil {
 		return nil, err
 	}
+	if err := s.repo.UpdateLastLogin(ctx, cred.User.ID); err != nil {
+		return nil, err
+	}
 	return &domain.AuthResult{Session: sess, User: cred.User}, nil
 }
 
 func (s *AuthService) LoginBeneficiary(ctx context.Context, phone, pin string) (*domain.AuthResult, error) {
-	phone = strings.TrimSpace(phone)
+	phone = normalizePhone(phone)
 	pin = strings.TrimSpace(pin)
 	if phone == "" || pin == "" {
 		return nil, ErrInvalidCredential
@@ -96,6 +100,9 @@ func (s *AuthService) LoginBeneficiary(ctx context.Context, phone, pin string) (
 
 	sess, err := s.tokenManager.Create(cred.User.ID, cred.User.Role, cred.User.RegionScope, s.beneficiaryTTL)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpdateLastLogin(ctx, cred.User.ID); err != nil {
 		return nil, err
 	}
 	return &domain.AuthResult{Session: sess, User: cred.User}, nil
@@ -130,4 +137,11 @@ func verifyPIN(hash, provided string) bool {
 		return false
 	}
 	return hash == fmt.Sprintf("plain:%s", provided)
+}
+
+var phoneDigits = regexp.MustCompile(`\\D+`)
+
+func normalizePhone(input string) string {
+	trimmed := strings.TrimSpace(input)
+	return phoneDigits.ReplaceAllString(trimmed, "")
 }

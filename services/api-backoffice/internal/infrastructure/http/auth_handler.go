@@ -95,7 +95,13 @@ func (h *AuthHTTPHandler) CheckEligibility(c echo.Context) error {
 				"reason":   "Akun tidak memenuhi kriteria e-KYC",
 			})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, map[string]any{
+			"error": err.Error(),
+			"data": map[string]string{
+				"nama": payload.Name,
+				"nik":  payload.NIK,
+			},
+		})
 	}
 	return c.JSON(http.StatusOK, map[string]any{
 		"eligible": true,

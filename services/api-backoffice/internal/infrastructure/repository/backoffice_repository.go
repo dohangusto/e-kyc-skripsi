@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -1191,6 +1193,14 @@ func (repo *backofficeRepository) SubmitSurvey(ctx context.Context, params domai
 }
 
 func (repo *backofficeRepository) CreateEkycSession(ctx context.Context, params domain.CreateEkycSessionParams) (*domain.EkycSession, error) {
+	if params.UserID != nil {
+		if existing, err := repo.findLatestSessionByUser(ctx, *params.UserID); err == nil && existing != nil {
+			return existing, nil
+		} else if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return nil, err
+		}
+	}
+
 	row := repo.db.QueryRow(ctx, `
         INSERT INTO ekyc_sessions (user_id)
         VALUES ($1)
@@ -1200,7 +1210,15 @@ func (repo *backofficeRepository) CreateEkycSession(ctx context.Context, params 
                   metadata, created_at, updated_at`,
 		params.UserID,
 	)
-	return scanEkycSessionRow(row)
+	session, err := scanEkycSessionRow(row)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if params.UserID != nil && errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return repo.findLatestSessionByUser(ctx, *params.UserID)
+		}
+		return nil, err
+	}
+	return session, nil
 }
 
 func (repo *backofficeRepository) UpdateEkycSession(ctx context.Context, params domain.UpdateEkycArtifactsParams) (*domain.EkycSession, error) {
@@ -1323,6 +1341,7 @@ func (repo *backofficeRepository) SaveLivenessResult(ctx context.Context, params
 
 func (repo *backofficeRepository) AssignUserToSession(ctx context.Context, params domain.ApplicantSubmission) (*domain.EkycSession, error) {
 	var session *domain.EkycSession
+	params.Phone = normalizePhone(params.Phone)
 	err := repo.withTx(ctx, func(tx pgx.Tx) error {
 		userID, err := repo.upsertBeneficiaryUser(ctx, tx, params)
 		if err != nil {
@@ -1574,17 +1593,28 @@ func (repo *backofficeRepository) upsertBeneficiaryUser(ctx context.Context, tx 
 	if params.Phone == "" && params.Nik == "" {
 		return "", fmt.Errorf("phone atau NIK wajib diisi")
 	}
+	params.Phone = normalizePhone(params.Phone)
 	if params.Pin == "" {
 		params.Pin = "123456"
 	}
 	var existingID string
 	if params.Phone != "" {
-		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE phone=$1 LIMIT 1`, params.Phone).Scan(&existingID); err == nil {
+		var existingNik sql.NullString
+		if err := tx.QueryRow(ctx, `SELECT id, nik FROM users WHERE phone=$1 LIMIT 1`, params.Phone).Scan(&existingID, &existingNik); err == nil {
+			if params.Nik != "" && existingNik.Valid && !strings.EqualFold(existingNik.String, params.Nik) {
+				return "", fmt.Errorf("nomor HP sudah digunakan oleh pengguna lain")
+			}
+			if err := repo.updateBeneficiaryUser(ctx, tx, existingID, params); err != nil {
+				return "", err
+			}
 			return existingID, nil
 		}
 	}
 	if params.Nik != "" && existingID == "" {
 		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE nik=$1 LIMIT 1`, params.Nik).Scan(&existingID); err == nil {
+			if err := repo.updateBeneficiaryUser(ctx, tx, existingID, params); err != nil {
+				return "", err
+			}
 			return existingID, nil
 		}
 	}
@@ -1618,9 +1648,62 @@ func (repo *backofficeRepository) upsertBeneficiaryUser(ctx context.Context, tx 
 	return id, nil
 }
 
+func (repo *backofficeRepository) updateBeneficiaryUser(ctx context.Context, tx pgx.Tx, id string, params domain.ApplicantSubmission) error {
+	var dob interface{}
+	if params.BirthDate != nil {
+		dob = params.BirthDate
+	} else {
+		dob = nil
+	}
+	meta, _ := json.Marshal(map[string]any{
+		"address": params.Address,
+	})
+	_, err := tx.Exec(ctx, `
+        UPDATE users
+           SET name = COALESCE(NULLIF($2, ''), name),
+               nik = COALESCE(NULLIF($3, ''), nik),
+               dob = COALESCE($4, dob),
+               phone = COALESCE(NULLIF($5, ''), phone),
+               email = COALESCE(NULLIF($6, ''), email),
+               pin_hash = $7,
+               metadata = COALESCE(metadata, '{}'::jsonb) || $8::jsonb,
+               updated_at = NOW()
+         WHERE id = $1`,
+		id,
+		params.FullName,
+		params.Nik,
+		dob,
+		params.Phone,
+		params.Email,
+		fmt.Sprintf("plain:%s", params.Pin),
+		meta,
+	)
+	return err
+}
+
 func nullableString(value string) interface{} {
 	if strings.TrimSpace(value) == "" {
 		return nil
 	}
 	return value
+}
+
+func (repo *backofficeRepository) findLatestSessionByUser(ctx context.Context, userID string) (*domain.EkycSession, error) {
+	row := repo.db.QueryRow(ctx, `
+        SELECT id, user_id, status, face_matching_status, liveness_status, final_decision,
+               id_card_url, selfie_with_id_url, recorded_video_url,
+               face_match_overall, liveness_overall, rejection_reason,
+               metadata, created_at, updated_at
+        FROM ekyc_sessions
+        WHERE user_id = $1
+        ORDER BY updated_at DESC
+        LIMIT 1`, userID)
+	return scanEkycSessionRow(row)
+}
+
+var phoneDigits = regexp.MustCompile(`\\D+`)
+
+func normalizePhone(input string) string {
+	trimmed := strings.TrimSpace(input)
+	return phoneDigits.ReplaceAllString(trimmed, "")
 }

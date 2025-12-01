@@ -31,9 +31,13 @@ export function CameraCapture({
   const startSeq = useRef(0);
 
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
+  const [selectedDeviceId, setSelectedDeviceId] = useState<
+    string | undefined
+  >();
   const [bright, setBright] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [hasStream, setHasStream] = useState(false);
   const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
 
   // ---------------------------
@@ -106,11 +110,16 @@ export function CameraCapture({
       streamRef.current = s;
       if (video) await attachStream(video, s);
       startBrightnessLoop();
+      setHasStream(true);
 
       return s;
     } catch (e: any) {
       if (e?.name === "AbortError") return null; // normal saat switch cepat
-      setError(e?.message ?? "Tidak dapat mengakses kamera");
+      setError(
+        e?.message ||
+          "Tidak dapat mengakses kamera. Klik 'Nyalakan Kamera' lalu izinkan akses.",
+      );
+      setHasStream(false);
       return null;
     }
   }
@@ -151,8 +160,8 @@ export function CameraCapture({
         facingMode: selectedDeviceId
           ? undefined
           : variant === "ktp"
-          ? { ideal: "environment" }
-          : { ideal: "user" },
+            ? { ideal: "environment" }
+            : { ideal: "user" },
         deviceId: selectedDeviceId,
       });
       if (!mounted && s) s.getTracks().forEach((t) => t.stop());
@@ -176,11 +185,32 @@ export function CameraCapture({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDeviceId]);
 
+  async function handleStartCamera() {
+    setError(null);
+    setStarting(true);
+    try {
+      await startStream({
+        facingMode: selectedDeviceId
+          ? undefined
+          : variant === "ktp"
+            ? { ideal: "environment" }
+            : { ideal: "user" },
+        deviceId: selectedDeviceId,
+      });
+    } finally {
+      setStarting(false);
+    }
+  }
+
   // ---------------------------
   // Capture
   // ---------------------------
   async function handleCapture() {
     if (!videoRef.current || !onCapture) return;
+    if (!hasStream) {
+      setError("Kamera belum aktif. Klik 'Nyalakan Kamera' lalu coba lagi.");
+      return;
+    }
     const video = videoRef.current;
     const off = document.createElement("canvas");
     off.width = video.videoWidth;
@@ -189,7 +219,7 @@ export function CameraCapture({
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
     const blob = await new Promise<Blob>((res) =>
-      off.toBlob((b) => res(b!), "image/jpeg", 0.9)
+      off.toBlob((b) => res(b!), "image/jpeg", 0.9),
     );
     const url = URL.createObjectURL(blob);
     if (capturedUrl) URL.revokeObjectURL(capturedUrl);
@@ -206,7 +236,7 @@ export function CameraCapture({
   // ---------------------------
   // Render
   // ---------------------------
-  const showErr = error && !/aborted|interrupted/i.test(String(error));
+  const showErr = !!error;
 
   return (
     <div className="w-full">
@@ -231,9 +261,7 @@ export function CameraCapture({
         <select
           className="border rounded px-2 py-1 text-sm"
           value={selectedDeviceId ?? ""}
-          onChange={(e) =>
-            setSelectedDeviceId(e.target.value || undefined)
-          }
+          onChange={(e) => setSelectedDeviceId(e.target.value || undefined)}
         >
           {!devices.length && <option value="">(Tidak ada kamera)</option>}
           {devices.map((d, idx) => (
@@ -243,9 +271,15 @@ export function CameraCapture({
           ))}
         </select>
 
+        <Button onClick={handleStartCamera} disabled={starting}>
+          {starting ? "Mengaktifkan..." : "Nyalakan Kamera"}
+        </Button>
+
         {!liveOnly && (
           <>
-            <Button onClick={handleCapture}>Capture</Button>
+            <Button onClick={handleCapture} disabled={!hasStream}>
+              Capture
+            </Button>
             <Button variant="secondary" onClick={handleStop}>
               Lepaskan Kamera
             </Button>
@@ -258,12 +292,26 @@ export function CameraCapture({
   );
 }
 
-export function QualityBadges({ status, selfie }: { status: {bright:boolean; sharp:boolean; still:boolean}; selfie?: boolean }) {
+export function QualityBadges({
+  status,
+  selfie,
+}: {
+  status: { bright: boolean; sharp: boolean; still: boolean };
+  selfie?: boolean;
+}) {
   return (
     <div className="flex items-center gap-2 text-xs">
-      <Badge variant={status.bright ? "default" : "secondary"}>Brightness {status.bright ? "OK" : "Low"}</Badge>
-      <Badge variant={status.sharp ? "default" : "secondary"}>Sharpness {status.sharp ? "OK" : "Blur"}</Badge>
-      {!selfie && <Badge variant={status.still ? "default" : "secondary"}>Stability {status.still ? "OK" : "Move"}</Badge>}
+      <Badge variant={status.bright ? "default" : "secondary"}>
+        Brightness {status.bright ? "OK" : "Low"}
+      </Badge>
+      <Badge variant={status.sharp ? "default" : "secondary"}>
+        Sharpness {status.sharp ? "OK" : "Blur"}
+      </Badge>
+      {!selfie && (
+        <Badge variant={status.still ? "default" : "secondary"}>
+          Stability {status.still ? "OK" : "Move"}
+        </Badge>
+      )}
     </div>
   );
 }
@@ -271,7 +319,14 @@ export function QualityBadges({ status, selfie }: { status: {bright:boolean; sha
 export function KtpOverlay({ ok }: { ok: boolean }) {
   return (
     <div className="absolute inset-0 grid place-items-center pointer-events-none">
-      <div className={"relative w-[80%] aspect-[1.586] rounded-md border-2 " + (ok ? "border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" : "border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]") }>
+      <div
+        className={
+          "relative w-[80%] aspect-[1.586] rounded-md border-2 " +
+          (ok
+            ? "border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+            : "border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]")
+        }
+      >
         <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-current"></div>
         <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-current"></div>
         <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-current"></div>
@@ -284,7 +339,12 @@ export function KtpOverlay({ ok }: { ok: boolean }) {
 export function SelfieOverlay({ ok }: { ok: boolean }) {
   return (
     <div className="absolute inset-0 grid place-items-center pointer-events-none">
-      <div className={"relative w-[55%] aspect-square rounded-full border-4 " + (ok ? "border-emerald-400" : "border-white/90")}></div>
+      <div
+        className={
+          "relative w-[55%] aspect-square rounded-full border-4 " +
+          (ok ? "border-emerald-400" : "border-white/90")
+        }
+      ></div>
     </div>
   );
 }

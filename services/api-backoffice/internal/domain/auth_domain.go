@@ -30,6 +30,7 @@ type AuthRepository interface {
 	FindAdminByNIK(ctx context.Context, nik string) (*UserCredential, error)
 	FindBeneficiaryByPhone(ctx context.Context, phone string) (*UserCredential, error)
 	FindEligibleBeneficiary(ctx context.Context, name, nik string) (*UserCredential, error)
+	UpdateLastLogin(ctx context.Context, userID string) error
 }
 
 type AuthService interface {

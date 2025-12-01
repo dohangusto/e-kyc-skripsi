@@ -471,37 +471,13 @@ const App = () => {
       return;
     }
 
-    const existing = accounts.find(
-      (acc) => normalizePhone(acc.phone) === phone,
+    setPinLoginError(
+      "Verifikasi selesai. Silakan login kembali dengan nomor HP dan PIN baru Anda.",
     );
-    const { pin: _ignoredPin, ...restApplicant } = payload.applicant;
-    const sanitizedApplicant: Applicant = {
-      ...restApplicant,
-      phone,
-    } as Applicant;
-
-    const baseAccount: Account = {
-      phone,
-      pin: PIN_FLAG,
-      submissionId: payload.submissionId,
-      applicant: sanitizedApplicant,
-      createdAt: new Date().toISOString(),
-      faceMatchPassed: payload.faceMatchPassed,
-      livenessPassed: payload.livenessPassed,
-      verificationStatus: "SEDANG_DITINJAU",
-      survey: existing?.survey,
-    };
-    const account = ensureSurvey(baseAccount);
-
-    replaceAccount(account);
-    setPinLoginError(null);
     setOtpError(null);
     setOtpContext(null);
-    const newSession = createEphemeralSession(phone);
-    setSession(newSession);
+    setSession(null);
     persistRemoteSession(null);
-    setSurveyMode(account.survey?.completed ? "review" : "fill");
-    setView("dashboard");
   };
 
   const handleViewDashboard = () => {

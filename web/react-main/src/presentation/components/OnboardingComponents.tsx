@@ -828,8 +828,8 @@ export function DoneStep({
           </p>
         )}
         <p>
-          PIN akses dashboard akan dibuat setelah Anda masuk ke dashboard. Ikuti
-          instruksi yang tampil di sana.
+          Silakan login kembali menggunakan nomor HP dan PIN yang baru Anda set.
+          Setelah login, Anda akan diminta membuat PIN akses dashboard.
         </p>
       </div>
       {onGoLanding && (

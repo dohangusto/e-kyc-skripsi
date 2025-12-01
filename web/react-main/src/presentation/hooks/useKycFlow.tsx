@@ -163,33 +163,6 @@ function useProvideKycFlow() {
   const api = useMemo(() => createEkycApi(), []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      dispatch({ type: "SET_SYNCING", syncing: true });
-      try {
-        const session = await api.createSession();
-        if (!cancelled) {
-          dispatch({ type: "SET_SESSION", session });
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          dispatch({
-            type: "SET_ERROR",
-            error: err?.message ?? "Gagal membuat sesi e-KYC",
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          dispatch({ type: "SET_SYNCING", syncing: false });
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
-
-  useEffect(() => {
     if (!state.sessionId) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
