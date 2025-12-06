@@ -85,6 +85,43 @@ func (h *PortalHTTPHandler) latestBatchForUser(c echo.Context) error {
 	})
 }
 
+func (h *PortalHTTPHandler) ListDistributions(c echo.Context) error {
+	appID := strings.TrimSpace(c.Param("id"))
+	if appID == "" {
+		return respondError(c, http.StatusBadRequest, errors.New("application id required"))
+	}
+	dists, err := h.Service.ListDistributionsByApplication(c.Request().Context(), appID)
+	if err != nil {
+		return respondError(c, http.StatusInternalServerError, err)
+	}
+	type distView struct {
+		ID          string    `json:"id"`
+		Name        string    `json:"name"`
+		ScheduledAt time.Time `json:"scheduled_at"`
+		Channel     string    `json:"channel"`
+		Location    string    `json:"location"`
+		Status      string    `json:"status"`
+		Notes       *string   `json:"notes,omitempty"`
+		UpdatedAt   time.Time `json:"updated_at"`
+		BatchCodes  []string  `json:"batch_codes"`
+	}
+	out := make([]distView, 0, len(dists))
+	for _, d := range dists {
+		out = append(out, distView{
+			ID:          d.ID,
+			Name:        d.Name,
+			ScheduledAt: d.ScheduledAt,
+			Channel:     d.Channel,
+			Location:    d.Location,
+			Status:      d.Status,
+			Notes:       d.Notes,
+			UpdatedAt:   d.UpdatedAt,
+			BatchCodes:  d.BatchCodes,
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"data": out})
+}
+
 func (h *PortalHTTPHandler) SaveSurveyDraft(c echo.Context) error {
 	appID := strings.TrimSpace(c.Param("id"))
 	if appID == "" {

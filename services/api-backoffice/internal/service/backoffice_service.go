@@ -146,6 +146,13 @@ func (s *BackofficeService) ListDistributions(ctx context.Context) ([]domain.Dis
 	return s.repo.ListDistributions(ctx)
 }
 
+func (s *BackofficeService) ListDistributionsByApplication(ctx context.Context, appID string) ([]domain.Distribution, error) {
+	if strings.TrimSpace(appID) == "" {
+		return nil, errors.New("application id required")
+	}
+	return s.repo.ListDistributionsByApplication(ctx, appID)
+}
+
 func (s *BackofficeService) ListBatchesByUser(ctx context.Context, userID string) ([]domain.Batch, error) {
 	if strings.TrimSpace(userID) == "" {
 		return nil, errors.New("user id required")
@@ -192,17 +199,17 @@ func (s *BackofficeService) UpdateDistributionStatus(ctx context.Context, distID
 	return s.repo.UpdateDistributionStatus(ctx, params)
 }
 
-func (s *BackofficeService) NotifyDistribution(ctx context.Context, distID string, userIDs []string, actor string) error {
-	if len(userIDs) == 0 {
+func (s *BackofficeService) NotifyDistribution(ctx context.Context, distID string, applicationIDs []string, actor string) error {
+	if len(applicationIDs) == 0 {
 		return nil
 	}
-	normalized, err := s.repo.NormalizeUserIDs(ctx, userIDs)
+	normalized, err := s.repo.NormalizeUserIDs(ctx, applicationIDs)
 	if err != nil {
 		return err
 	}
 	params := domain.NotifyDistributionParams{
 		DistributionID: distID,
-		UserIDs:        normalized,
+		ApplicationIDs: normalized,
 		Actor:          actor,
 		Audit:          auditEntry(actor, distID, "DISTRIBUTION:NOTIFIED", strings.Join(normalized, ","), nil),
 	}

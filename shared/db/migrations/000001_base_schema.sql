@@ -145,15 +145,15 @@ CREATE TABLE IF NOT EXISTS distribution_batches (
 
 CREATE TABLE IF NOT EXISTS distribution_beneficiaries (
     distribution_id TEXT NOT NULL REFERENCES distributions(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    PRIMARY KEY (distribution_id, user_id)
+    application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    PRIMARY KEY (distribution_id, application_id)
 );
 
 CREATE TABLE IF NOT EXISTS distribution_notified (
     distribution_id TEXT NOT NULL REFERENCES distributions(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
     notified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (distribution_id, user_id)
+    PRIMARY KEY (distribution_id, application_id)
 );
 
 CREATE TABLE IF NOT EXISTS clustering_runs (

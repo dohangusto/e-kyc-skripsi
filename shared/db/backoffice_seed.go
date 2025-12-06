@@ -456,38 +456,38 @@ var cfgSeed = configSeed{
 }
 
 type distributionSeed struct {
-	ID              string
-	Name            string
-	ScheduledAt     string
-	Channel         string
-	Location        string
-	Status          string
-	Notes           *string
-	CreatedBy       string
-	CreatedAt       string
-	UpdatedBy       string
-	UpdatedAt       string
-	BatchCodes      []string
-	UserIDs         []string
-	NotifiedUserIDs []string
+	ID                     string
+	Name                   string
+	ScheduledAt            string
+	Channel                string
+	Location               string
+	Status                 string
+	Notes                  *string
+	CreatedBy              string
+	CreatedAt              string
+	UpdatedBy              string
+	UpdatedAt              string
+	BatchCodes             []string
+	ApplicationIDs         []string
+	NotifiedApplicationIDs []string
 }
 
 var distributionSeeds = []distributionSeed{
 	{
-		ID:              "DIST-001",
-		Name:            "Penyaluran PKH Sekupang",
-		ScheduledAt:     "2025-10-25T02:00:00Z",
-		Channel:         "BANK_TRANSFER",
-		Location:        "Kecamatan Sekupang",
-		Status:          "PLANNED",
-		Notes:           strPtr("Utamakan lansia dan keluarga dengan balita."),
-		CreatedBy:       operatorAdminID,
-		CreatedAt:       "2025-10-18T10:00:00Z",
-		UpdatedBy:       operatorAdminID,
-		UpdatedAt:       "2025-10-18T10:00:00Z",
-		BatchCodes:      []string{"BAT-2025Q4-001"},
-		UserIDs:         []string{"33333333-3333-3333-3333-333333333333"},
-		NotifiedUserIDs: []string{},
+		ID:                     "DIST-001",
+		Name:                   "Penyaluran PKH Sekupang",
+		ScheduledAt:            "2025-10-25T02:00:00Z",
+		Channel:                "BANK_TRANSFER",
+		Location:               "Kecamatan Sekupang",
+		Status:                 "PLANNED",
+		Notes:                  strPtr("Utamakan lansia dan keluarga dengan balita."),
+		CreatedBy:              operatorAdminID,
+		CreatedAt:              "2025-10-18T10:00:00Z",
+		UpdatedBy:              operatorAdminID,
+		UpdatedAt:              "2025-10-18T10:00:00Z",
+		BatchCodes:             []string{"BAT-2025Q4-001"},
+		ApplicationIDs:         []string{"APP-2025-0003"},
+		NotifiedApplicationIDs: []string{},
 	},
 }
 
@@ -848,16 +848,16 @@ func seedDistributions(ctx context.Context, tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM distribution_beneficiaries WHERE distribution_id=$1`, dist.ID); err != nil {
 			return err
 		}
-		for _, userID := range dist.UserIDs {
-			if _, err := tx.Exec(ctx, `INSERT INTO distribution_beneficiaries (distribution_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, dist.ID, userID); err != nil {
+		for _, appID := range dist.ApplicationIDs {
+			if _, err := tx.Exec(ctx, `INSERT INTO distribution_beneficiaries (distribution_id, application_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, dist.ID, appID); err != nil {
 				return err
 			}
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM distribution_notified WHERE distribution_id=$1`, dist.ID); err != nil {
 			return err
 		}
-		for _, userID := range dist.NotifiedUserIDs {
-			if _, err := tx.Exec(ctx, `INSERT INTO distribution_notified (distribution_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, dist.ID, userID); err != nil {
+		for _, appID := range dist.NotifiedApplicationIDs {
+			if _, err := tx.Exec(ctx, `INSERT INTO distribution_notified (distribution_id, application_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, dist.ID, appID); err != nil {
 				return err
 			}
 		}

@@ -58,7 +58,7 @@ type UpdateDistributionStatusParams struct {
 
 type NotifyDistributionParams struct {
 	DistributionID string
-	UserIDs        []string
+	ApplicationIDs []string
 	Actor          string
 	Audit          AuditEntry
 }
@@ -128,6 +128,7 @@ type BackofficeRepository interface {
 	UpsertConfig(ctx context.Context, cfg SystemConfig) (*SystemConfig, error)
 	ListBatchesByUser(ctx context.Context, userID string) ([]Batch, error)
 	ListBatchesByApplication(ctx context.Context, appID string) ([]Batch, error)
+	ListDistributionsByApplication(ctx context.Context, appID string) ([]Distribution, error)
 
 	UpdateApplicationStatus(ctx context.Context, params UpdateApplicationStatusParams) error
 	CreateVisit(ctx context.Context, visit *Visit, timeline TimelineEntry) error
@@ -181,7 +182,7 @@ type BackofficeService interface {
 	ListDistributions(ctx context.Context) ([]Distribution, error)
 	CreateDistribution(ctx context.Context, dist *Distribution, actor string) (*Distribution, error)
 	UpdateDistributionStatus(ctx context.Context, distID, status, actor string) error
-	NotifyDistribution(ctx context.Context, distID string, userIDs []string, actor string) error
+	NotifyDistribution(ctx context.Context, distID string, applicationIDs []string, actor string) error
 	ListVisits(ctx context.Context, params ListVisitsParams) ([]Visit, error)
 	ListBatchesByApplication(ctx context.Context, appID string) ([]Batch, error)
 	ListDistributionsByApplication(ctx context.Context, appID string) ([]Distribution, error)

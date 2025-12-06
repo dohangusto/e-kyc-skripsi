@@ -681,6 +681,41 @@ func (repo *backofficeRepository) ListDistributions(ctx context.Context) ([]doma
 	return result, rows.Err()
 }
 
+func (repo *backofficeRepository) ListDistributionsByApplication(ctx context.Context, appID string) ([]domain.Distribution, error) {
+	if strings.TrimSpace(appID) == "" {
+		return []domain.Distribution{}, nil
+	}
+	rows, err := repo.db.Query(ctx, `
+        SELECT d.id, d.name, d.scheduled_at, d.channel, d.location, d.status, d.notes, d.created_by, d.created_at, d.updated_by, d.updated_at
+        FROM distributions d
+        JOIN distribution_beneficiaries db ON db.distribution_id = d.id
+        WHERE db.application_id = $1
+        ORDER BY d.scheduled_at DESC`, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []domain.Distribution
+	for rows.Next() {
+		var dist domain.Distribution
+		if err := rows.Scan(&dist.ID, &dist.Name, &dist.ScheduledAt, &dist.Channel, &dist.Location, &dist.Status,
+			&dist.Notes, &dist.CreatedBy, &dist.CreatedAt, &dist.UpdatedBy, &dist.UpdatedAt); err != nil {
+			return nil, err
+		}
+		dist.BatchCodes, err = repo.fetchDistributionCodes(ctx, dist.ID)
+		if err != nil {
+			return nil, err
+		}
+		dist.Beneficiaries, dist.Notified, err = repo.fetchDistributionBeneficiaries(ctx, dist.ID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, dist)
+	}
+	return result, rows.Err()
+}
+
 func (repo *backofficeRepository) fetchDistributionCodes(ctx context.Context, distID string) ([]string, error) {
 	rows, err := repo.db.Query(ctx, `SELECT batch_code FROM distribution_batches WHERE distribution_id=$1`, distID)
 	if err != nil {
@@ -699,7 +734,7 @@ func (repo *backofficeRepository) fetchDistributionCodes(ctx context.Context, di
 }
 
 func (repo *backofficeRepository) fetchDistributionBeneficiaries(ctx context.Context, distID string) ([]string, []string, error) {
-	rows, err := repo.db.Query(ctx, `SELECT user_id FROM distribution_beneficiaries WHERE distribution_id=$1`, distID)
+	rows, err := repo.db.Query(ctx, `SELECT application_id FROM distribution_beneficiaries WHERE distribution_id=$1`, distID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -712,7 +747,7 @@ func (repo *backofficeRepository) fetchDistributionBeneficiaries(ctx context.Con
 		}
 		beneficiaries = append(beneficiaries, id)
 	}
-	rows2, err := repo.db.Query(ctx, `SELECT user_id FROM distribution_notified WHERE distribution_id=$1`, distID)
+	rows2, err := repo.db.Query(ctx, `SELECT application_id FROM distribution_notified WHERE distribution_id=$1`, distID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -768,15 +803,15 @@ func (repo *backofficeRepository) UpdateDistributionStatus(ctx context.Context, 
 }
 
 func (repo *backofficeRepository) NotifyDistribution(ctx context.Context, params domain.NotifyDistributionParams) error {
-	if len(params.UserIDs) == 0 {
+	if len(params.ApplicationIDs) == 0 {
 		return nil
 	}
 	return repo.withTx(ctx, func(tx pgx.Tx) error {
-		for _, userID := range params.UserIDs {
+		for _, appID := range params.ApplicationIDs {
 			if _, err := tx.Exec(ctx, `
-                INSERT INTO distribution_notified (distribution_id, user_id, notified_at)
+                INSERT INTO distribution_notified (distribution_id, application_id, notified_at)
                 VALUES ($1,$2,NOW())
-                ON CONFLICT DO NOTHING`, params.DistributionID, userID); err != nil {
+                ON CONFLICT DO NOTHING`, params.DistributionID, appID); err != nil {
 				return err
 			}
 		}
@@ -996,18 +1031,11 @@ func (repo *backofficeRepository) NormalizeUserIDs(ctx context.Context, ids []st
 	}
 	var normalized []string
 	for _, id := range ids {
-		if strings.HasPrefix(id, "APP-") {
-			var userID string
-			if err := repo.db.QueryRow(ctx, `SELECT beneficiary_user_id FROM applications WHERE id=$1`, id).Scan(&userID); err != nil {
-				if errors.Is(err, pgx.ErrNoRows) {
-					continue
-				}
-				return nil, err
-			}
-			normalized = append(normalized, userID)
-		} else {
-			normalized = append(normalized, id)
+		cleanID := strings.TrimSpace(id)
+		if cleanID == "" {
+			continue
 		}
+		normalized = append(normalized, cleanID)
 	}
 	return normalized, nil
 }

@@ -24,6 +24,10 @@ import {
   type PortalSurveyResponse,
 } from "@infrastructure/services/portal-survey";
 import { fetchPortalBatches } from "@infrastructure/services/portal-batches";
+import {
+  fetchPortalDistributions,
+  type PortalDistributionResponse,
+} from "@infrastructure/services/portal-distributions";
 import type {
   Account,
   SurveyAnswers,
@@ -154,6 +158,24 @@ const buildAccountFromSession = (
     ),
     verificationStatus: deriveVerificationStatus(session.finalDecision),
   };
+};
+
+const mapDistributionsToSchedules = (
+  dists: PortalDistributionResponse[] | null | undefined,
+) => {
+  if (!dists || dists.length === 0) return undefined;
+  return dists.map((dist) => ({
+    id: dist.id,
+    title: dist.name,
+    date: new Date(dist.scheduled_at).toLocaleString("id-ID", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }),
+    location: dist.location,
+    note: dist.channel
+      ? `${dist.channel}${dist.notes ? ` · ${dist.notes}` : ""}`
+      : dist.notes,
+  }));
 };
 
 const findLatestSessionForUser = async (
@@ -287,6 +309,9 @@ const App = () => {
   const [portalBatches, setPortalBatches] = useState<PortalBatch[] | null>(
     null,
   );
+  const [portalDistributions, setPortalDistributions] = useState<
+    Awaited<ReturnType<typeof fetchPortalDistributions>>
+  >([]);
   const syncedSurveyIdsRef = useRef<Record<string, boolean>>({});
   const [restoredSession, setRestoredSession] = useState(false);
   const landingLoginHash = `#${LANDING_LOGIN_SECTION_ID}`;
@@ -447,6 +472,7 @@ const App = () => {
   useEffect(() => {
     if (!session?.remote || !session.token || !currentAccount?.submissionId) {
       setPortalBatches(null);
+      setPortalDistributions([]);
       return;
     }
     let cancelled = false;
@@ -456,13 +482,19 @@ const App = () => {
           currentAccount.submissionId,
           session.token,
         );
+        const dists = await fetchPortalDistributions(
+          currentAccount.submissionId,
+          session.token,
+        );
         if (!cancelled) {
           setPortalBatches(data);
+          setPortalDistributions(dists);
         }
       } catch (err) {
         console.error("Failed to fetch portal batches", err);
         if (!cancelled) {
           setPortalBatches([]);
+          setPortalDistributions([]);
         }
       }
     })();
@@ -840,6 +872,7 @@ const App = () => {
               !!currentAccount.survey?.answers &&
               !currentAccount.survey?.completed,
             batches: portalBatches ?? undefined,
+            schedules: mapDistributionsToSchedules(portalDistributions),
           }}
           onStartNew={handleStartNew}
           onLogout={handleLogout}
