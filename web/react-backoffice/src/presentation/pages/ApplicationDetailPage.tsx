@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { Data } from "@application/services/data-service";
 import { useDataSnapshot } from "@application/services/useDataSnapshot";
@@ -37,6 +37,8 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
     () => snapshot.applications.find((app) => app.id === id) ?? null,
     [snapshot.applications, id],
   );
+  const [loadingDetail, setLoadingDetail] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<"summary" | "documents" | "tksk" | "audit">(
     "summary",
   );
@@ -51,8 +53,29 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
   const [rejectForm, setRejectForm] = useState({ reason: "", code: "" });
   const session = getSession();
 
+  useEffect(() => {
+    let active = true;
+    setLoadingDetail(true);
+    setLoadError(null);
+    Data.fetchApplication(id)
+      .catch((err) => {
+        if (!active) return;
+        setLoadError((err as Error).message);
+      })
+      .finally(() => {
+        if (active) setLoadingDetail(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
   if (!application)
-    return <div className="text-sm text-slate-600">Data tidak ditemukan.</div>;
+    return (
+      <div className="text-sm text-slate-600">
+        {loadingDetail ? "Memuat detail aplikasi..." : "Data tidak ditemukan."}
+      </div>
+    );
   if (session?.role === "TKSK" && application.assigned_to !== session.userId) {
     return (
       <div className="text-sm text-slate-600">
@@ -96,6 +119,12 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
       <PageIntro>
         Detail pengajuan lengkap beserta dokumen, kunjungan, dan riwayat audit.
       </PageIntro>
+
+      {loadError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded p-3">
+          Gagal memuat detail terbaru: {loadError}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <RoleGate allow={["ADMIN"]}>
@@ -161,7 +190,9 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
       </nav>
 
       {tab === "summary" && <SummaryTab application={application} />}
-      {tab === "documents" && <DocumentsTab application={application} />}
+      {tab === "documents" && (
+        <DocumentsTab application={application} loading={loadingDetail} />
+      )}
       {tab === "tksk" && <VisitManager app={application} />}
       {tab === "audit" && (
         <AuditTab appId={application.id} rows={snapshot.audit} />
@@ -269,10 +300,24 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
   );
 }
 
-function DocumentsTab({ application }: { application: Application }) {
+function DocumentsTab({
+  application,
+  loading,
+}: {
+  application: Application;
+  loading?: boolean;
+}) {
   return (
     <section className="space-y-4" role="tabpanel">
-      <DocumentGallery documents={application.documents} />
+      {application.documents.length > 0 ? (
+        <DocumentGallery documents={application.documents} />
+      ) : (
+        <div className="rounded border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          {loading
+            ? "Mengambil dokumen e-KYC dan survei..."
+            : "Belum ada dokumen yang diunggah."}
+        </div>
+      )}
       <SurveyPanel survey={application.survey} />
     </section>
   );

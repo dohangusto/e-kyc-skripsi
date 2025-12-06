@@ -132,6 +132,7 @@ func (repo *backofficeRepository) ListApplications(ctx context.Context, limit in
 	for rows.Next() {
 		var (
 			app        domain.Application
+			dob        *time.Time
 			phone      string
 			assignedTo *string
 			regionProv *string
@@ -141,7 +142,7 @@ func (repo *backofficeRepository) ListApplications(ctx context.Context, limit in
 		)
 
 		if err := rows.Scan(
-			&app.ID, &app.ApplicantName, &app.ApplicantNikMask, &app.ApplicantDOB,
+			&app.ID, &app.ApplicantName, &app.ApplicantNikMask, &dob,
 			&phone,
 			&regionProv, &regionKab, &regionKec, &regionKel,
 			&app.Status, &assignedTo, &app.AgingDays,
@@ -151,6 +152,9 @@ func (repo *backofficeRepository) ListApplications(ctx context.Context, limit in
 			return nil, err
 		}
 		app.ApplicantPhone = phone
+		if dob != nil {
+			app.ApplicantDOB = *dob
+		}
 		app.AssignedTo = assignedTo
 		app.Region.Prov = derefString(regionProv)
 		app.Region.Kab = derefString(regionKab)
@@ -183,8 +187,13 @@ func (repo *backofficeRepository) ListApplications(ctx context.Context, limit in
 func (repo *backofficeRepository) GetApplication(ctx context.Context, id string) (*domain.Application, error) {
 	var (
 		app        domain.Application
+		dob        *time.Time
 		phone      string
 		assignedTo *string
+		regionProv *string
+		regionKab  *string
+		regionKec  *string
+		regionKel  *string
 	)
 
 	row := repo.db.QueryRow(ctx, `
@@ -199,9 +208,9 @@ func (repo *backofficeRepository) GetApplication(ctx context.Context, id string)
         WHERE a.id = $1`, id)
 
 	if err := row.Scan(
-		&app.ID, &app.ApplicantName, &app.ApplicantNikMask, &app.ApplicantDOB,
+		&app.ID, &app.ApplicantName, &app.ApplicantNikMask, &dob,
 		&phone,
-		&app.Region.Prov, &app.Region.Kab, &app.Region.Kec, &app.Region.Kel,
+		&regionProv, &regionKab, &regionKec, &regionKel,
 		&app.Status, &assignedTo, &app.AgingDays,
 		&app.ScoreOCR, &app.ScoreFace, &app.ScoreLiveness,
 		&app.Flags, &app.CreatedAt, &app.UpdatedAt,
@@ -212,13 +221,37 @@ func (repo *backofficeRepository) GetApplication(ctx context.Context, id string)
 		return nil, err
 	}
 	app.ApplicantPhone = phone
+	if dob != nil {
+		app.ApplicantDOB = *dob
+	}
 	app.AssignedTo = assignedTo
+	app.Region.Prov = derefString(regionProv)
+	app.Region.Kab = derefString(regionKab)
+	app.Region.Kec = derefString(regionKec)
+	app.Region.Kel = derefString(regionKel)
 
 	docs, err := repo.fetchDocuments(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	app.Documents = docs
+
+	ekycDocs, err := repo.fetchEkycDocuments(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if len(ekycDocs) > 0 {
+		existingTypes := make(map[string]struct{}, len(app.Documents))
+		for _, doc := range app.Documents {
+			existingTypes[strings.ToUpper(doc.Type)] = struct{}{}
+		}
+		for _, doc := range ekycDocs {
+			if _, found := existingTypes[strings.ToUpper(doc.Type)]; found {
+				continue
+			}
+			app.Documents = append(app.Documents, doc)
+		}
+	}
 
 	visits, err := repo.fetchVisits(ctx, id)
 	if err != nil {
@@ -929,6 +962,44 @@ func (repo *backofficeRepository) fetchDocuments(ctx context.Context, appID stri
 		docs = append(docs, doc)
 	}
 	return docs, rows.Err()
+}
+
+func (repo *backofficeRepository) fetchEkycDocuments(ctx context.Context, appID string) ([]domain.Document, error) {
+	var idCardURL, selfieURL *string
+	var updatedAt time.Time
+
+	if err := repo.db.QueryRow(ctx, `
+        SELECT id_card_url, selfie_with_id_url, COALESCE(updated_at, created_at)
+        FROM ekyc_sessions
+        WHERE id = $1`, appID).Scan(&idCardURL, &selfieURL, &updatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var docs []domain.Document
+	if url := strings.TrimSpace(derefString(idCardURL)); url != "" {
+		docs = append(docs, domain.Document{
+			ID:            fmt.Sprintf("%s-IDCARD", appID),
+			ApplicationID: appID,
+			Type:          "KTP",
+			URL:           url,
+			SHA256:        "—",
+			CreatedAt:     updatedAt,
+		})
+	}
+	if url := strings.TrimSpace(derefString(selfieURL)); url != "" {
+		docs = append(docs, domain.Document{
+			ID:            fmt.Sprintf("%s-SELFIE", appID),
+			ApplicationID: appID,
+			Type:          "SELFIE",
+			URL:           url,
+			SHA256:        "—",
+			CreatedAt:     updatedAt,
+		})
+	}
+	return docs, nil
 }
 
 func (repo *backofficeRepository) fetchVisits(ctx context.Context, appID string) ([]domain.Visit, error) {

@@ -50,3 +50,18 @@ func splitStatements(sqlBlob string) []string {
 	}
 	return statements
 }
+
+// CleanDatabase resets the public schema so migrations can recreate everything from scratch.
+func CleanDatabase(ctx context.Context, pool *pgxpool.Pool) error {
+	statements := []string{
+		`DROP SCHEMA IF EXISTS public CASCADE`,
+		`CREATE SCHEMA IF NOT EXISTS public`,
+		`GRANT ALL ON SCHEMA public TO PUBLIC`,
+	}
+	for _, stmt := range statements {
+		if _, err := pool.Exec(ctx, stmt); err != nil {
+			return fmt.Errorf("clean schema failed executing %q: %w", stmt, err)
+		}
+	}
+	return nil
+}

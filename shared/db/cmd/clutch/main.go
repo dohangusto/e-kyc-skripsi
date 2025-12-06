@@ -29,6 +29,7 @@ func main() {
 		skipMigrateFlag = flag.Bool("skip-migrate", false, "Skip running SQL migrations")
 		skipSeedFlag    = flag.Bool("skip-seed", false, "Skip running base seed data")
 		skipDatasetFlag = flag.Bool("skip-dataset", false, "Skip syncing beneficiary dataset")
+		cleanFlag       = flag.Bool("clean", false, "Drop and recreate schema before running migrations")
 	)
 	flag.Parse()
 
@@ -41,6 +42,13 @@ func main() {
 		log.Fatalf("connect postgres: %v", err)
 	}
 	defer pool.Close()
+
+	if *cleanFlag {
+		log.Println("clean migration requested: resetting schema")
+		if err := shareddb.CleanDatabase(ctx, pool); err != nil {
+			log.Fatalf("clean database: %v", err)
+		}
+	}
 
 	if !*skipMigrateFlag {
 		if err := applyMigrations(ctx, pool); err != nil {
