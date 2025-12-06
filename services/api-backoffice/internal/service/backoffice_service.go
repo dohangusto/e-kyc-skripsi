@@ -146,6 +146,20 @@ func (s *BackofficeService) ListDistributions(ctx context.Context) ([]domain.Dis
 	return s.repo.ListDistributions(ctx)
 }
 
+func (s *BackofficeService) ListBatchesByUser(ctx context.Context, userID string) ([]domain.Batch, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user id required")
+	}
+	return s.repo.ListBatchesByUser(ctx, userID)
+}
+
+func (s *BackofficeService) ListBatchesByApplication(ctx context.Context, appID string) ([]domain.Batch, error) {
+	if strings.TrimSpace(appID) == "" {
+		return nil, errors.New("application id required")
+	}
+	return s.repo.ListBatchesByApplication(ctx, appID)
+}
+
 func (s *BackofficeService) CreateDistribution(ctx context.Context, dist *domain.Distribution, actor string) (*domain.Distribution, error) {
 	dist.ID = fmt.Sprintf("DIST-%d", time.Now().UnixNano())
 	dist.Status = "PLANNED"

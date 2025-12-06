@@ -23,12 +23,14 @@ import {
   submitPortalSurvey,
   type PortalSurveyResponse,
 } from "@infrastructure/services/portal-survey";
+import { fetchPortalBatches } from "@infrastructure/services/portal-batches";
 import type {
   Account,
   SurveyAnswers,
   SurveyStatus,
 } from "@domain/entities/account";
 import type { Applicant } from "@domain/types";
+import type { PortalBatch } from "@domain/entities/batch";
 import { PIN_FLAG } from "@shared/security";
 
 const sanitizeApplicant = (applicant: Applicant): Applicant => {
@@ -282,6 +284,9 @@ const App = () => {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [surveyMode, setSurveyMode] = useState<"fill" | "review">("fill");
+  const [portalBatches, setPortalBatches] = useState<PortalBatch[] | null>(
+    null,
+  );
   const syncedSurveyIdsRef = useRef<Record<string, boolean>>({});
   const [restoredSession, setRestoredSession] = useState(false);
   const landingLoginHash = `#${LANDING_LOGIN_SECTION_ID}`;
@@ -438,6 +443,38 @@ const App = () => {
       }
     })();
   }, [currentAccount, session?.token]);
+
+  useEffect(() => {
+    if (!session?.remote || !session.token || !currentAccount?.submissionId) {
+      setPortalBatches(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchPortalBatches(
+          currentAccount.submissionId,
+          session.token,
+        );
+        if (!cancelled) {
+          setPortalBatches(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch portal batches", err);
+        if (!cancelled) {
+          setPortalBatches([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    session?.remote,
+    session?.token,
+    session?.userId,
+    currentAccount?.submissionId,
+  ]);
 
   useEffect(() => {
     if (!session?.remote) {
@@ -615,6 +652,7 @@ const App = () => {
     setSession(null);
     persistRemoteSession(null);
     setSurveyMode("fill");
+    setPortalBatches(null);
     syncedSurveyIdsRef.current = {};
   };
 
@@ -801,6 +839,7 @@ const App = () => {
             hasSurveyDraft:
               !!currentAccount.survey?.answers &&
               !currentAccount.survey?.completed,
+            batches: portalBatches ?? undefined,
           }}
           onStartNew={handleStartNew}
           onLogout={handleLogout}

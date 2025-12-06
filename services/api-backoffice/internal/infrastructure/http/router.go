@@ -78,6 +78,7 @@ func RegisterRoutes(
 	portal.GET("/surveys/:id", portalHandler.GetSurvey)
 	portal.PUT("/surveys/:id", portalHandler.SaveSurveyDraft)
 	portal.POST("/surveys/:id/submit", portalHandler.SubmitSurvey)
+	portal.GET("/batches/:id", portalHandler.latestBatchForUser)
 
 	e.GET("/api/debug", debugRoutesHandler(e))
 }

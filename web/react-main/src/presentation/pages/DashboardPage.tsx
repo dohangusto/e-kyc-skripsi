@@ -20,12 +20,14 @@ import {
   Download,
   MapPin,
   Phone,
+  Package,
   ShieldCheck,
   User,
 } from "lucide-react";
 
 import type { Applicant } from "@domain/types";
 import type { SurveyStatus } from "@domain/entities/account";
+import type { PortalBatch } from "@domain/entities/batch";
 
 type VerificationStatus = "SEDANG_DITINJAU" | "DISETUJUI" | "DITOLAK";
 type DisbursementStatus = "dalam antrian" | "sedang disalurkan" | "disalurkan";
@@ -60,6 +62,7 @@ export type DashboardData = {
   schedules?: DashboardSchedule[];
   notifications?: DashboardNotification[];
   disbursementStatus?: DisbursementStatus;
+  batches?: PortalBatch[];
 };
 
 type DashboardPageProps = {
@@ -528,6 +531,24 @@ export function DashboardPage({
 
           <Card className="shadow-sm">
             <CardHeader>
+              <CardTitle>Kelompok Bantuan</CardTitle>
+              <CardDescription>
+                Batch penyaluran yang telah ditetapkan untuk Anda.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!data.batches || data.batches.length === 0 ? (
+                <EmptyPlaceholder message="Belum ada batch penyaluran untuk akun ini. Data akan muncul begitu admin menetapkan kelompok Anda." />
+              ) : (
+                data.batches.map((batch) => (
+                  <BatchItem key={batch.id} batch={batch} />
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
               <CardTitle>Ringkasan Pemohon</CardTitle>
               <CardDescription>
                 Data diisi manual saat verifikasi.
@@ -701,6 +722,41 @@ function NotificationItem({ item }: { item: DashboardNotification }) {
       <p className="text-xs text-slate-500 mt-1">{item.time ?? "-"}</p>
     </div>
   );
+}
+
+function BatchItem({ batch }: { batch: PortalBatch }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-4 flex gap-3">
+      <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+        <Package className="h-5 w-5" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-slate-800">{batch.code}</p>
+        <p className="text-xs text-slate-500">
+          Dibuat: {formatBatchDate(batch.createdAt)}
+        </p>
+        {batch.status && (
+          <p className="text-xs text-slate-500">
+            Status:{" "}
+            <span className="font-medium text-slate-700">{batch.status}</span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function formatBatchDate(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function EmptyPlaceholder({ message }: { message: string }) {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	domain "e-kyc/services/api-backoffice/internal/domain"
 
@@ -36,9 +37,52 @@ func (h *PortalHTTPHandler) GetSurvey(c echo.Context) error {
 	return c.JSON(http.StatusOK, survey)
 }
 
+func (h *PortalHTTPHandler) ListBatches(c echo.Context) error {
+	userID := strings.TrimSpace(c.Param("userId"))
+	if userID == "" {
+		return respondError(c, http.StatusBadRequest, errors.New("user id required"))
+	}
+	batches, err := h.Service.ListBatchesByUser(c.Request().Context(), userID)
+	if err != nil {
+		return respondError(c, http.StatusInternalServerError, err)
+	}
+	type batchView struct {
+		ID        string    `json:"id"`
+		Code      string    `json:"code"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+	out := make([]batchView, 0, len(batches))
+	for _, b := range batches {
+		out = append(out, batchView{ID: b.ID, Code: b.Code, CreatedAt: b.CreatedAt})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"data": out})
+}
+
 type surveyRequest struct {
 	Answers map[string]any `json:"answers"`
 	Status  string         `json:"status"`
+}
+
+func (h *PortalHTTPHandler) latestBatchForUser(c echo.Context) error {
+	appID := strings.TrimSpace(c.Param("id"))
+	if appID == "" {
+		return respondError(c, http.StatusBadRequest, errors.New("application id required"))
+	}
+	batches, err := h.Service.ListBatchesByApplication(c.Request().Context(), appID)
+	if err != nil {
+		return respondError(c, http.StatusInternalServerError, err)
+	}
+	if len(batches) == 0 {
+		return c.JSON(http.StatusOK, map[string]any{"data": map[string]any{}})
+	}
+	b := batches[0]
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"id":         b.ID,
+			"code":       b.Code,
+			"created_at": b.CreatedAt,
+		},
+	})
 }
 
 func (h *PortalHTTPHandler) SaveSurveyDraft(c echo.Context) error {

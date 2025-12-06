@@ -535,6 +535,75 @@ func (repo *backofficeRepository) ListBatches(ctx context.Context) ([]domain.Bat
 	return batches, rows.Err()
 }
 
+func (repo *backofficeRepository) ListBatchesByUser(ctx context.Context, userID string) ([]domain.Batch, error) {
+	rows, err := repo.db.Query(ctx, `
+        WITH app_ids AS (
+            SELECT id::text FROM applications WHERE beneficiary_user_id::text = $1
+            UNION
+            SELECT application_id::text FROM survey_responses WHERE beneficiary_user_id::text = $1
+            UNION
+            SELECT id::text FROM ekyc_sessions WHERE user_id::text = $1
+            UNION
+            SELECT $1
+        ),
+        matched_batches AS (
+            SELECT DISTINCT bi.batch_id
+            FROM batch_items bi
+            JOIN app_ids ai ON ai.id = bi.application_id
+        )
+        SELECT b.id, b.code, b.status, b.checksum, b.created_at, b.updated_at
+        FROM batches b
+        JOIN matched_batches mb ON mb.batch_id = b.id
+        ORDER BY b.created_at DESC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var batches []domain.Batch
+	for rows.Next() {
+		var batch domain.Batch
+		if err := rows.Scan(&batch.ID, &batch.Code, &batch.Status, &batch.Checksum, &batch.CreatedAt, &batch.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items, err := repo.fetchBatchItems(ctx, batch.ID)
+		if err != nil {
+			return nil, err
+		}
+		batch.Items = items
+		batches = append(batches, batch)
+	}
+	return batches, rows.Err()
+}
+
+func (repo *backofficeRepository) ListBatchesByApplication(ctx context.Context, appID string) ([]domain.Batch, error) {
+	rows, err := repo.db.Query(ctx, `
+        SELECT b.id, b.code, b.status, b.checksum, b.created_at, b.updated_at
+        FROM batches b
+        JOIN batch_items bi ON bi.batch_id = b.id
+        WHERE bi.application_id = $1
+        ORDER BY b.created_at DESC`, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var batches []domain.Batch
+	for rows.Next() {
+		var batch domain.Batch
+		if err := rows.Scan(&batch.ID, &batch.Code, &batch.Status, &batch.Checksum, &batch.CreatedAt, &batch.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items, err := repo.fetchBatchItems(ctx, batch.ID)
+		if err != nil {
+			return nil, err
+		}
+		batch.Items = items
+		batches = append(batches, batch)
+	}
+	return batches, rows.Err()
+}
+
 func (repo *backofficeRepository) fetchBatchItems(ctx context.Context, batchID string) ([]string, error) {
 	rows, err := repo.db.Query(ctx, `SELECT application_id FROM batch_items WHERE batch_id=$1`, batchID)
 	if err != nil {

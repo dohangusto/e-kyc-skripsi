@@ -126,6 +126,8 @@ type BackofficeRepository interface {
 	ListBeneficiaries(ctx context.Context, limit int) ([]Beneficiary, error)
 	GetConfig(ctx context.Context) (*SystemConfig, error)
 	UpsertConfig(ctx context.Context, cfg SystemConfig) (*SystemConfig, error)
+	ListBatchesByUser(ctx context.Context, userID string) ([]Batch, error)
+	ListBatchesByApplication(ctx context.Context, appID string) ([]Batch, error)
 
 	UpdateApplicationStatus(ctx context.Context, params UpdateApplicationStatusParams) error
 	CreateVisit(ctx context.Context, visit *Visit, timeline TimelineEntry) error
@@ -181,6 +183,8 @@ type BackofficeService interface {
 	UpdateDistributionStatus(ctx context.Context, distID, status, actor string) error
 	NotifyDistribution(ctx context.Context, distID string, userIDs []string, actor string) error
 	ListVisits(ctx context.Context, params ListVisitsParams) ([]Visit, error)
+	ListBatchesByApplication(ctx context.Context, appID string) ([]Batch, error)
+	ListDistributionsByApplication(ctx context.Context, appID string) ([]Distribution, error)
 
 	ListClusteringRuns(ctx context.Context) ([]ClusteringRun, error)
 	GetClusteringRun(ctx context.Context, runID string) (*ClusteringRun, error)
@@ -191,6 +195,7 @@ type BackofficeService interface {
 	ListAuditLogs(ctx context.Context, limit int) ([]AuditLog, error)
 	Overview(ctx context.Context) (map[string]any, error)
 
+	ListBatchesByUser(ctx context.Context, userID string) ([]Batch, error)
 	GetSurvey(ctx context.Context, applicationID string) (*SurveyState, error)
 	SaveSurveyDraft(ctx context.Context, params SurveyDraftParams) (*SurveyState, error)
 	SubmitSurvey(ctx context.Context, params SurveySubmitParams) (*SurveyState, error)
