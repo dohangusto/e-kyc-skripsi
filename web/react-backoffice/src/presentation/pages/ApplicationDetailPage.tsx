@@ -52,6 +52,16 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
   });
   const [rejectForm, setRejectForm] = useState({ reason: "", code: "" });
   const session = getSession();
+  const status = application?.status ?? "";
+  const canReview = [
+    "DESK_REVIEW",
+    "FIELD_VISIT",
+    "RETURNED_FOR_REVISION",
+  ].includes(status);
+  const canSetReady = status === "FINAL_APPROVED";
+  const isReady = status === "DISBURSEMENT_READY";
+  const isRejected = status === "FINAL_REJECTED";
+  const isApproved = status === "FINAL_APPROVED" || isReady;
 
   useEffect(() => {
     let active = true;
@@ -97,27 +107,40 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{application.id}</h1>
+      <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {application.applicant.name}
+            </h1>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-mono text-slate-600">
+              {application.id}
+            </span>
+          </div>
           <p className="text-sm text-slate-600">
-            {application.applicant.name} · {application.region.kab}/
-            {application.region.kec}
+            {application.region.kab} / {application.region.kec} ·{" "}
+            {application.region.kel}
           </p>
           <p className="text-xs text-slate-500">
             Dibuat: {new Date(application.created_at).toLocaleString("id-ID")}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <StatusPill status={application.status} />
-          <ScoreBadge
-            ocr={application.scores.ocr}
-            face={application.scores.face}
-          />
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+            <div className="text-[11px] uppercase tracking-wide text-slate-500">
+              Verifikasi biometrik
+            </div>
+            <ScoreBadge
+              face={application.scores.face}
+              liveness={application.scores.liveness}
+            />
+          </div>
         </div>
       </header>
       <PageIntro>
-        Detail pengajuan lengkap beserta dokumen, kunjungan, dan riwayat audit.
+        Ringkasan pengajuan, dokumen e-KYC, jadwal TKSK, dan catatan audit dalam
+        satu tempat.
       </PageIntro>
 
       {loadError && (
@@ -126,68 +149,128 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <RoleGate allow={["ADMIN"]}>
-          <button
-            className="px-3 py-1 border rounded"
-            disabled={
-              !["DESK_REVIEW", "FIELD_VISIT"].includes(application.status)
-            }
-            onClick={() => setModal({ type: "RETURN" })}
-          >
-            Return
-          </button>
-        </RoleGate>
-        <RoleGate allow={["ADMIN"]}>
-          <button
-            className="px-3 py-1 border rounded"
-            disabled={
-              !["DESK_REVIEW", "FIELD_VISIT"].includes(application.status)
-            }
-            onClick={() => setModal({ type: "REJECT" })}
-          >
-            Reject
-          </button>
-        </RoleGate>
-        <RoleGate allow={["ADMIN"]}>
-          <button
-            className="px-3 py-1 border rounded"
-            disabled={
-              !["DESK_REVIEW", "FIELD_VISIT"].includes(application.status)
-            }
-            onClick={() => setModal({ type: "APPROVE" })}
-          >
-            Approve
-          </button>
-        </RoleGate>
-        <RoleGate allow={["ADMIN"]}>
-          <button
-            className="px-3 py-1 border rounded"
-            disabled={application.status !== "FINAL_APPROVED"}
-            onClick={() => setModal({ type: "READY" })}
-          >
-            Disbursement Ready
-          </button>
-        </RoleGate>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+          <header className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Keputusan verifikasi
+              </p>
+              <h3 className="text-sm font-semibold text-slate-800">
+                Tindak lanjuti hasil review
+              </h3>
+            </div>
+            <StatusPill status={application.status} />
+          </header>
+          <div className="flex flex-wrap gap-2">
+            <RoleGate allow={["ADMIN"]}>
+              {canReview && (
+                <>
+                  <button
+                    className="px-3 py-2 rounded border border-slate-200 text-sm text-slate-700 hover:bg-slate-50"
+                    onClick={() => setModal({ type: "RETURN" })}
+                  >
+                    Return
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded border border-rose-200 text-sm text-rose-700 bg-rose-50 hover:bg-rose-100"
+                    onClick={() => setModal({ type: "REJECT" })}
+                  >
+                    Reject
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded border border-emerald-200 text-sm text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                    onClick={() => setModal({ type: "APPROVE" })}
+                  >
+                    Approve
+                  </button>
+                </>
+              )}
+              {isRejected && (
+                <p className="text-sm text-rose-600">
+                  Aplikasi sudah ditolak. Tidak ada aksi lain.
+                </p>
+              )}
+              {isApproved && !isReady && (
+                <p className="text-sm text-emerald-700">
+                  Pengajuan telah disetujui.
+                </p>
+              )}
+              {isReady && (
+                <p className="text-sm text-blue-700">
+                  Status: siap penyaluran/disbursement.
+                </p>
+              )}
+            </RoleGate>
+          </div>
+        </section>
+        <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm space-y-3">
+          <header className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-blue-700">
+                Langkah penyaluran
+              </p>
+              <h3 className="text-sm font-semibold text-blue-900">
+                Tandai kesiapan salur
+              </h3>
+              <p className="text-xs text-blue-800">
+                Gunakan setelah verifikasi final disetujui.
+              </p>
+            </div>
+          </header>
+          <RoleGate allow={["ADMIN"]}>
+            {canSetReady && (
+              <button
+                className="px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700"
+                onClick={() => setModal({ type: "READY" })}
+              >
+                Tandai Disbursement Ready
+              </button>
+            )}
+            {isReady && (
+              <div className="inline-flex items-center gap-2 rounded-full bg-white border border-blue-200 px-3 py-1 text-sm text-blue-700">
+                ✅ Sudah diset ke DISBURSEMENT_READY
+              </div>
+            )}
+            {!canSetReady && !isReady && (
+              <p className="text-sm text-blue-800">
+                Disbursement Ready tersedia setelah status FINAL_APPROVED.
+              </p>
+            )}
+          </RoleGate>
+        </section>
       </div>
 
-      <nav
-        role="tablist"
-        aria-label="Application detail tabs"
-        className="flex flex-wrap gap-2 border-b pb-2"
-      >
-        {TABS.map((t) => (
-          <button
-            role="tab"
-            key={t.key}
-            aria-selected={tab === t.key}
-            className={`px-3 py-1 rounded ${tab === t.key ? "bg-blue-600 text-white" : "bg-white border"}`}
-            onClick={() => setTab(t.key as typeof tab)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <nav
+          role="tablist"
+          aria-label="Application detail tabs"
+          className="flex flex-wrap gap-2 border-b bg-slate-50 px-3 py-2"
+        >
+          {TABS.map((t) => (
+            <button
+              role="tab"
+              key={t.key}
+              aria-selected={tab === t.key}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition ${tab === t.key ? "bg-blue-600 text-white shadow" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"}`}
+              onClick={() => setTab(t.key as typeof tab)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-3">
+          {tab === "summary" && <SummaryTab application={application} />}
+          {tab === "documents" && (
+            <DocumentsTab application={application} loading={loadingDetail} />
+          )}
+          {tab === "tksk" && <VisitManager app={application} />}
+          {tab === "audit" && (
+            <AuditTab appId={application.id} rows={snapshot.audit} />
+          )}
+        </div>
+      </div>
 
       {tab === "summary" && <SummaryTab application={application} />}
       {tab === "documents" && (
@@ -596,71 +679,136 @@ function getSurveyStatusTone(status: SurveyStatus) {
 
 function SummaryTab({ application }: { application: Application }) {
   return (
-    <section className="grid md:grid-cols-3 gap-4" role="tabpanel">
-      <div className="bg-white border rounded p-3 space-y-2 md:col-span-2">
-        <div className="grid md:grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="font-medium">NIK</span>
-            <br />
-            {application.applicant.nik_mask}
+    <section className="space-y-4" role="tabpanel">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Profil pemohon
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2 text-sm mt-2">
+              <MetadataItem
+                label="NIK"
+                value={application.applicant.nik_mask}
+              />
+              <MetadataItem
+                label="Phone"
+                value={application.applicant.phone_mask}
+              />
+              <MetadataItem label="DOB" value={application.applicant.dob} />
+              <MetadataItem
+                label="Wilayah"
+                value={`${application.region.prov} / ${application.region.kab} / ${application.region.kec} / ${application.region.kel}`}
+              />
+            </div>
           </div>
-          <div>
-            <span className="font-medium">Phone</span>
-            <br />
-            {application.applicant.phone_mask}
+
+          <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+            <h4 className="text-sm font-semibold text-slate-800">
+              Ringkasan aplikasi
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-3 text-sm">
+              <MetadataItem label="ID Pengajuan" value={application.id} />
+              <MetadataItem
+                label="Dibuat pada"
+                value={new Date(application.created_at).toLocaleString("id-ID")}
+              />
+              <MetadataItem
+                label="Assign TKSK"
+                value={application.assigned_to || "Belum ditugaskan"}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {application.flags.duplicate_face && (
+                <span className="rounded-full bg-amber-100 text-amber-700 px-2 py-1">
+                  Dugaan wajah ganda
+                </span>
+              )}
+              {application.flags.duplicate_nik && (
+                <span className="rounded-full bg-amber-100 text-amber-700 px-2 py-1">
+                  Dugaan NIK ganda
+                </span>
+              )}
+              {application.flags.device_anomaly && (
+                <span className="rounded-full bg-amber-100 text-amber-700 px-2 py-1">
+                  Anomali perangkat
+                </span>
+              )}
+              {application.flags.escalated && (
+                <span className="rounded-full bg-rose-100 text-rose-700 px-2 py-1">
+                  Perlu eskalasi
+                </span>
+              )}
+              {!application.flags.duplicate_face &&
+                !application.flags.duplicate_nik &&
+                !application.flags.device_anomaly &&
+                !application.flags.escalated && (
+                  <span className="text-xs text-slate-500">
+                    Tidak ada flag risiko.
+                  </span>
+                )}
+            </div>
           </div>
-          <div>
-            <span className="font-medium">DOB</span>
-            <br />
-            {application.applicant.dob}
-          </div>
-          <div>
-            <span className="font-medium">Region</span>
-            <br />
-            {application.region.prov} / {application.region.kab} /{" "}
-            {application.region.kec} / {application.region.kel}
+
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-slate-800">Timeline</h4>
+              <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                Urut terbaru
+              </span>
+            </div>
+            <ol className="relative mt-3 border-l border-slate-200 ml-4 space-y-3">
+              {application.timeline
+                .slice()
+                .reverse()
+                .map((t, i) => (
+                  <li key={i} className="pl-3">
+                    <span
+                      className="absolute -left-[7px] mt-1 w-3 h-3 bg-blue-500 rounded-full"
+                      aria-hidden="true"
+                    />
+                    <p className="text-xs text-slate-500">
+                      {new Date(t.at).toLocaleString("id-ID")}
+                    </p>
+                    <p className="text-sm font-medium text-slate-800">
+                      {t.action} · {t.by}
+                    </p>
+                    {t.reason && (
+                      <p className="text-xs text-slate-500">{t.reason}</p>
+                    )}
+                  </li>
+                ))}
+              {application.timeline.length === 0 && (
+                <li className="text-sm text-slate-500">Belum ada timeline.</li>
+              )}
+            </ol>
           </div>
         </div>
-        <div className="text-sm">
-          Flags: {application.flags.duplicate_face ? "👤 dup face " : ""}
-          {application.flags.duplicate_nik ? "🆔 dup nik " : ""}
-          {application.flags.device_anomaly ? "📱 device anomaly " : ""}
-          {application.flags.escalated ? "🚨 escalated " : ""}
-        </div>
-        <div className="text-sm">Assigned: {application.assigned_to}</div>
-        <div>
-          <h4 className="font-medium text-sm">Timeline</h4>
-          <ol className="relative border-l border-slate-200 ml-4 space-y-2">
-            {application.timeline
-              .slice()
-              .reverse()
-              .map((t, i) => (
-                <li key={i} className="pl-3">
-                  <span
-                    className="absolute -left-[7px] mt-1 w-3 h-3 bg-blue-500 rounded-full"
-                    aria-hidden="true"
-                  />
-                  <p className="text-xs text-slate-500">
-                    {new Date(t.at).toLocaleString("id-ID")}
-                  </p>
-                  <p className="text-sm">
-                    {t.action} · {t.by}
-                  </p>
-                  {t.reason && (
-                    <p className="text-xs text-slate-500">{t.reason}</p>
-                  )}
-                </li>
-              ))}
-          </ol>
-        </div>
+
+        <aside className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+          <h4 className="text-sm font-semibold text-slate-800">Skor & aging</h4>
+          <div className="text-sm space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600">Face match</span>
+              <span className="font-semibold text-slate-800">
+                {application.scores.face}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600">Liveness</span>
+              <span className="font-semibold text-slate-800">
+                {application.scores.liveness}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600">Aging</span>
+              <span className="font-semibold text-slate-800">
+                {application.aging_days} hari
+              </span>
+            </div>
+          </div>
+        </aside>
       </div>
-      <aside className="bg-white border rounded p-3 space-y-2">
-        <h4 className="font-medium">Scores</h4>
-        <p className="text-sm">OCR: {application.scores.ocr}</p>
-        <p className="text-sm">Face: {application.scores.face}</p>
-        <p className="text-sm">Liveness: {application.scores.liveness}</p>
-        <p className="text-sm">Aging: {application.aging_days} hari</p>
-      </aside>
     </section>
   );
 }

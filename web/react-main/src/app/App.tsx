@@ -172,9 +172,16 @@ const mapDistributionsToSchedules = (
       timeStyle: "short",
     }),
     location: dist.location,
-    note: dist.channel
-      ? `${dist.channel}${dist.notes ? ` · ${dist.notes}` : ""}`
-      : dist.notes,
+    note: dist.notes ?? undefined,
+    status: dist.status as "PLANNED" | "IN_PROGRESS" | "COMPLETED" | undefined,
+    channel: dist.channel,
+    batchCodes: dist.batch_codes ?? [],
+    updatedAt: dist.updated_at
+      ? new Date(dist.updated_at).toLocaleString("id-ID", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
+      : undefined,
   }));
 };
 

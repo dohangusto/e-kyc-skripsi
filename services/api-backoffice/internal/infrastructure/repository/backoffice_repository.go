@@ -780,8 +780,8 @@ func (repo *backofficeRepository) CreateDistribution(ctx context.Context, dist *
 				return err
 			}
 		}
-		for _, userID := range dist.Beneficiaries {
-			if _, err := tx.Exec(ctx, `INSERT INTO distribution_beneficiaries (distribution_id, user_id) VALUES ($1,$2)`, dist.ID, userID); err != nil {
+		for _, appID := range dist.Beneficiaries {
+			if _, err := tx.Exec(ctx, `INSERT INTO distribution_beneficiaries (distribution_id, application_id) VALUES ($1,$2)`, dist.ID, appID); err != nil {
 				return err
 			}
 		}
