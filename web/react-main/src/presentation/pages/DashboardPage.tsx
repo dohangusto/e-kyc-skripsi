@@ -243,6 +243,13 @@ export function DashboardPage({
   }, [data.applicant.phone]);
   const schedules = data.schedules ?? [];
   const notifications = data.notifications ?? [];
+  const batches = useMemo(
+    () =>
+      (data.batches ?? []).filter(
+        (batch) => batch && (batch.code?.trim() || batch.id?.trim()),
+      ),
+    [data.batches],
+  );
 
   const needsPin = !data.pinSet;
   const needsSurvey = !data.surveyCompleted;
@@ -298,34 +305,30 @@ export function DashboardPage({
   return (
     <div className="min-h-screen bg-[var(--light-neutral)] text-[var(--foreground)] relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(45,62,83,0.08),transparent_40%),radial-gradient(circle_at_82%_0%,rgba(45,62,83,0.06),transparent_45%)]" />
-      <header className="border-b bg-[var(--primary)] text-white">
+      <header className="border-b bg-white/80 backdrop-blur text-[var(--foreground)]">
         <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-white/70">
+            <p className="text-xs uppercase tracking-wide text-[var(--muted-gray)]">
               Program Bansos Terpadu
             </p>
-            <h1 className="text-2xl font-semibold text-white">
+            <h1 className="text-2xl font-semibold text-[var(--deep-navy)]">
               Dashboard Penerima Bantuan
             </h1>
-            <p className="text-sm text-white/80 mt-1">
+            <p className="text-sm text-[var(--muted-gray)] mt-1">
               ID Pengajuan:{" "}
               <span className="font-mono">{data.submissionId}</span>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {onLogout && (
-              <Button
-                variant="ghost"
-                className="btn-ghost !text-white !border-white/30"
-                onClick={onLogout}
-              >
+              <Button variant="ghost" className="btn-ghost" onClick={onLogout}>
                 Keluar
               </Button>
             )}
             {onStartNew && (
               <Button
                 variant="outline"
-                className="btn-primary !bg-white !text-[var(--deep-navy)]"
+                className="btn-primary"
                 onClick={onStartNew}
               >
                 Ajukan Verifikasi Baru
@@ -558,10 +561,24 @@ export function DashboardPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {!data.batches || data.batches.length === 0 ? (
-                <EmptyPlaceholder message="Belum ada batch penyaluran untuk akun ini. Data akan muncul begitu admin menetapkan kelompok Anda." />
+              {batches.length === 0 ? (
+                <div className="space-y-3 text-sm text-[var(--muted-gray)]">
+                  <p className="font-semibold text-[var(--deep-navy)]">
+                    Belum ada distribusi untuk akun Anda.
+                  </p>
+                  <p>
+                    Petugas akan menetapkan kelompok penyaluran setelah data
+                    Anda lolos verifikasi. Jika status sudah disetujui tapi
+                    belum ada distribusi, silakan hubungi admin melalui fitur
+                    chat.
+                  </p>
+                  <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--section-neutral)] p-3 text-xs">
+                    Terakhir diperiksa:{" "}
+                    <span className="font-semibold">Belum tersedia</span>
+                  </div>
+                </div>
               ) : (
-                data.batches.map((batch) => (
+                batches.map((batch) => (
                   <BatchItem key={batch.id} batch={batch} />
                 ))
               )}
@@ -569,7 +586,7 @@ export function DashboardPage({
           </Card>
         </section>
 
-        <section className="grid md:grid-cols-2 gap-6">
+        <section className="grid md:grid-cols-3 gap-6">
           <Card className="shadow-sm border border-[var(--border)] bg-white">
             <CardHeader>
               <CardTitle className="text-[var(--deep-navy)]">
@@ -593,40 +610,68 @@ export function DashboardPage({
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border border-[var(--border)] bg-white">
+          <Card className="md:col-span-2 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-[var(--deep-navy)]">
-                Status Akun & PIN
-              </CardTitle>
-              <CardDescription className="text-[var(--muted-gray)]">
-                Ringkasan status verifikasi, survei, dan keamanan akun.
+              <CardTitle>Notifikasi Penting</CardTitle>
+              <CardDescription>
+                Pemberitahuan terbaru terkait pengajuan Anda.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted-gray)]">
-              <div className="flex items-center justify-between">
-                <span>Verifikasi akhir</span>
-                <Badge variant={status.variant} className={status.className}>
-                  {status.label}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>PIN</span>
-                <Badge variant={data.pinSet ? "default" : "secondary"}>
-                  {data.pinSet ? "Sudah dibuat" : "Belum ada"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Survey TKSK</span>
-                <Badge variant={surveyStatus.variant}>
-                  {surveyStatus.label}
-                </Badge>
-              </div>
+            <CardContent className="space-y-3 text-sm text-slate-600">
+              {notifications.length === 0 ? (
+                <EmptyPlaceholder message="Belum ada notifikasi penting. Kami akan menampilkan kabar terbaru begitu ada pembaruan dari petugas." />
+              ) : (
+                notifications.map((item) => (
+                  <NotificationItem
+                    key={item.id ?? `${item.title}-${item.time ?? "time"}`}
+                    item={item}
+                  />
+                ))
+              )}
             </CardContent>
           </Card>
         </section>
 
-        <section className="grid md:grid-cols-3 gap-6">
-          <Card className="shadow-sm border border-[var(--border)] bg-white">
+        <section className="grid lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 shadow-sm border border-[var(--border)] bg-white row-span-2">
+            <CardHeader>
+              <CardTitle className="text-[var(--deep-navy)]">
+                Pintasan Hubungi Admin
+              </CardTitle>
+              <CardDescription className="text-[var(--muted-gray)]">
+                Kirim pesan cepat ke petugas jika kamu ada kendala.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-[var(--muted-gray)]">
+              <div className="space-y-2 max-h-80 min-h-[260px] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--section-neutral)] p-3">
+                <ChatBubble
+                  sender="Anda"
+                  tone="user"
+                  message="Halo Kak, saya mau konfirmasi jadwal penyaluran terbaru ya."
+                  time="09:10"
+                />
+                <ChatBubble
+                  sender="Admin"
+                  tone="admin"
+                  message="Halo! Jadwal Anda di Batam Kota tanggal 11 Desember, pukul 09.30. Silakan bawa KTP asli."
+                  time="09:12"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="chat-message">Tulis pesan</Label>
+                <textarea
+                  id="chat-message"
+                  rows={3}
+                  className="w-full input-surface"
+                  placeholder="Contoh: Apakah perlu membawa KK saat penyaluran?"
+                />
+                <div className="flex justify-end">
+                  <Button className="btn-primary">Kirim Pesan</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-[var(--border)] bg-white row-span-1">
             <CardHeader>
               <CardTitle className="text-[var(--deep-navy)]">
                 Ringkasan Pemohon
@@ -656,25 +701,18 @@ export function DashboardPage({
               </div>
             </CardContent>
           </Card>
-
-          <Card className="md:col-span-2 shadow-sm">
+          <Card className="border border-[var(--border)] bg-white row-span-1">
             <CardHeader>
-              <CardTitle>Notifikasi Penting</CardTitle>
-              <CardDescription>
-                Pemberitahuan terbaru terkait pengajuan Anda.
+              <CardTitle className="text-[var(--deep-navy)]">
+                Haiii {data.applicant.name}
+              </CardTitle>
+              <CardDescription className="text-[var(--muted-gray)]">
+                Jangan pernah sungkan untuk menghubungi kami ya, kami akan bantu
+                semua kendala kamu dalam distribusi BANSOS ini.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600">
-              {notifications.length === 0 ? (
-                <EmptyPlaceholder message="Belum ada notifikasi penting. Kami akan menampilkan kabar terbaru begitu ada pembaruan dari petugas." />
-              ) : (
-                notifications.map((item) => (
-                  <NotificationItem
-                    key={item.id ?? `${item.title}-${item.time ?? "time"}`}
-                    item={item}
-                  />
-                ))
-              )}
+            <CardContent className="space-y-3 text-sm text-[var(--muted-gray)]">
+              <EmptyPlaceholder message="Layanan pesan 24 jam" />
             </CardContent>
           </Card>
         </section>
@@ -893,6 +931,39 @@ function EmptyPlaceholder({ message }: { message: string }) {
   return (
     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
       {message}
+    </div>
+  );
+}
+
+function ChatBubble({
+  sender,
+  message,
+  time,
+  tone = "user",
+}: {
+  sender: string;
+  message: string;
+  time?: string;
+  tone?: "user" | "admin";
+}) {
+  const isUser = tone === "user";
+  return (
+    <div
+      className={`flex flex-col gap-1 rounded-xl px-3 py-2 ${isUser ? "bg-white border border-[var(--border)]" : "bg-[var(--accent-emerald)]/10 border border-[var(--accent-emerald)]/40"}`}
+    >
+      <div className="flex items-center justify-between text-xs font-semibold">
+        <span
+          className={
+            isUser ? "text-[var(--deep-navy)]" : "text-[var(--accent-emerald)]"
+          }
+        >
+          {sender}
+        </span>
+        {time && (
+          <span className="text-[var(--muted-gray)] font-normal">{time}</span>
+        )}
+      </div>
+      <p className="text-sm text-[var(--foreground)]">{message}</p>
     </div>
   );
 }
