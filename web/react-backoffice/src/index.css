@@ -212,13 +212,16 @@
     /* Navbar controls */
     .nav-btn {
         background: transparent !important;
-        border-color: transparent !important;
-        color: rgba(255, 255, 255, 0.82) !important;
+        border: 1px solid transparent !important;
+        color: rgba(255, 255, 255, 0.78) !important;
         box-shadow: none !important;
+        padding: 0.55rem 0.95rem;
+        border-radius: 9999px;
+        font-weight: 700;
     }
     .nav-btn:hover {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border-color: rgba(255, 255, 255, 0.1) !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.16) !important;
         color: #ffffff !important;
     }
     .nav-btn--active {

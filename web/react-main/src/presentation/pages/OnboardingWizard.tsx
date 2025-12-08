@@ -415,15 +415,11 @@ function WizardSurface({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-[var(--light-neutral)] text-[var(--foreground)] flex flex-col relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(45,62,83,0.06),transparent_40%),radial-gradient(circle_at_82%_0%,rgba(45,62,83,0.05),transparent_45%)]" />
       <header className="border-b bg-white/80 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-          <button
-            type="button"
-            onClick={goToLanding}
-            className="text-left"
-            aria-label="Kembali ke Landing Page"
-          >
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div>
             <div className="flex items-center gap-3">
               <Badge
                 variant="outline"
@@ -438,101 +434,113 @@ function WizardSurface({
             <h1 className="text-xl font-semibold mt-1">
               Verifikasi Identitas Penerima Bantuan Sosial
             </h1>
-          </button>
+          </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={goToLanding}>
-              Mulai Verifikasi
+            <Button variant="secondary" onClick={onNavigateLanding}>
+              Halaman Awal
             </Button>
             <Button variant="outline" onClick={goToLogin}>
-              Sudah punya akun? Login di bawah
+              Sudah pernah daftar? Login sekarang
             </Button>
           </div>
         </div>
       </header>
-      <main className="flex-1 w-full py-10 px-4 sm:px-6">
+      <main className="flex-1 w-full relative p-0 m-0">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-4xl mx-auto"
+          className="w-full"
         >
-          <Card className="rounded-2xl shadow-xl">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="text-2xl">E-KYC Onboarding</CardTitle>
-                  <CardDescription>
-                    Verifikasi digital penerima bantuan sosial
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DarkModeToggle />
-                  <Badge variant="secondary" className="rounded-full">
-                    {labelFor(step)}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {state.error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{state.error}</AlertDescription>
-                </Alert>
-              )}
-              {busy && (
-                <Alert>
-                  <AlertDescription>
-                    Sedang sinkronisasi dengan server...
-                  </AlertDescription>
-                </Alert>
-              )}
-              {state.session && (
-                <div className="text-sm text-slate-500">
-                  Status proses:{" "}
-                  <span className="font-semibold text-slate-700">
-                    {state.session.status}
-                  </span>{" "}
-                  · Face match: {state.session.faceMatchingStatus} · Liveness:{" "}
-                  {state.session.livenessStatus}
-                </div>
-              )}
-              <section className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="w-full px-4 sm:px-6 lg:px-10 py-8">
+            <Card className="w-full rounded-2xl shadow-lg app-card border border-[var(--border)]">
+              <CardHeader className="pb-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Tahap {stepIndex + 1} dari {ALL_STEPS.length}
-                    </p>
-                    <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                      {stepLabel}
-                    </p>
+                    <CardTitle className="text-2xl text-[var(--deep-navy)]">
+                      E-KYC Onboarding
+                    </CardTitle>
+                    <CardDescription className="text-[var(--muted-gray)]">
+                      Verifikasi digital penerima bantuan sosial
+                    </CardDescription>
                   </div>
-                  {step !== "DONE" && (
-                    <p className="text-xs text-slate-500 max-w-xs text-right">
-                      Proses diverifikasi otomatis di server—tetap ikuti langkah
-                      hingga selesai.
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <DarkModeToggle />
+                    <Badge
+                      variant="secondary"
+                      className="rounded-full bg-[var(--accent-emerald)] text-[var(--accent-foreground)]"
+                    >
+                      {labelFor(step)}
+                    </Badge>
+                  </div>
                 </div>
-                <Progress
-                  value={progress}
-                  aria-label={`Progress ${progress}%`}
-                />
-                <Stepper current={state.step} />
-              </section>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {state.error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{state.error}</AlertDescription>
+                  </Alert>
+                )}
+                {busy && (
+                  <Alert>
+                    <AlertDescription>
+                      Sedang sinkronisasi dengan server...
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {state.session && (
+                  <div className="text-sm text-[var(--muted-gray)]">
+                    Status proses:{" "}
+                    <span className="font-semibold text-[var(--deep-navy)]">
+                      {state.session.status}
+                    </span>{" "}
+                    · Face match: {state.session.faceMatchingStatus} · Liveness:{" "}
+                    {state.session.livenessStatus}
+                  </div>
+                )}
 
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={step}
-                  initial={{ opacity: 0, x: 16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -16 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
-                  className="space-y-6"
-                >
-                  {stepContent}
-                </motion.div>
-              </AnimatePresence>
-            </CardContent>
-          </Card>
+                <section className="space-y-3 border-t border-[var(--border)] pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted-gray)]">
+                        Tahap {stepIndex + 1} dari {ALL_STEPS.length}
+                      </p>
+                      <p className="text-2xl font-semibold text-[var(--deep-navy)]">
+                        {stepLabel}
+                      </p>
+                    </div>
+                    {step !== "DONE" && (
+                      <p className="text-xs text-[var(--muted-gray)] max-w-xs text-right">
+                        Proses diverifikasi otomatis di server—tetap ikuti
+                        langkah hingga selesai.
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-full bg-[var(--section-neutral)] p-2 shadow-inner">
+                    <Progress
+                      value={progress}
+                      aria-label={`Progress ${progress}%`}
+                    />
+                  </div>
+                  <Stepper current={state.step} />
+                </section>
+
+                <section className="space-y-6">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={step}
+                      initial={{ opacity: 0, x: 16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -16 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="space-y-6"
+                    >
+                      {stepContent}
+                    </motion.div>
+                  </AnimatePresence>
+                </section>
+              </CardContent>
+            </Card>
+          </div>
         </motion.div>
       </main>
     </div>
@@ -547,7 +555,11 @@ function Stepper({ current }: { current: StepKey }) {
         <Badge
           key={s}
           variant={i <= idx ? "default" : "secondary"}
-          className="w-full justify-center rounded-2xl"
+          className={`w-full justify-center rounded-2xl ${
+            i <= idx
+              ? "bg-[var(--accent-emerald)] text-[var(--accent-foreground)]"
+              : "bg-[var(--section-neutral)] text-[var(--muted-gray)]"
+          }`}
         >
           {i + 1}. {labelFor(s)}
         </Badge>
@@ -567,6 +579,7 @@ function DarkModeToggle() {
   return (
     <Button
       variant="secondary"
+      className="btn-ghost"
       onClick={() => {
         document.documentElement.classList.toggle("dark");
         setDark((d) => !d);

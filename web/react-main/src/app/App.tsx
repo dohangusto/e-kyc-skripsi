@@ -822,7 +822,8 @@ const App = () => {
     !!currentAccount || !!session || accounts.some((acc) => !acc.pin);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-[var(--light-neutral)] text-[var(--foreground)] relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(45,62,83,0.08),transparent_40%),radial-gradient(circle_at_82%_0%,rgba(45,62,83,0.06),transparent_45%)]" />
       {view === "landing" && (
         <LandingPage
           onStart={handleStart}

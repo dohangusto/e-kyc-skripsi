@@ -296,29 +296,38 @@ export function DashboardPage({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
-      <header className="border-b bg-white/90 backdrop-blur">
+    <div className="min-h-screen bg-[var(--light-neutral)] text-[var(--foreground)] relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(45,62,83,0.08),transparent_40%),radial-gradient(circle_at_82%_0%,rgba(45,62,83,0.06),transparent_45%)]" />
+      <header className="border-b bg-[var(--primary)] text-white">
         <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">
+            <p className="text-xs uppercase tracking-wide text-white/70">
               Program Bansos Terpadu
             </p>
-            <h1 className="text-2xl font-semibold">
+            <h1 className="text-2xl font-semibold text-white">
               Dashboard Penerima Bantuan
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-white/80 mt-1">
               ID Pengajuan:{" "}
               <span className="font-mono">{data.submissionId}</span>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {onLogout && (
-              <Button variant="ghost" onClick={onLogout}>
+              <Button
+                variant="ghost"
+                className="btn-ghost !text-white !border-white/30"
+                onClick={onLogout}
+              >
                 Keluar
               </Button>
             )}
             {onStartNew && (
-              <Button variant="outline" onClick={onStartNew}>
+              <Button
+                variant="outline"
+                className="btn-primary !bg-white !text-[var(--deep-navy)]"
+                onClick={onStartNew}
+              >
                 Ajukan Verifikasi Baru
               </Button>
             )}
@@ -326,7 +335,7 @@ export function DashboardPage({
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+      <main className="relative max-w-5xl mx-auto px-6 py-10 space-y-10">
         {(needsPin || pinSuccess) && (
           <section>
             <div
@@ -483,48 +492,53 @@ export function DashboardPage({
         )}
 
         <section className="grid md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2 shadow-sm">
+          <Card className="md:col-span-2 shadow-sm border border-[var(--border)] bg-white">
             <CardHeader>
-              <CardTitle>Tahapan Penyaluran BANSOS</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-[var(--deep-navy)]">
+                Tahapan Penyaluran BANSOS
+              </CardTitle>
+              <CardDescription className="text-[var(--muted-gray)]">
                 Pantau progres setiap langkah hingga bantuan diterima.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="flex items-center gap-3">
-                <Badge variant={status.variant} className={status.className}>
+                <Badge
+                  variant={status.variant}
+                  className={`${status.className ?? ""} px-3 py-1`}
+                >
                   {status.label}
                 </Badge>
                 {data.submittedAt && (
-                  <div className="flex items-center text-xs text-slate-500 gap-1">
+                  <div className="flex items-center text-xs text-[var(--muted-gray)] gap-1">
                     <Clock className="h-3.5 w-3.5" />
                     Diajukan {data.submittedAt}
                   </div>
                 )}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">
+                <p className="text-xs uppercase tracking-wide text-[var(--muted-gray)]">
                   Progress
                 </p>
                 <div className="flex items-center gap-3 mt-2">
                   <Progress value={completion} className="h-2" />
-                  <span className="text-sm font-medium text-slate-700">
+                  <span className="text-sm font-medium text-[var(--deep-navy)]">
                     {completion}%
                   </span>
                 </div>
-                <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <ul className="mt-3 space-y-2 text-sm text-[var(--muted-gray)]">
                   {stageItems.map((stage) => (
                     <li
                       key={stage.label}
-                      className="flex items-center gap-2 text-sm text-slate-600"
+                      className="flex items-center gap-2 text-sm text-[var(--muted-gray)]"
                     >
                       <CheckCircle2
-                        className={`h-4 w-4 ${stage.done ? "text-emerald-500" : "text-slate-300"}`}
+                        className={`h-4 w-4 ${stage.done ? "text-[var(--accent-emerald)]" : "text-slate-300"}`}
                       />
-                      <span className="font-medium text-slate-700">
+                      <span className="font-medium text-[var(--deep-navy)]">
                         {stage.label}
                       </span>
-                      <span className="ml-auto text-xs text-slate-400 text-right">
+                      <span className="ml-auto text-xs text-[var(--muted-gray)] text-right">
                         {stage.description}
                       </span>
                     </li>
@@ -534,10 +548,12 @@ export function DashboardPage({
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm">
+          <Card className="shadow-sm border border-[var(--border)] bg-white">
             <CardHeader>
-              <CardTitle>Kelompok Bantuan</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-[var(--deep-navy)]">
+                Kelompok Bantuan
+              </CardTitle>
+              <CardDescription className="text-[var(--muted-gray)]">
                 Batch penyaluran yang telah ditetapkan untuk Anda.
               </CardDescription>
             </CardHeader>
@@ -551,42 +567,15 @@ export function DashboardPage({
               )}
             </CardContent>
           </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle>Ringkasan Pemohon</CardTitle>
-              <CardDescription>
-                Data diisi manual saat verifikasi.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-slate-400" />
-                <span className="font-medium text-slate-800">
-                  {data.applicant.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-slate-400" />
-                <span>{maskNik(data.applicant.number)}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-slate-400 mt-0.5" />
-                <span>{data.applicant.address}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-slate-400" />
-                <span>{data.applicant.phone}</span>
-              </div>
-            </CardContent>
-          </Card>
         </section>
 
-        <section className="grid lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 shadow-sm">
+        <section className="grid md:grid-cols-2 gap-6">
+          <Card className="shadow-sm border border-[var(--border)] bg-white">
             <CardHeader>
-              <CardTitle>Jadwal Penyaluran</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-[var(--deep-navy)]">
+                Jadwal Penyaluran
+              </CardTitle>
+              <CardDescription className="text-[var(--muted-gray)]">
                 Informasi tahap penyaluran bantuan untuk wilayah Anda.
               </CardDescription>
             </CardHeader>
@@ -604,6 +593,93 @@ export function DashboardPage({
             </CardContent>
           </Card>
 
+          <Card className="shadow-sm border border-[var(--border)] bg-white">
+            <CardHeader>
+              <CardTitle className="text-[var(--deep-navy)]">
+                Status Akun & PIN
+              </CardTitle>
+              <CardDescription className="text-[var(--muted-gray)]">
+                Ringkasan status verifikasi, survei, dan keamanan akun.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-[var(--muted-gray)]">
+              <div className="flex items-center justify-between">
+                <span>Verifikasi akhir</span>
+                <Badge variant={status.variant} className={status.className}>
+                  {status.label}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>PIN</span>
+                <Badge variant={data.pinSet ? "default" : "secondary"}>
+                  {data.pinSet ? "Sudah dibuat" : "Belum ada"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Survey TKSK</span>
+                <Badge variant={surveyStatus.variant}>
+                  {surveyStatus.label}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid md:grid-cols-3 gap-6">
+          <Card className="shadow-sm border border-[var(--border)] bg-white">
+            <CardHeader>
+              <CardTitle className="text-[var(--deep-navy)]">
+                Ringkasan Pemohon
+              </CardTitle>
+              <CardDescription className="text-[var(--muted-gray)]">
+                Data diisi manual saat verifikasi.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-[var(--muted-gray)]">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-[var(--muted-gray)]" />
+                <span className="font-medium text-[var(--deep-navy)]">
+                  {data.applicant.name}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-[var(--muted-gray)]" />
+                <span>{maskNik(data.applicant.number)}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <MapPin className="h-4 w-4 text-[var(--muted-gray)] mt-0.5" />
+                <span>{data.applicant.address}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-[var(--muted-gray)]" />
+                <span>{data.applicant.phone}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2 shadow-sm">
+            <CardHeader>
+              <CardTitle>Notifikasi Penting</CardTitle>
+              <CardDescription>
+                Pemberitahuan terbaru terkait pengajuan Anda.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-slate-600">
+              {notifications.length === 0 ? (
+                <EmptyPlaceholder message="Belum ada notifikasi penting. Kami akan menampilkan kabar terbaru begitu ada pembaruan dari petugas." />
+              ) : (
+                notifications.map((item) => (
+                  <NotificationItem
+                    key={item.id ?? `${item.title}-${item.time ?? "time"}`}
+                    item={item}
+                  />
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid md:grid-cols-2 gap-6">
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Rekening Penyaluran</CardTitle>
@@ -631,29 +707,6 @@ export function DashboardPage({
                 <Download className="h-4 w-4" />
                 Unduh Surat Kuasa
               </Button>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="grid md:grid-cols-2 gap-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle>Notifikasi Penting</CardTitle>
-              <CardDescription>
-                Pemberitahuan terbaru terkait pengajuan Anda.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600">
-              {notifications.length === 0 ? (
-                <EmptyPlaceholder message="Belum ada notifikasi penting. Kami akan menampilkan kabar terbaru begitu ada pembaruan dari petugas." />
-              ) : (
-                notifications.map((item) => (
-                  <NotificationItem
-                    key={item.id ?? `${item.title}-${item.time ?? "time"}`}
-                    item={item}
-                  />
-                ))
-              )}
             </CardContent>
           </Card>
 

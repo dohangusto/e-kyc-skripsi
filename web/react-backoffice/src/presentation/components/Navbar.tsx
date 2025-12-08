@@ -15,11 +15,7 @@ function NavItem({
   return (
     <button
       onClick={() => AppRouter.navigate(to)}
-      className={`relative rounded-full px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "bg-white text-[var(--deep-navy)] shadow-md"
-          : "text-white/80 hover:text-white hover:bg-white/10"
-      }`}
+      className={`relative text-sm font-semibold transition nav-btn ${active ? "nav-btn--active" : ""}`}
     >
       {label}
       {active && (
