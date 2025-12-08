@@ -272,15 +272,6 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
         </div>
       </div>
 
-      {tab === "summary" && <SummaryTab application={application} />}
-      {tab === "documents" && (
-        <DocumentsTab application={application} loading={loadingDetail} />
-      )}
-      {tab === "tksk" && <VisitManager app={application} />}
-      {tab === "audit" && (
-        <AuditTab appId={application.id} rows={snapshot.audit} />
-      )}
-
       {modal?.type === "APPROVE" && (
         <ConfirmModal
           title="Approve Application"

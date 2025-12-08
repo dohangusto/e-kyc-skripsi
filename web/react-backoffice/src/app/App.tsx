@@ -44,9 +44,10 @@ const App = () => {
   }, [session?.token]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--light-neutral)] text-[var(--foreground)] relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(45,62,83,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(25,168,137,0.18),transparent_40%)]" />
       <Navbar session={session} />
-      <main className="max-w-7xl mx-auto p-4">
+      <main className="relative max-w-7xl mx-auto p-4 space-y-4">
         {route.path === "/login" && <LoginPage />}
         {route.path === "/overview" && <OverviewPage />}
         {route.path === "/applications" && <ApplicationsPage />}
