@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"e-kyc/services/api-backoffice/internal/domain"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -62,6 +63,9 @@ func (h *BackofficeHTTPHandler) UpdateApplicationStatus(c echo.Context) error {
 	if err := h.Service.UpdateApplicationStatus(c.Request().Context(), id, req.Status, req.Actor, req.Reason); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			return respondError(c, http.StatusNotFound, err)
+		}
+		if errors.Is(err, domain.ErrInvalidState) {
+			return respondError(c, http.StatusBadRequest, err)
 		}
 		return respondError(c, http.StatusInternalServerError, err)
 	}
@@ -198,6 +202,9 @@ func (h *BackofficeHTTPHandler) CreateBatch(c echo.Context) error {
 	}
 	batch, err := h.Service.CreateBatch(c.Request().Context(), req.Code, req.Items, req.Actor)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidState) {
+			return respondError(c, http.StatusBadRequest, err)
+		}
 		return respondError(c, http.StatusInternalServerError, err)
 	}
 	return c.JSON(http.StatusCreated, batch)
@@ -263,6 +270,9 @@ func (h *BackofficeHTTPHandler) CreateDistribution(c echo.Context) error {
 	}
 	created, err := h.Service.CreateDistribution(c.Request().Context(), dist, req.Actor)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidState) {
+			return respondError(c, http.StatusBadRequest, err)
+		}
 		return respondError(c, http.StatusInternalServerError, err)
 	}
 	return c.JSON(http.StatusCreated, created)

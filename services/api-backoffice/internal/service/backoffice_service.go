@@ -56,6 +56,11 @@ func (s *BackofficeService) UpdateConfig(ctx context.Context, cfg domain.SystemC
 }
 
 func (s *BackofficeService) UpdateApplicationStatus(ctx context.Context, appID, status, actor, reason string) error {
+	if strings.EqualFold(status, "FINAL_APPROVED") {
+		if err := s.ensureVisitCompleted(ctx, appID); err != nil {
+			return err
+		}
+	}
 	action := fmt.Sprintf("STATUS:%s", status)
 	params := domain.UpdateApplicationStatusParams{
 		AppID:    appID,
@@ -113,8 +118,12 @@ func (s *BackofficeService) CreateBatch(ctx context.Context, code string, applic
 	if code == "" {
 		return nil, errors.New("code required")
 	}
+	applicationIDs = sanitizeIDs(applicationIDs)
 	if len(applicationIDs) == 0 {
-		return nil, errors.New("items required")
+		return nil, fmt.Errorf("%w: items required", domain.ErrInvalidState)
+	}
+	if err := s.ensureDisbursementReady(ctx, applicationIDs); err != nil {
+		return nil, err
 	}
 	batch := domain.Batch{
 		ID:        fmt.Sprintf("BATCH-%d", time.Now().UnixNano()),
@@ -176,6 +185,14 @@ func (s *BackofficeService) CreateDistribution(ctx context.Context, dist *domain
 	dist.CreatedBy = &actor
 	dist.UpdatedBy = &actor
 
+	dist.Beneficiaries = sanitizeIDs(dist.Beneficiaries)
+	if len(dist.Beneficiaries) == 0 {
+		return nil, fmt.Errorf("%w: beneficiaries required", domain.ErrInvalidState)
+	}
+	if err := s.ensureDisbursementReady(ctx, dist.Beneficiaries); err != nil {
+		return nil, err
+	}
+
 	userIDs, err := s.repo.NormalizeUserIDs(ctx, dist.Beneficiaries)
 	if err != nil {
 		return nil, err
@@ -191,12 +208,31 @@ func (s *BackofficeService) CreateDistribution(ctx context.Context, dist *domain
 
 func (s *BackofficeService) UpdateDistributionStatus(ctx context.Context, distID, status, actor string) error {
 	action := fmt.Sprintf("DISTRIBUTION:%s", status)
+	var distribution *domain.Distribution
+	var err error
+	if strings.EqualFold(status, "COMPLETED") {
+		distribution, err = s.repo.GetDistribution(ctx, distID)
+		if err != nil {
+			return err
+		}
+		if distribution == nil {
+			return domain.ErrNotFound
+		}
+	}
 	params := domain.UpdateDistributionStatusParams{
 		DistributionID: distID,
 		Status:         status,
 		Audit:          auditEntry(actor, distID, action, "", nil),
 	}
-	return s.repo.UpdateDistributionStatus(ctx, params)
+	if err := s.repo.UpdateDistributionStatus(ctx, params); err != nil {
+		return err
+	}
+	if distribution != nil && len(distribution.Beneficiaries) > 0 {
+		if err := s.markApplicationsDisbursed(ctx, distribution.Beneficiaries, actor, distribution.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *BackofficeService) NotifyDistribution(ctx context.Context, distID string, applicationIDs []string, actor string) error {
@@ -417,6 +453,113 @@ func (s *BackofficeService) SubmitSurvey(ctx context.Context, params domain.Surv
 		params.Status = "antrean"
 	}
 	return s.repo.SubmitSurvey(ctx, params)
+}
+
+func sanitizeIDs(ids []string) []string {
+	var cleaned []string
+	for _, id := range ids {
+		clean := strings.TrimSpace(id)
+		if clean == "" {
+			continue
+		}
+		cleaned = append(cleaned, clean)
+	}
+	return cleaned
+}
+
+func uniqueIDs(ids []string) []string {
+	seen := make(map[string]struct{}, len(ids))
+	var normalized []string
+	for _, id := range ids {
+		clean := strings.TrimSpace(id)
+		if clean == "" {
+			continue
+		}
+		if _, ok := seen[clean]; ok {
+			continue
+		}
+		seen[clean] = struct{}{}
+		normalized = append(normalized, clean)
+	}
+	return normalized
+}
+
+func (s *BackofficeService) ensureDisbursementReady(ctx context.Context, ids []string) error {
+	normalized := uniqueIDs(ids)
+	if len(normalized) == 0 {
+		return fmt.Errorf("%w: minimal satu aplikasi diperlukan", domain.ErrInvalidState)
+	}
+	apps, err := s.repo.GetApplicationsByIDs(ctx, normalized)
+	if err != nil {
+		return err
+	}
+	if len(apps) != len(normalized) {
+		return fmt.Errorf("%w: beberapa aplikasi tidak ditemukan", domain.ErrInvalidState)
+	}
+	var invalid []string
+	for _, app := range apps {
+		if !strings.EqualFold(app.Status, "DISBURSEMENT_READY") {
+			invalid = append(invalid, fmt.Sprintf("%s (%s)", app.ID, app.Status))
+		}
+	}
+	if len(invalid) > 0 {
+		return fmt.Errorf("%w: aplikasi belum DISBURSEMENT_READY: %s", domain.ErrInvalidState, strings.Join(invalid, ", "))
+	}
+	return nil
+}
+
+func (s *BackofficeService) ensureVisitCompleted(ctx context.Context, appID string) error {
+	appID = strings.TrimSpace(appID)
+	if appID == "" {
+		return fmt.Errorf("%w: application id required", domain.ErrInvalidState)
+	}
+	visits, err := s.repo.ListVisits(ctx, domain.ListVisitsParams{
+		ApplicationID: appID,
+		Limit:         100,
+	})
+	if err != nil {
+		return err
+	}
+	for _, visit := range visits {
+		status := strings.ToUpper(strings.TrimSpace(visit.Status))
+		if status == "SUBMITTED" || status == "VERIFIED" {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: belum ada kunjungan TKSK yang disubmit", domain.ErrInvalidState)
+}
+
+func (s *BackofficeService) markApplicationsDisbursed(ctx context.Context, ids []string, actor, distributionID string) error {
+	appIDs := uniqueIDs(ids)
+	if len(appIDs) == 0 {
+		return nil
+	}
+	reason := fmt.Sprintf("Distribusi %s selesai", distributionID)
+	for _, id := range appIDs {
+		meta := map[string]any{"distributionId": distributionID}
+		params := domain.UpdateApplicationStatusParams{
+			AppID:  id,
+			Status: "DISBURSED",
+			Timeline: timelineEntry(
+				id,
+				actor,
+				"STATUS:DISBURSED",
+				reason,
+				meta,
+			),
+			Audit: auditEntry(
+				actor,
+				id,
+				"STATUS:DISBURSED",
+				reason,
+				meta,
+			),
+		}
+		if err := s.repo.UpdateApplicationStatus(ctx, params); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func timelineEntry(appID, actor, action, reason string, metadata map[string]any) domain.TimelineEntry {

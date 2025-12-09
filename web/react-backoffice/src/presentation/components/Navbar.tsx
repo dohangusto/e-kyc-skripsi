@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Data } from "@application/services/data-service";
 import { useDataSnapshot } from "@application/services/useDataSnapshot";
 import { AppRouter } from "@app/router";
@@ -32,6 +33,39 @@ export function Navbar({ session }: { session: Session | null }) {
     : null;
   const displayName = currentUser?.name ?? session?.userId ?? "Pengguna";
   const path = typeof window !== "undefined" ? window.location.pathname : "";
+  const role = session?.role ?? "GUEST";
+
+  const visibleLinks = useMemo(() => {
+    if (role === "ADMIN") {
+      return [
+        { to: "/overview", label: "Overview" },
+        { to: "/applications", label: "Applications" },
+        { to: "/clustering", label: "Clustering" },
+        { to: "/batches", label: "Batches" },
+        { to: "/distribution", label: "Penyaluran" },
+        { to: "/config", label: "Config" },
+      ];
+    }
+    if (role === "TKSK") {
+      return [
+        { to: "/overview", label: "Overview" },
+        { to: "/applications", label: "Applications" },
+        { to: "/tksk", label: "TKSK" },
+      ];
+    }
+    // AUDITOR or other roles see all
+    return [
+      { to: "/overview", label: "Overview" },
+      { to: "/applications", label: "Applications" },
+      { to: "/tksk", label: "TKSK" },
+      { to: "/clustering", label: "Clustering" },
+      { to: "/batches", label: "Batches" },
+      { to: "/distribution", label: "Penyaluran" },
+      { to: "/config", label: "Config" },
+      { to: "/users", label: "Users" },
+      { to: "/audit", label: "Audit" },
+    ];
+  }, [role]);
 
   return (
     <header className="bg-[var(--deep-navy)] text-white shadow-lg">
@@ -44,51 +78,14 @@ export function Navbar({ session }: { session: Session | null }) {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-1">
-            <NavItem
-              to="/overview"
-              label="Overview"
-              active={path.startsWith("/overview")}
-            />
-            <NavItem
-              to="/applications"
-              label="Applications"
-              active={path.startsWith("/applications")}
-            />
-            <NavItem
-              to="/tksk"
-              label="TKSK"
-              active={path.startsWith("/tksk")}
-            />
-            <NavItem
-              to="/clustering"
-              label="Clustering"
-              active={path.startsWith("/clustering")}
-            />
-            <NavItem
-              to="/batches"
-              label="Batches"
-              active={path.startsWith("/batches")}
-            />
-            <NavItem
-              to="/distribution"
-              label="Penyaluran"
-              active={path.startsWith("/distribution")}
-            />
-            <NavItem
-              to="/config"
-              label="Config"
-              active={path.startsWith("/config")}
-            />
-            <NavItem
-              to="/users"
-              label="Users"
-              active={path.startsWith("/users")}
-            />
-            <NavItem
-              to="/audit"
-              label="Audit"
-              active={path.startsWith("/audit")}
-            />
+            {visibleLinks.map((link) => (
+              <NavItem
+                key={link.to}
+                to={link.to}
+                label={link.label}
+                active={path.startsWith(link.to)}
+              />
+            ))}
           </nav>
         </div>
         <div className="flex items-center gap-3 text-sm">

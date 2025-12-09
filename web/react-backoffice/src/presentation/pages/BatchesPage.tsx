@@ -41,7 +41,7 @@ export default function BatchesPage() {
   const readyApps = useMemo(
     () =>
       snapshot.applications
-        .filter((app) => app.status === "FINAL_APPROVED")
+        .filter((app) => app.status === "DISBURSEMENT_READY")
         .map((app) => ({
           id: app.id,
           name: app.applicant.name,
@@ -71,6 +71,15 @@ export default function BatchesPage() {
     try {
       if (!session) throw new Error("no-session");
       if (selected.length === 0) throw new Error("Pilih minimal satu aplikasi");
+      const invalid = selected.filter((id) => {
+        const app = appsMap.get(id);
+        return !app || app.status !== "DISBURSEMENT_READY";
+      });
+      if (invalid.length > 0) {
+        throw new Error(
+          `Batch hanya boleh berisi DISBURSEMENT_READY. Periksa: ${invalid.join(", ")}`,
+        );
+      }
       await Data.createBatch(code, selected, session.userId);
       setSelected([]);
       Toast.show("Batch created");
@@ -123,7 +132,8 @@ export default function BatchesPage() {
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Batches</h2>
       <PageIntro>
-        Mengelompokkan pengajuan FINAL_APPROVED menjadi paket siap penyaluran.
+        Mengelompokkan pengajuan DISBURSEMENT_READY menjadi paket siap
+        penyaluran.
       </PageIntro>
       {loadError && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded p-3">
@@ -135,7 +145,7 @@ export default function BatchesPage() {
         aria-label="Create batch"
       >
         <div className="text-sm">
-          Pilih FINAL_APPROVED untuk buat batch simulasi.
+          Pilih DISBURSEMENT_READY untuk buat batch simulasi.
         </div>
         <input
           className="border rounded p-2"
@@ -168,7 +178,9 @@ export default function BatchesPage() {
             </label>
           ))}
           {readyApps.length === 0 && (
-            <p className="text-xs text-slate-500">Belum ada FINAL_APPROVED.</p>
+            <p className="text-xs text-slate-500">
+              Belum ada DISBURSEMENT_READY.
+            </p>
           )}
         </div>
         <RoleGate allow={["ADMIN"]}>

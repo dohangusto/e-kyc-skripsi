@@ -50,12 +50,7 @@ export default function DistributionPage() {
   );
 
   const candidates = useMemo(
-    () =>
-      applications.filter((app) =>
-        ["FINAL_APPROVED", "DISBURSEMENT_READY", "DISBURSED"].includes(
-          app.status,
-        ),
-      ),
+    () => applications.filter((app) => app.status === "DISBURSEMENT_READY"),
     [applications],
   );
 
@@ -108,6 +103,14 @@ export default function DistributionPage() {
       if (!form.scheduledAt) throw new Error("Tanggal penyaluran wajib diisi");
       if (effectiveBeneficiaries.length === 0)
         throw new Error("Pilih minimal satu penerima atau batch");
+      const invalid = effectiveBeneficiaries.filter(
+        (id) => applicationsById.get(id)?.status !== "DISBURSEMENT_READY",
+      );
+      if (invalid.length > 0) {
+        throw new Error(
+          `Semua penerima harus DISBURSEMENT_READY. Periksa: ${invalid.join(", ")}`,
+        );
+      }
       const when = new Date(form.scheduledAt);
       if (Number.isNaN(when.getTime())) throw new Error("Tanggal tidak valid");
       await Data.createDistribution(

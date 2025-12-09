@@ -62,6 +62,9 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
   const isReady = status === "DISBURSEMENT_READY";
   const isRejected = status === "FINAL_REJECTED";
   const isApproved = status === "FINAL_APPROVED" || isReady;
+  const hasVerifiedVisit = (application?.visits ?? []).some((visit) =>
+    ["SUBMITTED", "VERIFIED"].includes(visit.status),
+  );
 
   useEffect(() => {
     let active = true;
@@ -180,11 +183,27 @@ export default function ApplicationDetailPage({ id }: { id: string }) {
                   </button>
                   <button
                     className="px-3 py-2 rounded border border-emerald-200 text-sm text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
-                    onClick={() => setModal({ type: "APPROVE" })}
+                    disabled={!hasVerifiedVisit}
+                    onClick={() => {
+                      if (!hasVerifiedVisit) {
+                        Toast.show(
+                          "Butuh kunjungan TKSK yang sudah disubmit sebelum approve.",
+                          "error",
+                        );
+                        return;
+                      }
+                      setModal({ type: "APPROVE" });
+                    }}
                   >
                     Approve
                   </button>
                 </>
+              )}
+              {canReview && !hasVerifiedVisit && (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                  Approve baru bisa dilakukan setelah ada kunjungan TKSK yang
+                  disubmit / diverifikasi.
+                </p>
               )}
               {isRejected && (
                 <p className="text-sm text-rose-600">

@@ -31,11 +31,14 @@ export function VisitManager({ app }: { app: Application }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const hasExistingVisit = app.visits.length > 0;
   const canSchedule =
     !!session &&
     (session.role === "ADMIN" ||
       (session.role === "TKSK" && app.assigned_to === session.userId));
   const scheduleDisabled = !canSchedule || busy || !form.datetime || !form.tksk;
+  const showScheduler =
+    canSchedule && !(session?.role === "TKSK" && hasExistingVisit);
 
   useEffect(() => {
     setForm((prev) => {
@@ -101,86 +104,91 @@ export function VisitManager({ app }: { app: Application }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2 shadow-sm">
-        <h4 className="font-semibold text-blue-900">
-          Jadwalkan Kunjungan TKSK
-        </h4>
-        {session?.role === "TKSK" && !canSchedule && (
-          <p className="text-xs text-amber-700 bg-amber-100 border border-amber-200 rounded px-2 py-1">
-            Penjadwalan dilakukan oleh ADMIN. Hubungi admin jika butuh kunjungan
-            baru.
-          </p>
-        )}
-        {session?.role === "TKSK" && canSchedule && (
-          <p className="text-xs text-blue-800">
-            Anda dapat menjadwalkan kunjungan untuk kasus ini. Pastikan memilih
-            waktu yang realistis.
-          </p>
-        )}
-        {session?.role === "ADMIN" && (
-          <p className="text-xs text-blue-800">
-            Pilih TKSK dan waktu kunjungan lapangan. TKSK akan mendapat daftar
-            tugas begitu Anda jadwalkan.
-          </p>
-        )}
-        <div className="grid md:grid-cols-3 gap-3">
-          <label className="text-sm flex flex-col gap-1">
-            <span>Tanggal & Waktu</span>
-            <input
-              type="datetime-local"
-              className="border rounded p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={form.datetime}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, datetime: e.target.value }))
-              }
-            />
-            {errors.datetime && (
-              <span className="text-xs text-rose-600">{errors.datetime}</span>
-            )}
-          </label>
-          <label className="text-sm flex flex-col gap-1">
-            <span>TKSK</span>
-            <select
-              className="border rounded p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={form.tksk}
-              onChange={(e) => setForm((f) => ({ ...f, tksk: e.target.value }))}
+      {showScheduler && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2 shadow-sm">
+          <h4 className="font-semibold text-blue-900">
+            Jadwalkan Kunjungan TKSK
+          </h4>
+          {session?.role === "TKSK" && !canSchedule && (
+            <p className="text-xs text-amber-700 bg-amber-100 border border-amber-200 rounded px-2 py-1">
+              Penjadwalan dilakukan oleh ADMIN. Hubungi admin jika butuh
+              kunjungan baru.
+            </p>
+          )}
+          {session?.role === "TKSK" && canSchedule && (
+            <p className="text-xs text-blue-800">
+              Anda dapat menjadwalkan kunjungan untuk kasus ini. Pastikan
+              memilih waktu yang realistis.
+            </p>
+          )}
+          {session?.role === "ADMIN" && (
+            <p className="text-xs text-blue-800">
+              Pilih TKSK dan waktu kunjungan lapangan. TKSK akan mendapat daftar
+              tugas begitu Anda jadwalkan.
+            </p>
+          )}
+          <div className="grid md:grid-cols-3 gap-3">
+            <label className="text-sm flex flex-col gap-1">
+              <span>Tanggal & Waktu</span>
+              <input
+                type="datetime-local"
+                className="border rounded p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                value={form.datetime}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, datetime: e.target.value }))
+                }
+              />
+              {errors.datetime && (
+                <span className="text-xs text-rose-600">{errors.datetime}</span>
+              )}
+            </label>
+            <label className="text-sm flex flex-col gap-1">
+              <span>TKSK</span>
+              <select
+                className="border rounded p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                value={form.tksk}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, tksk: e.target.value }))
+                }
+              >
+                {tkskUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name ?? user.id}
+                  </option>
+                ))}
+              </select>
+              {errors.tksk && (
+                <span className="text-xs text-rose-600">{errors.tksk}</span>
+              )}
+            </label>
+            <label className="text-sm flex flex-col gap-1">
+              <span>Catatan</span>
+              <textarea
+                className="border rounded p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                value={form.notes}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, notes: e.target.value }))
+                }
+              />
+            </label>
+          </div>
+          {tkss.length === 0 && (
+            <p className="text-xs text-rose-600">
+              Belum ada TKSK terdaftar. Tambahkan user TKSK sebelum
+              menjadwalkan.
+            </p>
+          )}
+          <RoleGate allow={["ADMIN", "TKSK"]}>
+            <button
+              className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-700 disabled:bg-slate-300"
+              onClick={submit}
+              disabled={scheduleDisabled}
             >
-              {tkskUsers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name ?? user.id}
-                </option>
-              ))}
-            </select>
-            {errors.tksk && (
-              <span className="text-xs text-rose-600">{errors.tksk}</span>
-            )}
-          </label>
-          <label className="text-sm flex flex-col gap-1">
-            <span>Catatan</span>
-            <textarea
-              className="border rounded p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={form.notes}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, notes: e.target.value }))
-              }
-            />
-          </label>
+              {busy ? "Menjadwalkan…" : "Jadwalkan"}
+            </button>
+          </RoleGate>
         </div>
-        {tkss.length === 0 && (
-          <p className="text-xs text-rose-600">
-            Belum ada TKSK terdaftar. Tambahkan user TKSK sebelum menjadwalkan.
-          </p>
-        )}
-        <RoleGate allow={["ADMIN", "TKSK"]}>
-          <button
-            className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-700 disabled:bg-slate-300"
-            onClick={submit}
-            disabled={scheduleDisabled}
-          >
-            {busy ? "Menjadwalkan…" : "Jadwalkan"}
-          </button>
-        </RoleGate>
-      </div>
+      )}
 
       <div className="space-y-3">
         {app.visits.length === 0 && (
@@ -341,10 +349,20 @@ function VisitCard({
     }
     setUploading(visit.id);
     try {
-      const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        urls.push(URL.createObjectURL(file));
-      }
+      const toDataUrls = async () =>
+        Promise.all(
+          Array.from(files).map(
+            (file) =>
+              new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result));
+                reader.onerror = () =>
+                  reject(reader.error || new Error("Gagal membaca file"));
+                reader.readAsDataURL(file);
+              }),
+          ),
+        );
+      const urls = await toDataUrls();
       await Data.addVisitArtifacts(
         appId,
         visit.id,

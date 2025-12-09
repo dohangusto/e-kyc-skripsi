@@ -8,7 +8,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound     = errors.New("not found")
+	ErrInvalidState = errors.New("invalid state")
+)
 
 type TimelineEntry struct {
 	ApplicationID string
@@ -125,6 +128,7 @@ type SurveySubmitParams struct {
 type BackofficeRepository interface {
 	ListApplications(ctx context.Context, limit int) ([]Application, error)
 	GetApplication(ctx context.Context, id string) (*Application, error)
+	GetApplicationsByIDs(ctx context.Context, ids []string) ([]Application, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListBeneficiaries(ctx context.Context, limit int) ([]Beneficiary, error)
 	GetConfig(ctx context.Context) (*SystemConfig, error)

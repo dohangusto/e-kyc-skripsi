@@ -277,6 +277,30 @@ func (repo *backofficeRepository) GetApplication(ctx context.Context, id string)
 	return &app, nil
 }
 
+func (repo *backofficeRepository) GetApplicationsByIDs(ctx context.Context, ids []string) ([]domain.Application, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := repo.db.Query(ctx, `
+        SELECT id, status
+        FROM applications
+        WHERE id = ANY($1::text[])`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apps []domain.Application
+	for rows.Next() {
+		var app domain.Application
+		if err := rows.Scan(&app.ID, &app.Status); err != nil {
+			return nil, err
+		}
+		apps = append(apps, app)
+	}
+	return apps, rows.Err()
+}
+
 func (repo *backofficeRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
 	rows, err := repo.db.Query(ctx, `
         SELECT id, role, nik, name, dob, phone, email,
