@@ -134,6 +134,17 @@ type Distribution struct {
 	Notified      []string
 }
 
+type Notification struct {
+	ID               string
+	UserID           string
+	Message          string
+	Category         string
+	AttachmentURL    *string
+	CreatedByAdminID *string
+	DistributionID   *string
+	CreatedAt        time.Time
+}
+
 type ClusteringRun struct {
 	ID         string
 	Operator   string

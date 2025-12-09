@@ -16,10 +16,14 @@ import { Label } from "@/components/ui/label";
 import {
   Calendar,
   CheckCircle2,
+  Bell,
   Clock,
   Download,
+  AlertTriangle,
   Loader2,
   MapPin,
+  Megaphone,
+  Paperclip,
   Phone,
   Package,
   ShieldCheck,
@@ -47,9 +51,10 @@ export type DashboardSchedule = {
 
 export type DashboardNotification = {
   id?: string;
-  title: string;
-  time?: string;
-  description?: string;
+  message: string;
+  category?: "distribution" | "event" | "audit" | "urgent" | string;
+  createdAt?: string;
+  attachmentUrl?: string | null;
 };
 
 export type DashboardData = {
@@ -614,7 +619,8 @@ export function DashboardPage({
             <CardHeader>
               <CardTitle>Notifikasi Penting</CardTitle>
               <CardDescription>
-                Pemberitahuan terbaru terkait pengajuan Anda.
+                Pemberitahuan terbaru terkait pengajuan Anda. Warna berbeda
+                menunjukkan kategori pesan yang dikirim petugas.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600">
@@ -623,7 +629,9 @@ export function DashboardPage({
               ) : (
                 notifications.map((item) => (
                   <NotificationItem
-                    key={item.id ?? `${item.title}-${item.time ?? "time"}`}
+                    key={
+                      item.id ?? `${item.message}-${item.createdAt ?? "time"}`
+                    }
                     item={item}
                   />
                 ))
@@ -881,13 +889,42 @@ function ScheduleItemCard({ item }: { item: DashboardSchedule }) {
 }
 
 function NotificationItem({ item }: { item: DashboardNotification }) {
+  const category = (item.category ?? "default").toLowerCase();
+  const palette = notificationPalette[category] ?? notificationPalette.default;
+  const Icon = palette.Icon;
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-4">
-      <p className="font-medium text-slate-800">{item.title}</p>
-      {item.description && (
-        <p className="text-xs text-slate-500 mt-1">{item.description}</p>
+    <div
+      className={`rounded-xl border p-4 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.25)] ${palette.bg} ${palette.border}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${palette.badgeBg} ${palette.badgeText}`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {palette.label}
+          </span>
+        </div>
+        {item.createdAt && (
+          <span className="text-[11px] text-slate-500">
+            {formatNotificationTime(item.createdAt)}
+          </span>
+        )}
+      </div>
+      <p className={`mt-2 text-sm leading-relaxed ${palette.text}`}>
+        {item.message}
+      </p>
+      {item.attachmentUrl && (
+        <a
+          href={item.attachmentUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-slate-700 underline"
+        >
+          <Paperclip className="h-3.5 w-3.5" />
+          Lihat lampiran
+        </a>
       )}
-      <p className="text-xs text-slate-500 mt-1">{item.time ?? "-"}</p>
     </div>
   );
 }
@@ -922,6 +959,77 @@ function formatBatchDate(value?: string) {
     day: "2-digit",
     month: "long",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const notificationPalette: Record<
+  string,
+  {
+    bg: string;
+    border: string;
+    text: string;
+    badgeBg: string;
+    badgeText: string;
+    label: string;
+    Icon: typeof Bell;
+  }
+> = {
+  distribution: {
+    bg: "bg-blue-50",
+    border: "border-blue-100",
+    text: "text-slate-800",
+    badgeBg: "bg-blue-100",
+    badgeText: "text-blue-700",
+    label: "Penyaluran",
+    Icon: Megaphone,
+  },
+  event: {
+    bg: "bg-amber-50",
+    border: "border-amber-100",
+    text: "text-amber-900",
+    badgeBg: "bg-amber-100",
+    badgeText: "text-amber-700",
+    label: "Jadwal",
+    Icon: Calendar,
+  },
+  audit: {
+    bg: "bg-purple-50",
+    border: "border-purple-100",
+    text: "text-purple-900",
+    badgeBg: "bg-purple-100",
+    badgeText: "text-purple-700",
+    label: "Audit",
+    Icon: ShieldCheck,
+  },
+  urgent: {
+    bg: "bg-rose-50",
+    border: "border-rose-100",
+    text: "text-rose-900",
+    badgeBg: "bg-rose-100",
+    badgeText: "text-rose-700",
+    label: "Penting",
+    Icon: AlertTriangle,
+  },
+  default: {
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+    text: "text-slate-800",
+    badgeBg: "bg-slate-200",
+    badgeText: "text-slate-700",
+    label: "Info",
+    Icon: Bell,
+  },
+};
+
+function formatNotificationTime(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });

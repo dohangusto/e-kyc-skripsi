@@ -60,6 +60,9 @@ type NotifyDistributionParams struct {
 	DistributionID string
 	ApplicationIDs []string
 	Actor          string
+	Message        string
+	Category       string
+	AttachmentURL  *string
 	Audit          AuditEntry
 }
 
@@ -139,10 +142,12 @@ type BackofficeRepository interface {
 	UpdateBatchStatus(ctx context.Context, params UpdateBatchStatusParams) error
 
 	ListDistributions(ctx context.Context) ([]Distribution, error)
+	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 	CreateDistribution(ctx context.Context, dist *Distribution, audit AuditEntry) error
 	UpdateDistributionStatus(ctx context.Context, params UpdateDistributionStatusParams) error
 	NotifyDistribution(ctx context.Context, params NotifyDistributionParams) error
 	ListVisits(ctx context.Context, params ListVisitsParams) ([]Visit, error)
+	ListNotificationsByUser(ctx context.Context, userID string, limit int) ([]Notification, error)
 
 	ListClusteringRuns(ctx context.Context) ([]ClusteringRun, error)
 	GetClusteringRun(ctx context.Context, runID string) (*ClusteringRun, error)
@@ -186,6 +191,7 @@ type BackofficeService interface {
 	ListVisits(ctx context.Context, params ListVisitsParams) ([]Visit, error)
 	ListBatchesByApplication(ctx context.Context, appID string) ([]Batch, error)
 	ListDistributionsByApplication(ctx context.Context, appID string) ([]Distribution, error)
+	ListNotificationsByUser(ctx context.Context, userID string, limit int) ([]Notification, error)
 
 	ListClusteringRuns(ctx context.Context) ([]ClusteringRun, error)
 	GetClusteringRun(ctx context.Context, runID string) (*ClusteringRun, error)

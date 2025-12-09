@@ -3,6 +3,7 @@ package http
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -117,6 +118,43 @@ func (h *PortalHTTPHandler) ListDistributions(c echo.Context) error {
 			Notes:       d.Notes,
 			UpdatedAt:   d.UpdatedAt,
 			BatchCodes:  d.BatchCodes,
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"data": out})
+}
+
+func (h *PortalHTTPHandler) ListNotifications(c echo.Context) error {
+	userID := strings.TrimSpace(c.Param("id"))
+	if userID == "" {
+		return respondError(c, http.StatusBadRequest, errors.New("user id required"))
+	}
+	limit := 50
+	if raw := strings.TrimSpace(c.QueryParam("limit")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	notifs, err := h.Service.ListNotificationsByUser(c.Request().Context(), userID, limit)
+	if err != nil {
+		return respondError(c, http.StatusInternalServerError, err)
+	}
+	type notifView struct {
+		ID             string    `json:"id"`
+		Message        string    `json:"message"`
+		Category       string    `json:"category"`
+		Attachment     *string   `json:"attachment_url,omitempty"`
+		CreatedAt      time.Time `json:"created_at"`
+		DistributionID *string   `json:"distribution_id,omitempty"`
+	}
+	out := make([]notifView, 0, len(notifs))
+	for _, n := range notifs {
+		out = append(out, notifView{
+			ID:             n.ID,
+			Message:        n.Message,
+			Category:       n.Category,
+			Attachment:     n.AttachmentURL,
+			CreatedAt:      n.CreatedAt,
+			DistributionID: n.DistributionID,
 		})
 	}
 	return c.JSON(http.StatusOK, map[string]any{"data": out})

@@ -200,20 +200,53 @@ func (s *BackofficeService) UpdateDistributionStatus(ctx context.Context, distID
 }
 
 func (s *BackofficeService) NotifyDistribution(ctx context.Context, distID string, applicationIDs []string, actor string) error {
-	if len(applicationIDs) == 0 {
+	distID = strings.TrimSpace(distID)
+	if distID == "" || len(applicationIDs) == 0 {
 		return nil
 	}
-	normalized, err := s.repo.NormalizeUserIDs(ctx, applicationIDs)
+	var normalized []string
+	for _, id := range applicationIDs {
+		clean := strings.TrimSpace(id)
+		if clean != "" {
+			normalized = append(normalized, clean)
+		}
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+
+	dist, err := s.repo.GetDistribution(ctx, distID)
 	if err != nil {
 		return err
 	}
+	if dist == nil {
+		return domain.ErrNotFound
+	}
+
+	message := distributionTemplate(*dist)
 	params := domain.NotifyDistributionParams{
 		DistributionID: distID,
 		ApplicationIDs: normalized,
 		Actor:          actor,
+		Message:        message,
+		Category:       "distribution",
 		Audit:          auditEntry(actor, distID, "DISTRIBUTION:NOTIFIED", strings.Join(normalized, ","), nil),
 	}
 	return s.repo.NotifyDistribution(ctx, params)
+}
+
+func (s *BackofficeService) ListNotificationsByUser(ctx context.Context, userID string, limit int) ([]domain.Notification, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, errors.New("user id required")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	return s.repo.ListNotificationsByUser(ctx, userID, limit)
 }
 
 func (s *BackofficeService) ListClusteringRuns(ctx context.Context) ([]domain.ClusteringRun, error) {
@@ -404,6 +437,35 @@ func auditEntry(actor, entity, action, reason string, metadata map[string]any) d
 		Reason:   reason,
 		Metadata: metadata,
 	}
+}
+
+func distributionTemplate(dist domain.Distribution) string {
+	wib := time.FixedZone("WIB", 7*60*60)
+	scheduled := dist.ScheduledAt.In(wib)
+	timeText := scheduled.Format("02 January 2006 15:04")
+	channel := strings.ToLower(strings.ReplaceAll(dist.Channel, "_", " "))
+	status := strings.ToLower(strings.ReplaceAll(dist.Status, "_", " "))
+
+	var notes []string
+	if len(dist.BatchCodes) > 0 {
+		notes = append(notes, fmt.Sprintf("Batch terkait: %s", strings.Join(dist.BatchCodes, ", ")))
+	}
+	if dist.Location != "" {
+		notes = append(notes, fmt.Sprintf("Lokasi: %s", dist.Location))
+	}
+	trailer := ""
+	if len(notes) > 0 {
+		trailer = " " + strings.Join(notes, " · ") + "."
+	}
+
+	return fmt.Sprintf(
+		"Penyaluran %s dijadwalkan pada %s (WIB) via %s. Status saat ini: %s.%s",
+		dist.Name,
+		timeText,
+		channel,
+		status,
+		trailer,
+	)
 }
 
 func maskNikPointer(nik *string) string {

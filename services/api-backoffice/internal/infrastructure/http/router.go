@@ -80,6 +80,7 @@ func RegisterRoutes(
 	portal.POST("/surveys/:id/submit", portalHandler.SubmitSurvey)
 	portal.GET("/batches/:id", portalHandler.latestBatchForUser)
 	portal.GET("/distributions/:id", portalHandler.ListDistributions)
+	portal.GET("/notifications/:id", portalHandler.ListNotifications)
 
 	e.GET("/api/debug", debugRoutesHandler(e))
 }

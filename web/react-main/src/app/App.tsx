@@ -28,6 +28,10 @@ import {
   fetchPortalDistributions,
   type PortalDistributionResponse,
 } from "@infrastructure/services/portal-distributions";
+import {
+  fetchPortalNotifications,
+  type PortalNotificationResponse,
+} from "@infrastructure/services/portal-notifications";
 import type {
   Account,
   SurveyAnswers,
@@ -185,6 +189,19 @@ const mapDistributionsToSchedules = (
   }));
 };
 
+const mapPortalNotifications = (
+  items: PortalNotificationResponse[] | null | undefined,
+) => {
+  if (!items || items.length === 0) return undefined;
+  return items.map((item) => ({
+    id: item.id,
+    message: item.message,
+    category: item.category,
+    createdAt: item.created_at,
+    attachmentUrl: item.attachment_url ?? undefined,
+  }));
+};
+
 const findLatestSessionForUser = async (
   userId: string,
   normalizedPhone: string,
@@ -319,6 +336,9 @@ const App = () => {
   const [portalDistributions, setPortalDistributions] = useState<
     Awaited<ReturnType<typeof fetchPortalDistributions>>
   >([]);
+  const [portalNotifications, setPortalNotifications] = useState<
+    PortalNotificationResponse[] | null
+  >(null);
   const syncedSurveyIdsRef = useRef<Record<string, boolean>>({});
   const [restoredSession, setRestoredSession] = useState(false);
   const landingLoginHash = `#${LANDING_LOGIN_SECTION_ID}`;
@@ -477,31 +497,36 @@ const App = () => {
   }, [currentAccount, session?.token]);
 
   useEffect(() => {
-    if (!session?.remote || !session.token || !currentAccount?.submissionId) {
+    if (
+      !session?.remote ||
+      !session.token ||
+      !currentAccount?.submissionId ||
+      !session.userId
+    ) {
       setPortalBatches(null);
       setPortalDistributions([]);
+      setPortalNotifications([]);
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const data = await fetchPortalBatches(
-          currentAccount.submissionId,
-          session.token,
-        );
-        const dists = await fetchPortalDistributions(
-          currentAccount.submissionId,
-          session.token,
-        );
+        const [data, dists, notifs] = await Promise.all([
+          fetchPortalBatches(currentAccount.submissionId, session.token),
+          fetchPortalDistributions(currentAccount.submissionId, session.token),
+          fetchPortalNotifications(session.userId, session.token),
+        ]);
         if (!cancelled) {
           setPortalBatches(data);
           setPortalDistributions(dists);
+          setPortalNotifications(notifs);
         }
       } catch (err) {
-        console.error("Failed to fetch portal batches", err);
+        console.error("Failed to fetch portal portal data", err);
         if (!cancelled) {
           setPortalBatches([]);
           setPortalDistributions([]);
+          setPortalNotifications([]);
         }
       }
     })();
@@ -881,6 +906,7 @@ const App = () => {
               !currentAccount.survey?.completed,
             batches: portalBatches ?? undefined,
             schedules: mapDistributionsToSchedules(portalDistributions),
+            notifications: mapPortalNotifications(portalNotifications),
           }}
           onStartNew={handleStartNew}
           onLogout={handleLogout}

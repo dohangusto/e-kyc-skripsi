@@ -33,6 +33,9 @@ func SeedBackoffice(ctx context.Context, pool *pgxpool.Pool) error {
 		if err := seedDistributions(ctx, tx); err != nil {
 			return err
 		}
+		if err := seedNotifications(ctx, tx); err != nil {
+			return err
+		}
 		if err := seedClustering(ctx, tx); err != nil {
 			return err
 		}
@@ -491,6 +494,48 @@ var distributionSeeds = []distributionSeed{
 	},
 }
 
+type notificationSeed struct {
+	ID             string
+	UserID         string
+	Message        string
+	Category       string
+	AttachmentURL  *string
+	DistributionID *string
+	CreatedBy      string
+	CreatedAt      string
+}
+
+var notificationSeeds = []notificationSeed{
+	{
+		ID:             "00000000-0000-0000-0000-000000000101",
+		UserID:         "11111111-1111-1111-1111-111111111111",
+		Message:        "Penyaluran PKH Sekupang akan berlangsung pada 25 Oktober 2025 di Kecamatan Sekupang. Harap siapkan dokumen pendukung.",
+		Category:       "distribution",
+		DistributionID: strPtr("DIST-001"),
+		CreatedBy:      operatorAdminID,
+		CreatedAt:      "2025-10-19T02:00:00Z",
+	},
+	{
+		ID:             "00000000-0000-0000-0000-000000000102",
+		UserID:         "22222222-2222-2222-2222-222222222222",
+		Message:        "Ada pemeriksaan lapangan terjadwal minggu ini. Pastikan nomor telepon aktif untuk dihubungi petugas.",
+		Category:       "event",
+		AttachmentURL:  strPtr("https://example.com/field-checklist.pdf"),
+		DistributionID: nil,
+		CreatedBy:      operatorTkskID,
+		CreatedAt:      "2025-10-20T03:00:00Z",
+	},
+	{
+		ID:             "00000000-0000-0000-0000-000000000103",
+		UserID:         "33333333-3333-3333-3333-333333333333",
+		Message:        "Terdapat perubahan data penting pada akun Anda. Jika bukan Anda yang melakukannya, segera hubungi petugas.",
+		Category:       "urgent",
+		DistributionID: nil,
+		CreatedBy:      operatorAudID,
+		CreatedAt:      "2025-10-21T05:30:00Z",
+	},
+}
+
 type clusteringRunSeed struct {
 	ID         string
 	Operator   string
@@ -860,6 +905,34 @@ func seedDistributions(ctx context.Context, tx pgx.Tx) error {
 			if _, err := tx.Exec(ctx, `INSERT INTO distribution_notified (distribution_id, application_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, dist.ID, appID); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func seedNotifications(ctx context.Context, tx pgx.Tx) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM notifications`); err != nil {
+		return err
+	}
+	for _, notif := range notificationSeeds {
+		createdAt, err := time.Parse(time.RFC3339, notif.CreatedAt)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+            INSERT INTO notifications (id, user_id, message, notification_category, attachment_url, created_by_admin_id, created_at, distribution_id)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            ON CONFLICT (id) DO UPDATE SET
+                user_id=EXCLUDED.user_id,
+                message=EXCLUDED.message,
+                notification_category=EXCLUDED.notification_category,
+                attachment_url=EXCLUDED.attachment_url,
+                created_by_admin_id=EXCLUDED.created_by_admin_id,
+                created_at=EXCLUDED.created_at,
+                distribution_id=EXCLUDED.distribution_id`,
+			notif.ID, notif.UserID, notif.Message, notif.Category, notif.AttachmentURL, notif.CreatedBy, createdAt, notif.DistributionID,
+		); err != nil {
+			return err
 		}
 	}
 	return nil

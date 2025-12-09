@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -681,6 +682,31 @@ func (repo *backofficeRepository) ListDistributions(ctx context.Context) ([]doma
 	return result, rows.Err()
 }
 
+func (repo *backofficeRepository) GetDistribution(ctx context.Context, id string) (*domain.Distribution, error) {
+	row := repo.db.QueryRow(ctx, `
+        SELECT id, name, scheduled_at, channel, location, status, notes, created_by, created_at, updated_by, updated_at
+        FROM distributions
+        WHERE id=$1`, id)
+	var dist domain.Distribution
+	if err := row.Scan(&dist.ID, &dist.Name, &dist.ScheduledAt, &dist.Channel, &dist.Location, &dist.Status,
+		&dist.Notes, &dist.CreatedBy, &dist.CreatedAt, &dist.UpdatedBy, &dist.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+	var err error
+	dist.BatchCodes, err = repo.fetchDistributionCodes(ctx, dist.ID)
+	if err != nil {
+		return nil, err
+	}
+	dist.Beneficiaries, dist.Notified, err = repo.fetchDistributionBeneficiaries(ctx, dist.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &dist, nil
+}
+
 func (repo *backofficeRepository) ListDistributionsByApplication(ctx context.Context, appID string) ([]domain.Distribution, error) {
 	if strings.TrimSpace(appID) == "" {
 		return []domain.Distribution{}, nil
@@ -716,6 +742,32 @@ func (repo *backofficeRepository) ListDistributionsByApplication(ctx context.Con
 	return result, rows.Err()
 }
 
+func (repo *backofficeRepository) ListNotificationsByUser(ctx context.Context, userID string, limit int) ([]domain.Notification, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := repo.db.Query(ctx, `
+        SELECT id, user_id, message, notification_category, attachment_url, created_by_admin_id, created_at, distribution_id
+        FROM notifications
+        WHERE user_id=$1
+        ORDER BY created_at DESC
+        LIMIT $2`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []domain.Notification
+	for rows.Next() {
+		var n domain.Notification
+		if err := rows.Scan(&n.ID, &n.UserID, &n.Message, &n.Category, &n.AttachmentURL, &n.CreatedByAdminID, &n.CreatedAt, &n.DistributionID); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
+}
+
 func (repo *backofficeRepository) fetchDistributionCodes(ctx context.Context, distID string) ([]string, error) {
 	rows, err := repo.db.Query(ctx, `SELECT batch_code FROM distribution_batches WHERE distribution_id=$1`, distID)
 	if err != nil {
@@ -747,23 +799,57 @@ func (repo *backofficeRepository) fetchDistributionBeneficiaries(ctx context.Con
 		}
 		beneficiaries = append(beneficiaries, id)
 	}
-	rows2, err := repo.db.Query(ctx, `SELECT application_id FROM distribution_notified WHERE distribution_id=$1`, distID)
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	notifiedSet := make(map[string]struct{})
+
+	rows2, err := repo.db.Query(ctx, `
+        SELECT db.application_id
+        FROM distribution_beneficiaries db
+        JOIN applications a ON a.id = db.application_id
+        JOIN notifications n ON n.user_id = a.beneficiary_user_id
+        WHERE db.distribution_id=$1 AND n.distribution_id=$1 AND n.notification_category='distribution'`, distID)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer rows2.Close()
-	var notified []string
 	for rows2.Next() {
 		var id string
 		if err := rows2.Scan(&id); err != nil {
 			return nil, nil, err
 		}
-		notified = append(notified, id)
+		notifiedSet[id] = struct{}{}
 	}
 	if err := rows2.Err(); err != nil {
 		return nil, nil, err
 	}
-	return beneficiaries, notified, rows.Err()
+
+	// Fallback to legacy table so existing data still shows as notified.
+	rows3, err := repo.db.Query(ctx, `SELECT application_id FROM distribution_notified WHERE distribution_id=$1`, distID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows3.Close()
+	for rows3.Next() {
+		var id string
+		if err := rows3.Scan(&id); err != nil {
+			return nil, nil, err
+		}
+		notifiedSet[id] = struct{}{}
+	}
+	if err := rows3.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	notified := make([]string, 0, len(notifiedSet))
+	for id := range notifiedSet {
+		notified = append(notified, id)
+	}
+	sort.Strings(notified)
+
+	return beneficiaries, notified, nil
 }
 
 func (repo *backofficeRepository) CreateDistribution(ctx context.Context, dist *domain.Distribution, audit domain.AuditEntry) error {
@@ -806,15 +892,58 @@ func (repo *backofficeRepository) NotifyDistribution(ctx context.Context, params
 	if len(params.ApplicationIDs) == 0 {
 		return nil
 	}
+	category := strings.TrimSpace(params.Category)
+	if category == "" {
+		category = "distribution"
+	}
+	message := strings.TrimSpace(params.Message)
+	if message == "" {
+		return errors.New("notification message required")
+	}
 	return repo.withTx(ctx, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `
+            SELECT a.id, a.beneficiary_user_id
+            FROM distribution_beneficiaries db
+            JOIN applications a ON a.id = db.application_id
+            WHERE db.distribution_id=$1 AND a.id = ANY($2)`,
+			params.DistributionID, params.ApplicationIDs)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		mapping := make(map[string]string)
+		for rows.Next() {
+			var appID string
+			var userID string
+			if err := rows.Scan(&appID, &userID); err != nil {
+				return err
+			}
+			mapping[appID] = userID
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
 		for _, appID := range params.ApplicationIDs {
+			userID, ok := mapping[appID]
+			if !ok || strings.TrimSpace(userID) == "" {
+				continue
+			}
 			if _, err := tx.Exec(ctx, `
-                INSERT INTO distribution_notified (distribution_id, application_id, notified_at)
-                VALUES ($1,$2,NOW())
-                ON CONFLICT DO NOTHING`, params.DistributionID, appID); err != nil {
+                INSERT INTO notifications (user_id, message, notification_category, attachment_url, created_by_admin_id, created_at, distribution_id)
+                VALUES ($1,$2,$3,$4,$5,NOW(),$6)
+                ON CONFLICT (user_id, distribution_id) DO UPDATE SET
+                    message=EXCLUDED.message,
+                    notification_category=EXCLUDED.notification_category,
+                    attachment_url=EXCLUDED.attachment_url,
+                    created_by_admin_id=EXCLUDED.created_by_admin_id,
+                    created_at=EXCLUDED.created_at`,
+				userID, message, category, params.AttachmentURL, params.Actor, params.DistributionID); err != nil {
 				return err
 			}
 		}
+
 		if _, err := tx.Exec(ctx, `UPDATE distributions SET updated_at=NOW(), updated_by=$2 WHERE id=$1`, params.DistributionID, params.Actor); err != nil {
 			return err
 		}
