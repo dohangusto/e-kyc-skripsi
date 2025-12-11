@@ -11,13 +11,14 @@ class AuthCheckRequested extends AuthEvent {
   const AuthCheckRequested();
 }
 
-class AuthLoginRequested extends AuthEvent {
-  final String phoneNumber;
+class AuthEligibilitySubmitted extends AuthEvent {
+  final String nik;
+  final String name;
 
-  const AuthLoginRequested(this.phoneNumber);
+  const AuthEligibilitySubmitted({required this.nik, required this.name});
 
   @override
-  List<Object?> get props => [phoneNumber];
+  List<Object?> get props => [nik, name];
 }
 
 class AuthLogoutRequested extends AuthEvent {

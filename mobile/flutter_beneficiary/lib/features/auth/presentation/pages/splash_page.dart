@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/routes.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
@@ -17,7 +18,6 @@ class _SplashPageState extends State<SplashPage> {
   void initState() {
     super.initState();
     // AuthCheckRequested sudah dikirim di App (AuthBloc()..add)
-    // kalau mau, bisa juga dipanggil lagi di sini.
   }
 
   @override
@@ -30,10 +30,27 @@ class _SplashPageState extends State<SplashPage> {
         if (state.status == AuthStatus.authenticated) {
           Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
         } else if (state.status == AuthStatus.unauthenticated) {
-          Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+          Navigator.of(context).pushReplacementNamed(AppRoutes.intro);
         }
       },
-      child: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.verified_user, size: 48, color: AppColors.primary),
+              SizedBox(height: 12),
+              Text(
+                'Menyiapkan aplikasi...',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              SizedBox(height: 16),
+              CircularProgressIndicator(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

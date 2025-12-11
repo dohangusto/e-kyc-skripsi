@@ -9,32 +9,38 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class EligibilityPage extends StatefulWidget {
+  const EligibilityPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<EligibilityPage> createState() => _EligibilityPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final _phoneController = TextEditingController();
+class _EligibilityPageState extends State<EligibilityPage> {
+  final _nikController = TextEditingController();
+  final _nameController = TextEditingController();
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _nikController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
-  void _onLoginPressed() {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
+  void _onSubmit() {
+    final nik = _nikController.text.trim();
+    final name = _nameController.text.trim();
+
+    if (nik.isEmpty || name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Masukkan nomor HP kamu dulu, ya.')),
+        const SnackBar(content: Text('Lengkapi NIK dan nama kamu dulu, ya.')),
       );
       return;
     }
 
-    context.read<AuthBloc>().add(AuthLoginRequested(phone));
+    context.read<AuthBloc>().add(
+      AuthEligibilitySubmitted(nik: nik, name: name),
+    );
   }
 
   @override
@@ -47,7 +53,7 @@ class _LoginPageState extends State<LoginPage> {
             if (state.status == AuthStatus.authenticated) {
               Navigator.of(
                 context,
-              ).pushNamedAndRemoveUntil(AppRoutes.ktpCapture, (_) => false);
+              ).pushNamedAndRemoveUntil(AppRoutes.ktpIntro, (_) => false);
             }
 
             if (state.status == AuthStatus.unauthenticated &&
@@ -78,14 +84,14 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         child: const Icon(
-                          Icons.verified_user,
+                          Icons.search,
                           size: 32,
                           color: AppColors.primary,
                         ),
                       ),
                       const SizedBox(height: Dimens.spacing24),
                       const Text(
-                        'Masuk untuk lanjut',
+                        'Cek kelayakan kamu',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
@@ -94,16 +100,37 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: Dimens.spacing8),
                       const Text(
-                        'Gunakan nomor HP kamu untuk mengecek status bantuan dan proses e-KYC.',
+                        'Masukkan NIK dan nama sesuai KTP untuk memastikan kamu terdaftar sebagai penerima bantuan.',
                         style: TextStyle(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: Dimens.spacing24),
                       TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
+                        controller: _nikController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 16,
                         decoration: InputDecoration(
-                          labelText: 'Nomor HP',
-                          hintText: 'Contoh: 081234567890',
+                          labelText: 'NIK',
+                          hintText: 'Contoh: 3508xxxxxxxxxxxx',
+                          counterText: '',
+                          filled: true,
+                          fillColor: AppColors.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              Dimens.borderRadius12,
+                            ),
+                            borderSide: BorderSide(
+                              color: AppColors.textSecondary.withOpacity(0.2),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: Dimens.spacing16),
+                      TextField(
+                        controller: _nameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: 'Nama lengkap',
+                          hintText: 'Sesuai KTP',
                           filled: true,
                           fillColor: AppColors.surface,
                           border: OutlineInputBorder(
@@ -119,12 +146,12 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: Dimens.spacing24),
                       PrimaryButton(
                         label: 'Lanjut',
-                        onPressed: isLoading ? null : _onLoginPressed,
+                        onPressed: isLoading ? null : _onSubmit,
                         isLoading: isLoading,
                       ),
                       const SizedBox(height: Dimens.spacing32),
                       const Text(
-                        'Data kamu akan kami jaga dengan baik. Nomor HP ini digunakan untuk mengecek status bantuan kamu.',
+                        'Data ini hanya digunakan untuk memastikan kamu terdaftar di wilayah bantuan yang tepat.',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,

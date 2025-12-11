@@ -8,7 +8,7 @@ import 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc() : super(const AuthState()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
-    on<AuthLoginRequested>(_onAuthLoginRequested);
+    on<AuthEligibilitySubmitted>(_onAuthEligibilitySubmitted);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
   }
 
@@ -21,8 +21,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(status: AuthStatus.unauthenticated));
   }
 
-  FutureOr<void> _onAuthLoginRequested(
-    AuthLoginRequested event,
+  FutureOr<void> _onAuthEligibilitySubmitted(
+    AuthEligibilitySubmitted event,
     Emitter<AuthState> emit,
   ) async {
     emit(state.copyWith(status: AuthStatus.loading));
@@ -31,9 +31,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // Sekarang: delay dikit buat simulasi
     await Future<void>.delayed(const Duration(seconds: 1));
 
-    // Dummy: anggap login selalu sukses
+    // Dummy: anggap cek kelayakan selalu sukses
     emit(
-      state.copyWith(status: AuthStatus.authenticated, userId: 'dummy-user-id'),
+      state.copyWith(
+        status: AuthStatus.authenticated,
+        userId: 'dummy-user-id',
+        nik: event.nik,
+        name: event.name,
+      ),
     );
   }
 
@@ -42,6 +47,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     // TODO: hapus token, dsb.
-    emit(state.copyWith(status: AuthStatus.unauthenticated, userId: null));
+    emit(
+      state.copyWith(
+        status: AuthStatus.unauthenticated,
+        userId: null,
+        nik: null,
+        name: null,
+      ),
+    );
   }
 }
