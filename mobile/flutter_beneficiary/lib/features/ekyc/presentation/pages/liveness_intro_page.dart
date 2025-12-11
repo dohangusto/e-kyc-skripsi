@@ -39,6 +39,16 @@ class LivenessIntroPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: Dimens.spacing12),
+                  Center(
+                    child: SizedBox(
+                      height: 220,
+                      child: Image.asset(
+                        'assets/flat/liveness_detection.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Dimens.spacing12),
                   const Text(
                     'Ikuti instruksi sederhana di layar. Tujuannya untuk memastikan kamu benar-benar hadir.',
                     style: TextStyle(color: AppColors.textSecondary),

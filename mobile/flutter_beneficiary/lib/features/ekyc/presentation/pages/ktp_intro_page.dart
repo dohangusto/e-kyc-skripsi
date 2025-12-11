@@ -27,6 +27,16 @@ class KtpIntroPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: Dimens.spacing12),
+                  Center(
+                    child: SizedBox(
+                      height: 220,
+                      child: Image.asset(
+                        'assets/flat/capture_ktp.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Dimens.spacing12),
                   const Text(
                     'Siapkan KTP kamu',
                     style: TextStyle(
