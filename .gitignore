@@ -69,3 +69,47 @@ build/
 
 # Secrets
 secrets.yaml
+
+# Flutter beneficiary app
+mobile/flutter_beneficiary/.dart_tool/
+mobile/flutter_beneficiary/.flutter-plugins
+mobile/flutter_beneficiary/.flutter-plugins-dependencies
+mobile/flutter_beneficiary/.flutter-plugins-generated
+mobile/flutter_beneficiary/.packages
+mobile/flutter_beneficiary/.pub-cache/
+mobile/flutter_beneficiary/.pub/
+mobile/flutter_beneficiary/build/
+mobile/flutter_beneficiary/coverage/
+
+# Flutter beneficiary Android artifacts
+mobile/flutter_beneficiary/android/.gradle/
+mobile/flutter_beneficiary/android/local.properties
+mobile/flutter_beneficiary/android/key.properties
+mobile/flutter_beneficiary/android/app/debug/
+mobile/flutter_beneficiary/android/app/profile/
+mobile/flutter_beneficiary/android/app/release/
+
+# Flutter beneficiary iOS artifacts
+mobile/flutter_beneficiary/ios/Pods/
+mobile/flutter_beneficiary/ios/.symlinks/
+mobile/flutter_beneficiary/ios/Flutter/App.framework
+mobile/flutter_beneficiary/ios/Flutter/Flutter.framework
+mobile/flutter_beneficiary/ios/Flutter/Flutter.podspec
+mobile/flutter_beneficiary/ios/Flutter/ephemeral/
+mobile/flutter_beneficiary/ios/Flutter/flutter_export_environment.sh
+mobile/flutter_beneficiary/ios/Flutter/Generated.xcconfig
+mobile/flutter_beneficiary/ios/Runner/GeneratedPluginRegistrant.*
+mobile/flutter_beneficiary/ios/ServiceDefinitions.json
+
+# Flutter beneficiary macOS artifacts
+mobile/flutter_beneficiary/macos/Pods/
+mobile/flutter_beneficiary/macos/.symlinks/
+mobile/flutter_beneficiary/macos/Flutter/ephemeral/
+mobile/flutter_beneficiary/macos/Flutter/Flutter-Debug.xcconfig
+mobile/flutter_beneficiary/macos/Flutter/Flutter-Release.xcconfig
+mobile/flutter_beneficiary/macos/Flutter/Generated.xcconfig
+mobile/flutter_beneficiary/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Flutter beneficiary desktop artifacts
+mobile/flutter_beneficiary/windows/flutter/ephemeral/
+mobile/flutter_beneficiary/linux/flutter/ephemeral/
