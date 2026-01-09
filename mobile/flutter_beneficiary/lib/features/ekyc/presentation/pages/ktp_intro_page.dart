@@ -18,7 +18,7 @@ class KtpIntroPage extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Sebelum Foto KTP')),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(Dimens.spacing16),
           child: Center(
             child: ConstrainedBox(
@@ -78,7 +78,7 @@ class KtpIntroPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: Dimens.spacing24),
                   PrimaryButton(
                     label: 'Lanjutkan',
                     onPressed: () => _goCapture(context),

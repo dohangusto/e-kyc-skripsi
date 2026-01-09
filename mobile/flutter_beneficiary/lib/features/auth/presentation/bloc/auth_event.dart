@@ -21,6 +21,15 @@ class AuthEligibilitySubmitted extends AuthEvent {
   List<Object?> get props => [nik, name];
 }
 
+class AuthLoginRequested extends AuthEvent {
+  final String phone;
+
+  const AuthLoginRequested(this.phone);
+
+  @override
+  List<Object?> get props => [phone];
+}
+
 class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
 }

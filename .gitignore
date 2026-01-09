@@ -100,6 +100,9 @@ mobile/flutter_beneficiary/ios/Flutter/flutter_export_environment.sh
 mobile/flutter_beneficiary/ios/Flutter/Generated.xcconfig
 mobile/flutter_beneficiary/ios/Runner/GeneratedPluginRegistrant.*
 mobile/flutter_beneficiary/ios/ServiceDefinitions.json
+mobile/flutter_beneficiary/ios/Runner.xcodeproj/project.xcworkspace/
+mobile/flutter_beneficiary/ios/Runner.xcodeproj/xcuserdata/
+mobile/flutter_beneficiary/ios/Runner.xcworkspace/xcuserdata/
 
 # Flutter beneficiary macOS artifacts
 mobile/flutter_beneficiary/macos/Pods/

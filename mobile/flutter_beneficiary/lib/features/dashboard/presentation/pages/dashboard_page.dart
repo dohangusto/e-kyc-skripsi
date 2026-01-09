@@ -37,21 +37,39 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.chat),
+          TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              padding: const EdgeInsets.symmetric(
+                horizontal: Dimens.spacing12,
+                vertical: Dimens.spacing8,
+              ),
+            ),
             onPressed: () {
               Navigator.of(context).pushNamed(AppRoutes.chat);
             },
+            child: const Text('Chat Admin'),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
+          SizedBox(width: 5),
+          TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.surface,
+              padding: const EdgeInsets.symmetric(
+                horizontal: Dimens.spacing12,
+                vertical: Dimens.spacing8,
+              ),
+            ),
             onPressed: () {
               context.read<AuthBloc>().add(const AuthLogoutRequested());
               Navigator.of(
                 context,
               ).pushNamedAndRemoveUntil(AppRoutes.intro, (_) => false);
             },
+            child: const Text('Keluar'),
           ),
+          SizedBox(width: 5),
         ],
       ),
       body: BlocBuilder<DashboardBloc, DashboardState>(

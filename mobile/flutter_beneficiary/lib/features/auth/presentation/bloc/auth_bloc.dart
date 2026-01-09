@@ -9,6 +9,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc() : super(const AuthState()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthEligibilitySubmitted>(_onAuthEligibilitySubmitted);
+    on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
   }
 
@@ -38,6 +39,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         userId: 'dummy-user-id',
         nik: event.nik,
         name: event.name,
+      ),
+    );
+  }
+
+  FutureOr<void> _onAuthLoginRequested(
+    AuthLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null));
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticated,
+        userId: event.phone,
+        errorMessage: null,
       ),
     );
   }

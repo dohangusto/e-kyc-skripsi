@@ -1,3 +1,4 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -35,98 +36,86 @@ class _KtpCapturePageState extends State<KtpCapturePage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Foto KTP')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(Dimens.spacing16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(Dimens.spacing16),
+              child: Center(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: BlocBuilder<KtpCaptureBloc, KtpCaptureState>(
-                          builder: (context, state) {
-                            final isLoading = state is KtpCaptureInProgress;
-                            final isSuccess = state is KtpCaptureSuccess;
-                            final isFailure = state is KtpCaptureFailure;
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: BlocBuilder<KtpCaptureBloc, KtpCaptureState>(
+                    builder: (context, state) {
+                      final isLoading = state is KtpCaptureInProgress;
+                      final isSuccess = state is KtpCaptureSuccess;
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                CameraPreviewWidget(
-                                  label: isSuccess
-                                      ? 'Foto KTP sudah diambil'
-                                      : 'Arahkan KTP kamu di sini',
-                                  overlay: const KtpFrameOverlay(),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CameraPreviewWidget(
+                            label: isSuccess
+                                ? 'Foto KTP sudah diambil'
+                                : 'Arahkan KTP kamu di sini',
+                            overlay: const KtpFrameOverlay(),
+                            initialDirection: CameraLensDirection.back,
+                          ),
+                          const SizedBox(height: Dimens.spacing16),
+                          if (state is KtpCaptureFailure)
+                            Container(
+                              padding: const EdgeInsets.all(Dimens.spacing12),
+                              decoration: BoxDecoration(
+                                color: AppColors.danger.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(
+                                  Dimens.borderRadius12,
                                 ),
-                                const SizedBox(height: Dimens.spacing16),
-                                if (isFailure)
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      Dimens.spacing12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.danger.withOpacity(0.08),
-                                      borderRadius: BorderRadius.circular(
-                                        Dimens.borderRadius12,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      (state as KtpCaptureFailure).message,
-                                      style: const TextStyle(
-                                        color: AppColors.danger,
-                                      ),
-                                    ),
-                                  ),
-                                const SizedBox(height: Dimens.spacing24),
-                                if (!isSuccess)
-                                  PrimaryButton(
-                                    label: isLoading
-                                        ? 'Memproses...'
-                                        : 'Ambil foto KTP',
-                                    onPressed: isLoading
-                                        ? null
-                                        : () {
-                                            context.read<KtpCaptureBloc>().add(
-                                              const KtpCaptureTakePhoto(),
-                                            );
-                                          },
-                                    isLoading: isLoading,
-                                  )
-                                else
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      PrimaryButton(
-                                        label: 'Lanjut',
-                                        onPressed: _goNext,
-                                      ),
-                                      const SizedBox(height: Dimens.spacing12),
-                                      OutlinedButton(
-                                        onPressed: () {
-                                          context.read<KtpCaptureBloc>().add(
-                                            const KtpCaptureStarted(),
-                                          );
-                                        },
-                                        child: const Text('Ulangi'),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: Dimens.spacing24),
+                              ),
+                              child: Text(
+                                state.message,
+                                style: const TextStyle(color: AppColors.danger),
+                              ),
+                            ),
+                          const SizedBox(height: Dimens.spacing24),
+                          if (!isSuccess)
+                            PrimaryButton(
+                              label: isLoading
+                                  ? 'Memproses...'
+                                  : 'Ambil foto KTP',
+                              onPressed: isLoading
+                                  ? null
+                                  : () {
+                                      context.read<KtpCaptureBloc>().add(
+                                        const KtpCaptureTakePhoto(),
+                                      );
+                                    },
+                              isLoading: isLoading,
+                            )
+                          else
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                PrimaryButton(
+                                  label: 'Lanjut',
+                                  onPressed: _goNext,
+                                ),
+                                const SizedBox(height: Dimens.spacing12),
+                                OutlinedButton(
+                                  onPressed: () {
+                                    context.read<KtpCaptureBloc>().add(
+                                      const KtpCaptureStarted(),
+                                    );
+                                  },
+                                  child: const Text('Ulangi'),
+                                ),
                               ],
-                            );
-                          },
-                        ),
-                      ),
-                    ),
+                            ),
+                          const SizedBox(height: Dimens.spacing24),
+                        ],
+                      );
+                    },
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

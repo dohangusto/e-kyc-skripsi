@@ -1,3 +1,4 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -34,96 +35,86 @@ class _SelfieWithKtpPageState extends State<SelfieWithKtpPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Selfie dengan KTP')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(Dimens.spacing16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(Dimens.spacing16),
+              child: Center(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: BlocBuilder<FaceMatchingBloc, FaceMatchingState>(
-                          builder: (context, state) {
-                            final isUploading = state is FaceMatchingUploading;
-                            final isUploaded = state is FaceMatchingUploaded;
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: BlocBuilder<FaceMatchingBloc, FaceMatchingState>(
+                    builder: (context, state) {
+                      final isUploading = state is FaceMatchingUploading;
+                      final isUploaded = state is FaceMatchingUploaded;
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const CameraPreviewWidget(
-                                  label: 'Arahkan wajah dan KTP ke kamera',
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const CameraPreviewWidget(
+                            label: 'Arahkan wajah dan KTP ke kamera',
+                            initialDirection: CameraLensDirection.front,
+                          ),
+                          const SizedBox(height: Dimens.spacing16),
+                          if (isUploaded)
+                            Container(
+                              padding: const EdgeInsets.all(Dimens.spacing12),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(
+                                  Dimens.borderRadius12,
                                 ),
-                                const SizedBox(height: Dimens.spacing16),
-                                if (isUploaded)
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      Dimens.spacing12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.secondary.withOpacity(
-                                        0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        Dimens.borderRadius12,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Foto wajah kamu sedang dicek. Kamu bisa lanjut ke langkah berikutnya.',
-                                      style: TextStyle(
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
+                              ),
+                              child: const Text(
+                                'Foto wajah kamu sedang dicek. Kamu bisa lanjut ke langkah berikutnya.',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                            ),
+                          const SizedBox(height: Dimens.spacing24),
+                          if (!isUploaded)
+                            PrimaryButton(
+                              label: isUploading
+                                  ? 'Mengunggah...'
+                                  : 'Ambil selfie',
+                              isLoading: isUploading,
+                              onPressed: isUploading
+                                  ? null
+                                  : () {
+                                      context.read<FaceMatchingBloc>().add(
+                                        const FaceMatchingTakeSelfie(),
+                                      );
+                                    },
+                            )
+                          else
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: PrimaryButton(
+                                    label: 'Lanjut',
+                                    onPressed: _goNext,
                                   ),
-                                const SizedBox(height: Dimens.spacing24),
-                                if (!isUploaded)
-                                  PrimaryButton(
-                                    label: isUploading
-                                        ? 'Mengunggah...'
-                                        : 'Ambil selfie',
-                                    isLoading: isUploading,
-                                    onPressed: isUploading
-                                        ? null
-                                        : () {
-                                            context.read<FaceMatchingBloc>().add(
-                                              const FaceMatchingTakeSelfie(),
-                                            );
-                                          },
-                                  )
-                                else
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      PrimaryButton(
-                                        label: 'Lanjut ke cek gerakan',
-                                        onPressed: _goNext,
-                                      ),
-                                      const SizedBox(height: Dimens.spacing12),
-                                      OutlinedButton(
-                                        onPressed: () {
-                                          context.read<FaceMatchingBloc>().add(
-                                            const FaceMatchingStarted(),
-                                          );
-                                        },
-                                        child: const Text('Ambil ulang'),
-                                      ),
-                                    ],
+                                ),
+                                const SizedBox(width: Dimens.spacing12),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      context.read<FaceMatchingBloc>().add(
+                                        const FaceMatchingStarted(),
+                                      );
+                                    },
+                                    child: const Text('Ambil ulang'),
                                   ),
-                                const SizedBox(height: Dimens.spacing24),
+                                ),
                               ],
-                            );
-                          },
-                        ),
-                      ),
-                    ),
+                            ),
+                          const SizedBox(height: Dimens.spacing24),
+                        ],
+                      );
+                    },
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

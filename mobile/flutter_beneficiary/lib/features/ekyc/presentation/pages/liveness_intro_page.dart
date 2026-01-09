@@ -22,7 +22,7 @@ class LivenessIntroPage extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Cek Gerakan Wajah')),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(Dimens.spacing16),
           child: Center(
             child: ConstrainedBox(
@@ -84,7 +84,7 @@ class LivenessIntroPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: Dimens.spacing24),
                   PrimaryButton(
                     label: 'Mulai',
                     onPressed: () => _startSession(context),
