@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -10,6 +11,7 @@ import '../../../../core/widgets/primary_button.dart';
 import '../bloc/liveness/liveness_bloc.dart';
 import '../bloc/liveness/liveness_event.dart';
 import '../bloc/liveness/liveness_state.dart';
+import '../widgets/camera_preview_widget.dart';
 
 class LivenessGesturePage extends StatefulWidget {
   const LivenessGesturePage({super.key});
@@ -123,6 +125,11 @@ class _LivenessGesturePageState extends State<LivenessGesturePage> {
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
                           ),
+                        ),
+                        const SizedBox(height: Dimens.spacing24),
+                        const CameraPreviewWidget(
+                          label: 'Pastikan wajah terlihat di kamera',
+                          initialDirection: CameraLensDirection.front,
                         ),
                         const SizedBox(height: Dimens.spacing12),
                         const Text(
