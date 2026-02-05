@@ -1,6 +1,12 @@
-class AppEnv {
-  static const apiBaseUrl =
-      'https://api-gateway.example.com'; // TODO: set real URL
-  static const mediaBaseUrl =
-      'https://media-storage.example.com'; // TODO: set real URL
+class Env {
+  const Env._();
+
+  /// Base URL for dashboard-related endpoints.
+  ///
+  /// Override at runtime with:
+  /// `--dart-define=DASHBOARD_API_BASE_URL=https://your-api.host`
+  static const dashboardApiBaseUrl = String.fromEnvironment(
+    'DASHBOARD_API_BASE_URL',
+    defaultValue: 'https://api-placeholder.local',
+  );
 }
