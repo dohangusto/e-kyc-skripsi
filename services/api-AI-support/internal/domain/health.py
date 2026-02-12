@@ -9,6 +9,7 @@ class HealthStatus:
     service: str
     status: str
     database: bool
+    vision: bool
 
 
 class HealthRepository(ABC):

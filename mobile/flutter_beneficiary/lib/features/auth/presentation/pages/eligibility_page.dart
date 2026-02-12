@@ -53,7 +53,7 @@ class _EligibilityPageState extends State<EligibilityPage> {
             if (state.status == AuthStatus.authenticated) {
               Navigator.of(
                 context,
-              ).pushNamedAndRemoveUntil(AppRoutes.ktpIntro, (_) => false);
+              ).pushNamedAndRemoveUntil(AppRoutes.livenessIntro, (_) => false);
             }
 
             if (state.status == AuthStatus.unauthenticated &&

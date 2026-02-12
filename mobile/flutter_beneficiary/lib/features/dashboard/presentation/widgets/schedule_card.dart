@@ -122,7 +122,7 @@ class _Placeholder extends StatelessWidget {
           ),
           SizedBox(height: Dimens.spacing12),
           Text(
-            'Jadwal sedang disusun. Silakan cek kembali beberapa hari lagi.',
+            'Tidak ada data jadwal penyaluran yang bisa ditampilkan saat ini.',
             style: TextStyle(color: AppColors.textSecondary),
           ),
         ],

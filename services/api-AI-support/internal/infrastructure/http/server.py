@@ -1,21 +1,27 @@
 from __future__ import annotations
 
-from socket import getaddrinfo, SOCK_STREAM
+from http.server import ThreadingHTTPServer
+from socket import SOCK_STREAM, getaddrinfo
 from threading import Thread
 from typing import Tuple
-from http.server import ThreadingHTTPServer
 
 from internal.domain.health import HealthServicePort
+from internal.domain.ocr import OcrServicePort
 from internal.infrastructure.http.health_handler import HealthRequestHandler
 
 
 class HttpServer:
-    def __init__(self, bind: str, service: HealthServicePort):
+    def __init__(
+        self,
+        bind: str,
+        service: HealthServicePort,
+        ocr_service: OcrServicePort | None = None,
+    ):
         host, port = _parse_bind(bind)
         handler = type(
             "BoundHealthRequestHandler",
             (HealthRequestHandler,),
-            {"service": service},
+            {"service": service, "ocr_service": ocr_service},
         )
         self._server = ThreadingHTTPServer((host, port), handler)
         self._thread: Thread | None = None

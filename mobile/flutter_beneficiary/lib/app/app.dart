@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/constants/colors.dart';
 import '../core/constants/routes.dart';
+import '../core/navigation/route_observer.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_event.dart';
 import '../features/chat/presentation/bloc/chat_bloc.dart';
@@ -50,6 +51,7 @@ class EKYCApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           initialRoute: AppRoutes.splash,
           onGenerateRoute: AppRouter.onGenerateRoute,
+          navigatorObservers: [routeObserver],
           theme: ThemeData(
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),

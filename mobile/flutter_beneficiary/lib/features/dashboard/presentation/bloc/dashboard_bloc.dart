@@ -20,15 +20,18 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   static DashboardState _initialState() {
     return DashboardState(
       assistanceInfo: const AssistanceInfo(
-        title: 'Memuat data bantuan',
-        category: '-',
-        amount: '-',
-        description: 'Data bantuan akan ditampilkan setelah pemuatan selesai.',
+        title: '',
+        category: '',
+        amount: '',
+        description: '',
       ),
       verificationSteps: const [],
       aidProgressSteps: const [],
-      faceMatchingStatus: 'Sedang dicek',
-      isLoading: true,
+      faceMatchingStatus: '',
+      isLoading: false,
+      hasError: false,
+      errorMessage: '',
+      isEmpty: false,
     );
   }
 
@@ -47,12 +50,23 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   Future<void> _loadDashboard(Emitter<DashboardState> emit) async {
-    emit(state.copyWith(isLoading: true));
+    emit(
+      state.copyWith(
+        isLoading: true,
+        hasError: false,
+        errorMessage: '',
+        isEmpty: false,
+      ),
+    );
     try {
       final dashboard = await _repository.getDashboard();
+      final isEmptyData = _isDashboardEmpty(dashboard);
       emit(
         state.copyWith(
           isLoading: false,
+          hasError: false,
+          errorMessage: '',
+          isEmpty: isEmptyData,
           assistanceInfo: dashboard.assistanceInfo,
           nextSchedule: dashboard.nextSchedule,
           verificationSteps: dashboard.verificationSteps.isEmpty
@@ -67,7 +81,29 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         ),
       );
     } catch (_) {
-      emit(state.copyWith(isLoading: false));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          hasError: true,
+          errorMessage:
+              'Terjadi kesalahan saat mengambil data. Silakan coba lagi.',
+          isEmpty: false,
+        ),
+      );
     }
+  }
+
+  bool _isDashboardEmpty(DashboardData dashboard) {
+    final hasSchedule =
+        dashboard.nextSchedule != null && !dashboard.nextSchedule!.isEmpty;
+    final hasAssistance = !dashboard.assistanceInfo.isEmpty;
+    final hasVerification = dashboard.verificationSteps.isNotEmpty;
+    final hasAidProgress = dashboard.aidProgressSteps.isNotEmpty;
+    final hasFaceStatus = dashboard.faceMatchingStatus.trim().isNotEmpty;
+    return !(hasSchedule ||
+        hasAssistance ||
+        hasVerification ||
+        hasAidProgress ||
+        hasFaceStatus);
   }
 }

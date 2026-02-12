@@ -7,6 +7,7 @@ bin/
 .env
 .envrc
 shared/env/*
+services/api-AI-support/civil-honor-487003-j9-c4b3b0ddce2b.json
 
 # Logs
 logs

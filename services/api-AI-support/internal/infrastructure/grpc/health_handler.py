@@ -17,6 +17,7 @@ class HealthHandler:
                 "service": status.service,
                 "status": status.status,
                 "database": "up" if status.database else "down",
+                "vision": "up" if status.vision else "down",
             }
         )
         return response

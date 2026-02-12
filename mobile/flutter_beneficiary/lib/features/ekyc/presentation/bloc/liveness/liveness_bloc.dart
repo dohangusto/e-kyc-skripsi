@@ -9,7 +9,7 @@ class LivenessBloc extends Bloc<LivenessEvent, LivenessState> {
   LivenessBloc()
     : super(
         const LivenessState(
-          gestures: ['Tengok ke kanan', 'Tersenyum 😊', 'Kedipkan mata'],
+          gestures: ['Tengok kanan', 'Buka mulut', 'Kedipkan mata'],
           status: LivenessStatus.idle,
         ),
       ) {

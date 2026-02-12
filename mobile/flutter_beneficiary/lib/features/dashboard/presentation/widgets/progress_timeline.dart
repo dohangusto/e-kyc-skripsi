@@ -8,12 +8,14 @@ class ProgressTimeline extends StatelessWidget {
   final String title;
   final List<TimelineStep> steps;
   final Color accentColor;
+  final String emptyMessage;
 
   const ProgressTimeline({
     super.key,
     required this.title,
     required this.steps,
     this.accentColor = AppColors.primary,
+    this.emptyMessage = 'Belum ada data yang bisa ditampilkan.',
   });
 
   @override
@@ -33,13 +35,19 @@ class ProgressTimeline extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Dimens.spacing12),
-          ...steps.asMap().entries.map(
-            (entry) => _TimelineRow(
-              step: entry.value,
-              isLast: entry.key == steps.length - 1,
-              accentColor: accentColor,
+          if (steps.isEmpty)
+            Text(
+              emptyMessage,
+              style: const TextStyle(color: AppColors.textSecondary),
+            )
+          else
+            ...steps.asMap().entries.map(
+              (entry) => _TimelineRow(
+                step: entry.value,
+                isLast: entry.key == steps.length - 1,
+                accentColor: accentColor,
+              ),
             ),
-          ),
         ],
       ),
     );

@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/dimens.dart';
 import '../../../../core/constants/routes.dart';
-import '../../../../core/widgets/primary_button.dart';
+import '../ekyc_progress_store.dart';
 import '../bloc/ktp_capture/ktp_capture_bloc.dart';
 import '../bloc/ktp_capture/ktp_capture_event.dart';
 import '../bloc/ktp_capture/ktp_capture_state.dart';
@@ -23,99 +23,149 @@ class _KtpCapturePageState extends State<KtpCapturePage> {
   @override
   void initState() {
     super.initState();
+    if (EkycProgressStore.statusOf('ktp') != EkycStepStatus.done) {
+      EkycProgressStore.setStatus('ktp', EkycStepStatus.inProgress);
+    }
     context.read<KtpCaptureBloc>().add(const KtpCaptureStarted());
   }
 
   void _goNext() {
-    Navigator.of(context).pushReplacementNamed(AppRoutes.selfieIntro);
+    final state = context.read<KtpCaptureBloc>().state;
+    Navigator.of(
+      context,
+    ).pushReplacementNamed(AppRoutes.ktpPreview, arguments: state.photoPath);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Foto KTP')),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(Dimens.spacing16),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: BlocBuilder<KtpCaptureBloc, KtpCaptureState>(
-                    builder: (context, state) {
-                      final isLoading = state is KtpCaptureInProgress;
-                      final isSuccess = state is KtpCaptureSuccess;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CameraPreviewWidget(
-                            label: isSuccess
-                                ? 'Foto KTP sudah diambil'
-                                : 'Arahkan KTP kamu di sini',
-                            overlay: const KtpFrameOverlay(),
-                            initialDirection: CameraLensDirection.back,
-                          ),
-                          const SizedBox(height: Dimens.spacing16),
-                          if (state is KtpCaptureFailure)
-                            Container(
-                              padding: const EdgeInsets.all(Dimens.spacing12),
-                              decoration: BoxDecoration(
-                                color: AppColors.danger.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(
-                                  Dimens.borderRadius12,
-                                ),
-                              ),
-                              child: Text(
-                                state.message,
-                                style: const TextStyle(color: AppColors.danger),
-                              ),
-                            ),
-                          const SizedBox(height: Dimens.spacing24),
-                          if (!isSuccess)
-                            PrimaryButton(
-                              label: isLoading
-                                  ? 'Memproses...'
-                                  : 'Ambil foto KTP',
-                              onPressed: isLoading
-                                  ? null
-                                  : () {
-                                      context.read<KtpCaptureBloc>().add(
-                                        const KtpCaptureTakePhoto(),
-                                      );
-                                    },
-                              isLoading: isLoading,
-                            )
-                          else
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+    return WillPopScope(
+      onWillPop: () async {
+        EkycProgressStore.setStatus('ktp', EkycStepStatus.pending);
+        return true;
+      },
+      child: BlocListener<KtpCaptureBloc, KtpCaptureState>(
+        listener: (context, state) {
+          if (state is KtpCaptureSuccess) {
+            _goNext();
+          }
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: const Text('Ambil Foto KTP'),
+            centerTitle: false,
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                EkycProgressStore.setStatus('ktp', EkycStepStatus.pending);
+                Navigator.of(context).maybePop();
+              },
+            ),
+            actions: const [
+              Padding(
+                padding: EdgeInsets.only(right: Dimens.spacing12),
+                child: Icon(Icons.help_outline),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(Dimens.spacing16),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: BlocBuilder<KtpCaptureBloc, KtpCaptureState>(
+                          builder: (context, state) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                PrimaryButton(
-                                  label: 'Lanjut',
-                                  onPressed: _goNext,
+                                CameraPreviewWidget(
+                                  label:
+                                      'Pastikan KTP di dalam area petunjuk dan hindari latar belakang biru.',
+                                  overlay: const KtpFrameOverlay(),
+                                  initialDirection: CameraLensDirection.back,
                                 ),
-                                const SizedBox(height: Dimens.spacing12),
-                                OutlinedButton(
-                                  onPressed: () {
-                                    context.read<KtpCaptureBloc>().add(
-                                      const KtpCaptureStarted(),
-                                    );
-                                  },
-                                  child: const Text('Ulangi'),
-                                ),
+                                if (state is KtpCaptureFailure) ...[
+                                  const SizedBox(height: Dimens.spacing12),
+                                  Container(
+                                    padding: const EdgeInsets.all(
+                                      Dimens.spacing12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.danger.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(
+                                        Dimens.borderRadius12,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      state.message,
+                                      style: const TextStyle(
+                                        color: AppColors.danger,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ),
-                          const SizedBox(height: Dimens.spacing24),
-                        ],
-                      );
-                    },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+                BlocBuilder<KtpCaptureBloc, KtpCaptureState>(
+                  builder: (context, state) {
+                    final isLoading = state is KtpCaptureInProgress;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: Dimens.spacing24),
+                      child: GestureDetector(
+                        onTap: isLoading
+                            ? null
+                            : () {
+                                context.read<KtpCaptureBloc>().add(
+                                  const KtpCaptureTakePhoto(),
+                                );
+                              },
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black12, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: isLoading
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

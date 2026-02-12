@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+_BASE_DIR = Path(__file__).resolve().parents[2]
+_DEFAULT_GCV_KEY = _BASE_DIR / "civil-honor-487003-j9-c4b3b0ddce2b.json"
 
 
 @dataclass(frozen=True)
@@ -20,6 +24,7 @@ class AppConfig:
     mediapipe_min_confidence: float
     backoffice_http_base: str
     media_storage_url: str
+    google_vision_credentials: str
 
     @staticmethod
     def from_env() -> "AppConfig":
@@ -54,5 +59,8 @@ class AppConfig:
             ),
             media_storage_url=os.getenv(
                 "AI_SUPPORT_MEDIA_URL", "http://127.0.0.1:8090"
+            ),
+            google_vision_credentials=os.getenv(
+                "AI_SUPPORT_GCV_CREDENTIALS", str(_DEFAULT_GCV_KEY)
             ),
         )

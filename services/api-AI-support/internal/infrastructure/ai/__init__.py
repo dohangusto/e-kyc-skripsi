@@ -1,1 +1,1 @@
-"""AI model adapters (EasyOCR, FaceNet, MediaPipe)."""
+"""AI model adapters (FaceNet, MediaPipe, Google Vision)."""

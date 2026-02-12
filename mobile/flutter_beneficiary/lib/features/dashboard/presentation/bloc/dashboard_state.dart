@@ -28,6 +28,15 @@ class AssistanceInfo extends Equatable {
     description,
     deliveryMethod,
   ];
+
+  bool get isEmpty {
+    return title.trim().isEmpty &&
+        category.trim().isEmpty &&
+        amount.trim().isEmpty &&
+        description.trim().isEmpty &&
+        (group == null || group!.trim().isEmpty) &&
+        (deliveryMethod == null || deliveryMethod!.trim().isEmpty);
+  }
 }
 
 class ScheduleInfo extends Equatable {
@@ -45,6 +54,13 @@ class ScheduleInfo extends Equatable {
 
   @override
   List<Object?> get props => [date, location, time, note];
+
+  bool get isEmpty {
+    return date.trim().isEmpty &&
+        location.trim().isEmpty &&
+        time.trim().isEmpty &&
+        note.trim().isEmpty;
+  }
 }
 
 class TimelineStep extends Equatable {
@@ -72,6 +88,9 @@ class TimelineStep extends Equatable {
 
 class DashboardState extends Equatable {
   final bool isLoading;
+  final bool hasError;
+  final String errorMessage;
+  final bool isEmpty;
   final AssistanceInfo assistanceInfo;
   final ScheduleInfo? nextSchedule;
   final List<TimelineStep> verificationSteps;
@@ -84,11 +103,17 @@ class DashboardState extends Equatable {
     required this.aidProgressSteps,
     this.nextSchedule,
     this.isLoading = false,
+    this.hasError = false,
+    this.errorMessage = '',
+    this.isEmpty = false,
     this.faceMatchingStatus = 'Sedang dicek',
   });
 
   DashboardState copyWith({
     bool? isLoading,
+    bool? hasError,
+    String? errorMessage,
+    bool? isEmpty,
     AssistanceInfo? assistanceInfo,
     ScheduleInfo? nextSchedule,
     List<TimelineStep>? verificationSteps,
@@ -101,6 +126,9 @@ class DashboardState extends Equatable {
       aidProgressSteps: aidProgressSteps ?? this.aidProgressSteps,
       nextSchedule: nextSchedule ?? this.nextSchedule,
       isLoading: isLoading ?? this.isLoading,
+      hasError: hasError ?? this.hasError,
+      errorMessage: errorMessage ?? this.errorMessage,
+      isEmpty: isEmpty ?? this.isEmpty,
       faceMatchingStatus: faceMatchingStatus ?? this.faceMatchingStatus,
     );
   }
@@ -108,6 +136,9 @@ class DashboardState extends Equatable {
   @override
   List<Object?> get props => [
     isLoading,
+    hasError,
+    errorMessage,
+    isEmpty,
     assistanceInfo,
     nextSchedule,
     verificationSteps,
