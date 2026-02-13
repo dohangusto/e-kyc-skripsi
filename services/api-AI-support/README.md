@@ -84,6 +84,15 @@ Key environment variables (see `pkg/types/config.py` for defaults):
 - `AI_SUPPORT_LIVENESS_CONFIDENCE`
 - Queue specific overrides listed in the RabbitMQ table above.
 
+### OCR (KTP) Notes
+
+- OCR defaults to CPU (`OCR_USE_GPU=false`) to avoid incompatible GPU acceleration.
+- Two-pass OCR is configurable via:
+  `OCR_ENABLE_TWO_PASS`, `OCR_PASS1_MAX_SIDE`, `OCR_ROI_PADDING`,
+  `OCR_ROI_MAX_SIDE`, `OCR_ENABLE_FULLPAGE_FALLBACK`.
+- For Apple Silicon / CPU-only runs, consider setting:
+  `OMP_NUM_THREADS=4` and `MKL_NUM_THREADS=4` (tune to your workload).
+
 ## Running Locally
 
 1. Ensure PostgreSQL and RabbitMQ are reachable according to the configured DSNs. When using `tilt up`,

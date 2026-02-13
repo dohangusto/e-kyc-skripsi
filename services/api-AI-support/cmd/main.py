@@ -36,6 +36,7 @@ from internal.infrastructure.repository.health_repository import HealthRepositor
 from internal.service.ekyc_service import EkycService
 from internal.service.face_match_service import FaceMatchService
 from internal.service.health_service import HealthService
+from internal.service.ktp_ocr_service import extract_ktp_fields
 from internal.service.liveness_service import LivenessService
 from internal.service.ocr_service import OcrService
 from pkg.types.config import AppConfig
@@ -109,7 +110,9 @@ def build_runtime() -> tuple[
 
     health_service = HealthService(repository, config.service_name, vision_ready)
     grpc_server = GrpcServer(config.grpc_bind, health_service, ekyc_handler)
-    http_server = HttpServer(config.http_bind, health_service, ocr_service)
+    http_server = HttpServer(
+        config.http_bind, health_service, ocr_service, extract_ktp_fields
+    )
     return grpc_server, http_server, (face_worker, liveness_worker), gesture_detector
 
 

@@ -318,7 +318,7 @@ class _LivenessIntroPageState extends State<LivenessIntroPage> with RouteAware {
                 title: 'Verifikasi Identitas',
                 currentStep: currentStep,
                 totalSteps: totalSteps,
-                labelPrefix: 'Sudah pas,',
+                labelPrefix: '',
                 enableAction: canContinue,
                 onAction: () => Navigator.of(
                   context,

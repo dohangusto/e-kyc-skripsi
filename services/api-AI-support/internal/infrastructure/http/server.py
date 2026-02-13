@@ -16,12 +16,19 @@ class HttpServer:
         bind: str,
         service: HealthServicePort,
         ocr_service: OcrServicePort | None = None,
+        ktp_ocr_extractor=None,
     ):
         host, port = _parse_bind(bind)
         handler = type(
             "BoundHealthRequestHandler",
             (HealthRequestHandler,),
-            {"service": service, "ocr_service": ocr_service},
+            {
+                "service": service,
+                "ocr_service": ocr_service,
+                "ktp_ocr_extractor": staticmethod(ktp_ocr_extractor)
+                if ktp_ocr_extractor is not None
+                else None,
+            },
         )
         self._server = ThreadingHTTPServer((host, port), handler)
         self._thread: Thread | None = None
