@@ -17,6 +17,7 @@ class HttpServer:
         service: HealthServicePort,
         ocr_service: OcrServicePort | None = None,
         ktp_ocr_extractor=None,
+        ktp_ocr_professional_extractor=None,
     ):
         host, port = _parse_bind(bind)
         handler = type(
@@ -27,6 +28,11 @@ class HttpServer:
                 "ocr_service": ocr_service,
                 "ktp_ocr_extractor": staticmethod(ktp_ocr_extractor)
                 if ktp_ocr_extractor is not None
+                else None,
+                "ktp_ocr_professional_extractor": staticmethod(
+                    ktp_ocr_professional_extractor
+                )
+                if ktp_ocr_professional_extractor is not None
                 else None,
             },
         )

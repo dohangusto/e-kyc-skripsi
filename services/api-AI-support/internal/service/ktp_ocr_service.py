@@ -6,6 +6,7 @@ import re
 import threading
 import time
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Iterable
 from uuid import uuid4
@@ -46,6 +47,7 @@ _LABEL_EXCLUDES = {
     "BERLAKU HINGGA",
     "TEMPAT",
     "TEMPAT/TGL LAHIR",
+    "TTL",
     "TGL LAHIR",
     "LAHIR",
     "GOL DARAH",
@@ -55,9 +57,54 @@ _LABEL_EXCLUDES = {
     "STATUS",
 }
 
+_KNOWN_LABELS = {
+    *{label for label in _LABEL_EXCLUDES},
+    "TEMPAT LAHIR",
+    "JENIS KELAMIN",
+    "AGAMA",
+}
+
 _NAME_LABEL_PATTERN = re.compile(r"(?i)\bNama\b\s*[:\-]?\s*(.*)$")
 _ANCHOR_NIK_PATTERN = re.compile(r"(?i)\bNIK\b")
 _ANCHOR_NAMA_PATTERN = re.compile(r"(?i)\bNAMA\b")
+
+_BIRTH_LABEL_PATTERNS = (
+    re.compile(r"(?i)TEMPAT\s*[/,]?\s*TGL\s*LAHIR\b\s*[:\-]?\s*(.*)$"),
+    re.compile(r"(?i)TTL\b\s*[:\-]?\s*(.*)$"),
+)
+_BIRTH_PLACE_LABEL_PATTERNS = (re.compile(r"(?i)TEMPAT\s*LAHIR\b\s*[:\-]?\s*(.*)$"),)
+_BIRTH_DATE_LABEL_PATTERNS = (re.compile(r"(?i)TGL\s*LAHIR\b\s*[:\-]?\s*(.*)$"),)
+_GENDER_LABEL_PATTERNS = (
+    re.compile(r"(?i)JENIS\s*KELAMIN\b\s*[:\-]?\s*(.*)$"),
+    re.compile(r"(?i)KELAMIN\b\s*[:\-]?\s*(.*)$"),
+)
+_RELIGION_LABEL_PATTERNS = (re.compile(r"(?i)AGAMA\b\s*[:\-]?\s*(.*)$"),)
+_DATE_PATTERN = re.compile(r"(\d{1,2})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{2,4})")
+
+_GENDER_CANONICAL = {
+    "LAKI-LAKI": "LAKI-LAKI",
+    "PEREMPUAN": "PEREMPUAN",
+}
+
+_RELIGION_CANONICAL = {
+    "ISLAM": "ISLAM",
+    "KRISTEN": "KRISTEN",
+    "KATOLIK": "KATOLIK",
+    "HINDU": "HINDU",
+    "BUDDHA": "BUDDHA",
+    "KONGHUCU": "KONGHUCU",
+}
+
+_RELIGION_ALIASES = {
+    "PROTESTAN": "KRISTEN",
+    "KRISTIAN": "KRISTEN",
+    "KATHOLIK": "KATOLIK",
+    "CATHOLIC": "KATOLIK",
+    "BUDHA": "BUDDHA",
+    "KONGFUCU": "KONGHUCU",
+    "KONFHUCU": "KONGHUCU",
+    "CONFUCIUS": "KONGHUCU",
+}
 
 _PADDLE_OCR_ENGINE: Any | None = None
 _PADDLE_OCR_LOCK = threading.Lock()
@@ -259,6 +306,43 @@ def extract_ktp_fields(
             pass2_ms,
             total_ms,
         )
+
+
+def extract_ktp_identity(
+    image_bytes: bytes,
+    *,
+    request_id: str | None = None,
+    ground_truth: dict | None = None,
+) -> dict:
+    result = extract_ktp_fields(
+        image_bytes, request_id=request_id, debug=False, ground_truth=ground_truth
+    )
+    lines = result.get("raw_ocr_lines") or []
+    raw_text = result.get("raw_ocr_text") or ""
+
+    nik = result.get("nik")
+    name = result.get("name")
+    nik_score = result.get("nik_score")
+    name_score = result.get("name_score")
+    birth_place, birth_date = _extract_birth_place_date(lines, raw_text, name)
+    gender = _extract_gender(lines, raw_text)
+    religion = _extract_religion(lines, raw_text)
+
+    error = None
+    if not raw_text and not any([nik, name, birth_place, birth_date, gender, religion]):
+        error = "OCR_EMPTY"
+
+    return {
+        "nik": nik,
+        "nama": name,
+        "tempat_lahir": birth_place,
+        "tanggal_lahir": birth_date,
+        "jenis_kelamin": gender,
+        "agama": religion,
+        "nik_score": nik_score,
+        "nama_score": name_score,
+        "error": error,
+    }
 
 
 def _load_ocr_settings() -> _OcrSettings:
@@ -1230,6 +1314,368 @@ def _extract_name_from_lines(lines: Iterable[dict]) -> tuple[str | None, float]:
     return _strip_label_prefix(best_value), best_conf
 
 
+def _extract_birth_place_date(
+    lines: Iterable[dict], raw_text: str | None, name: str | None = None
+) -> tuple[str | None, str | None]:
+    lines_list = list(lines)
+    for idx, line in enumerate(lines_list):
+        text = (line.get("text") or "").strip()
+        if not text:
+            continue
+        for pattern in _BIRTH_LABEL_PATTERNS:
+            match = pattern.search(text)
+            if not match:
+                continue
+            value = _normalize_spaces(match.group(1))
+            place, date = _split_place_and_date(value)
+            if date and (
+                not place
+                or _contains_label(place)
+                or (name and _is_similar_name(place, name))
+                or _looks_like_person_name(place)
+            ):
+                place = _extract_place_from_date_text(value, name)
+            if date and not place:
+                place = _guess_place_from_context(lines_list, idx, name)
+            if place or date:
+                return place, date
+
+    place, _ = _extract_labeled_value(lines_list, _BIRTH_PLACE_LABEL_PATTERNS)
+    date, _ = _extract_labeled_value(lines_list, _BIRTH_DATE_LABEL_PATTERNS)
+    normalized_date = _normalize_birth_date(date) if date else None
+    if normalized_date and not place:
+        place = _extract_place_from_date_text(date, name)
+        if not place:
+            place = _guess_place_from_context(
+                lines_list,
+                _line_index_for_label(lines_list, _BIRTH_DATE_LABEL_PATTERNS),
+                name,
+            )
+    if place or normalized_date:
+        return _clean_place(place), normalized_date
+
+    for text in _iter_text_candidates(lines_list, raw_text):
+        place, date = _split_place_and_date(text)
+        if date:
+            if not place:
+                place = _extract_place_from_date_text(text, name)
+            if not place:
+                place = _guess_place_from_context(
+                    lines_list, _find_line_index(lines_list, text), name
+                )
+            return place, date
+
+    return None, None
+
+
+def _line_index_for_label(
+    lines: list[dict], patterns: tuple[re.Pattern, ...]
+) -> int | None:
+    for idx, line in enumerate(lines):
+        text = (line.get("text") or "").strip()
+        if not text:
+            continue
+        if any(pattern.search(text) for pattern in patterns):
+            return idx
+    return None
+
+
+def _find_line_index(lines: list[dict], text: str) -> int | None:
+    target = _normalize_spaces(text)
+    for idx, line in enumerate(lines):
+        if _normalize_spaces(line.get("text") or "") == target:
+            return idx
+    return None
+
+
+def _guess_place_from_context(
+    lines: list[dict], idx: int | None, name: str | None
+) -> str | None:
+    if idx is None:
+        return None
+    candidates: list[str] = []
+    for offset in (-2, -1, 1, 2):
+        neighbor_idx = idx + offset
+        if neighbor_idx < 0 or neighbor_idx >= len(lines):
+            continue
+        text = _normalize_spaces(lines[neighbor_idx].get("text") or "")
+        if not text:
+            continue
+        if _contains_label(text):
+            continue
+        if any(ch.isdigit() for ch in text):
+            continue
+        if name and _is_similar_name(text, name):
+            continue
+        if _looks_like_person_name(text):
+            continue
+        score = _place_quality_score(text)
+        if score > 0:
+            candidates.append(text)
+    if not candidates:
+        return None
+    best = max(candidates, key=_place_quality_score)
+    return _clean_place(best)
+
+
+def _place_quality_score(text: str) -> float:
+    if len(text) < 3 or len(text) > 60:
+        return 0.0
+    letters = sum(ch.isalpha() or ch in " .'-" for ch in text)
+    ratio = letters / float(len(text)) if text else 0.0
+    if ratio < 0.7:
+        return 0.0
+    return ratio * 100.0 + min(len(text), 30)
+
+
+def _is_similar_name(text: str, name: str) -> bool:
+    candidate = _normalize_spaces(text).upper()
+    reference = _normalize_spaces(name).upper()
+    if not candidate or not reference:
+        return False
+    if candidate == reference:
+        return True
+    ratio = SequenceMatcher(None, candidate, reference).ratio()
+    return ratio >= 0.8
+
+
+def _looks_like_person_name(text: str) -> bool:
+    words = [w for w in _normalize_spaces(text).split(" ") if w]
+    if len(words) < 3:
+        return False
+    if not all(word.isalpha() for word in words):
+        return False
+    upper = text.upper()
+    if any(
+        token in upper
+        for token in (
+            "KOTA",
+            "KAB",
+            "KABUPATEN",
+            "PROV",
+            "PROVINSI",
+            "KEC",
+            "KECAMATAN",
+            "DESA",
+            "KEL",
+            "KELURAHAN",
+        )
+    ):
+        return False
+    return True
+
+
+def _extract_gender(lines: Iterable[dict], raw_text: str | None) -> str | None:
+    lines_list = list(lines)
+    value, _ = _extract_labeled_value(lines_list, _GENDER_LABEL_PATTERNS)
+    normalized = _normalize_gender(value)
+    if normalized:
+        return normalized
+    for text in _iter_text_candidates(lines_list, raw_text):
+        normalized = _normalize_gender(text)
+        if normalized:
+            return normalized
+    return None
+
+
+def _extract_religion(lines: Iterable[dict], raw_text: str | None) -> str | None:
+    lines_list = list(lines)
+    value, _ = _extract_labeled_value(lines_list, _RELIGION_LABEL_PATTERNS)
+    normalized = _normalize_religion(value)
+    if normalized:
+        return normalized
+    for text in _iter_text_candidates(lines_list, raw_text):
+        normalized = _normalize_religion(text)
+        if normalized:
+            return normalized
+    return None
+
+
+def _extract_labeled_value(
+    lines: list[dict], patterns: tuple[re.Pattern, ...]
+) -> tuple[str | None, float]:
+    for idx, line in enumerate(lines):
+        text = (line.get("text") or "").strip()
+        if not text:
+            continue
+        for pattern in patterns:
+            match = pattern.search(text)
+            if not match:
+                continue
+            value = _normalize_spaces(match.group(1))
+            if value:
+                return _strip_label_prefix(value), float(line.get("conf") or 0.0)
+            next_value = _next_non_label_line(lines, idx + 1)
+            if next_value and next_value[0]:
+                return next_value[0], next_value[1]
+    return None, 0.0
+
+
+def _iter_text_candidates(lines: Iterable[dict], raw_text: str | None) -> Iterable[str]:
+    yielded: set[str] = set()
+    for line in lines:
+        text = _normalize_spaces(line.get("text") or "")
+        if text and text not in yielded:
+            yielded.add(text)
+            yield text
+    if raw_text:
+        for text in raw_text.splitlines():
+            cleaned = _normalize_spaces(text)
+            if cleaned and cleaned not in yielded:
+                yielded.add(cleaned)
+                yield cleaned
+
+
+def _split_place_and_date(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    cleaned = _normalize_spaces(value)
+    cleaned = _strip_label_prefix(cleaned)
+    normalized_date, span = _extract_date_from_text(cleaned)
+    place = None
+    if span:
+        before = cleaned[: span[0]].strip(" ,:-")
+        after = cleaned[span[1] :].strip(" ,:-")
+        if before:
+            place = before
+        elif after:
+            place = after
+    elif cleaned and not _contains_label(cleaned):
+        place = cleaned
+    return _clean_place(place), normalized_date
+
+
+def _extract_place_from_date_text(text: str | None, name: str | None) -> str | None:
+    if not text:
+        return None
+    cleaned = _normalize_spaces(text)
+    match = _DATE_PATTERN.search(cleaned)
+    if not match:
+        return None
+    before = cleaned[: match.start()].strip()
+    candidates: list[str] = []
+    if ":" in before:
+        candidates.append(before.split(":")[-1])
+    if "," in before:
+        candidates.append(before.split(",")[0])
+    candidates.append(before)
+    for candidate in candidates:
+        candidate = _strip_birth_label_tokens(candidate)
+        candidate = _clean_place(candidate)
+        if not candidate:
+            continue
+        if _contains_label(candidate):
+            continue
+        if name and _is_similar_name(candidate, name):
+            continue
+        if _looks_like_person_name(candidate):
+            continue
+        return candidate
+    return None
+
+
+def _strip_birth_label_tokens(text: str) -> str:
+    cleaned = text
+    cleaned = re.sub(r"(?i)\\bTEMPAT\\b", " ", cleaned)
+    cleaned = re.sub(r"(?i)\\bTGL\\b", " ", cleaned)
+    cleaned = re.sub(r"(?i)\\bLAHIR\\b", " ", cleaned)
+    cleaned = re.sub(r"(?i)\\bTTL\\b", " ", cleaned)
+    cleaned = cleaned.replace("/", " ")
+    cleaned = cleaned.replace(":", " ")
+    return _normalize_spaces(cleaned)
+
+
+def _extract_date_from_text(text: str) -> tuple[str | None, tuple[int, int] | None]:
+    match = _DATE_PATTERN.search(text)
+    if not match:
+        return None, None
+    day = int(match.group(1))
+    month = int(match.group(2))
+    year = int(match.group(3))
+    normalized = _normalize_birth_date_values(day, month, year)
+    if not normalized:
+        return None, None
+    return normalized, match.span()
+
+
+def _normalize_birth_date(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized, _ = _extract_date_from_text(value)
+    return normalized
+
+
+def _normalize_birth_date_values(day: int, month: int, year: int) -> str | None:
+    if year < 100:
+        year = 1900 + year if year >= 30 else 2000 + year
+    if month < 1 or month > 12 or day < 1 or day > 31:
+        return None
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def _clean_place(value: str | None) -> str | None:
+    if not value:
+        return None
+    cleaned = re.sub(r"[^0-9A-Za-z\s.'-]", " ", value)
+    cleaned = _normalize_spaces(cleaned)
+    return cleaned or None
+
+
+def _normalize_gender(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = _normalize_token(value)
+    if not normalized:
+        return None
+    if "PEREM" in normalized or "WANITA" in normalized:
+        return _GENDER_CANONICAL["PEREMPUAN"]
+    if "LAKI" in normalized or "PRIA" in normalized:
+        return _GENDER_CANONICAL["LAKI-LAKI"]
+    best = _best_fuzzy_match(normalized, _GENDER_CANONICAL.keys(), 0.6)
+    if best:
+        return _GENDER_CANONICAL[best]
+    return None
+
+
+def _normalize_religion(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = _normalize_token(value)
+    if not normalized:
+        return None
+    if normalized in _RELIGION_ALIASES:
+        normalized = _RELIGION_ALIASES[normalized]
+    if normalized in _RELIGION_CANONICAL:
+        return _RELIGION_CANONICAL[normalized]
+    for canonical in _RELIGION_CANONICAL.keys():
+        if canonical in normalized:
+            return _RELIGION_CANONICAL[canonical]
+    best = _best_fuzzy_match(normalized, _RELIGION_CANONICAL.keys(), 0.65)
+    if best:
+        return _RELIGION_CANONICAL[best]
+    return None
+
+
+def _normalize_token(value: str) -> str:
+    cleaned = value.upper()
+    cleaned = cleaned.replace("0", "O").replace("1", "I").replace("|", "I")
+    cleaned = re.sub(r"[^A-Z]", "", cleaned)
+    return cleaned
+
+
+def _best_fuzzy_match(
+    value: str, choices: Iterable[str], threshold: float
+) -> str | None:
+    best_choice = None
+    best_ratio = threshold
+    for choice in choices:
+        ratio = SequenceMatcher(None, value, choice).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_choice = choice
+    return best_choice
+
+
 def _next_non_label_line(lines: list[dict], start: int) -> tuple[str | None, float]:
     for line in lines[start:]:
         text = _strip_label_prefix(_normalize_spaces(line.get("text") or ""))
@@ -1245,7 +1691,7 @@ def _next_non_label_line(lines: list[dict], start: int) -> tuple[str | None, flo
 
 def _contains_label(text: str) -> bool:
     upper = text.upper()
-    for label in _LABEL_EXCLUDES:
+    for label in _KNOWN_LABELS:
         if label in upper:
             return True
     return False
