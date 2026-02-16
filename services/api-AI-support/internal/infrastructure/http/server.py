@@ -17,6 +17,8 @@ class HttpServer:
         bind: str,
         ktp_ocr_extractor=None,
         ktp_ocr_professional_extractor=None,
+        face_match_fn=None,
+        face_max_upload_bytes: int | None = None,
     ):
         host, port = _parse_bind(bind)
         handler = type(
@@ -31,6 +33,10 @@ class HttpServer:
                 )
                 if ktp_ocr_professional_extractor is not None
                 else None,
+                "face_match_fn": staticmethod(face_match_fn)
+                if face_match_fn is not None
+                else None,
+                "face_max_upload_bytes": face_max_upload_bytes,
             },
         )
         self._server = ThreadingHTTPServer((host, port), handler)

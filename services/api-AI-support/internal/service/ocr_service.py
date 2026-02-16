@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import functools
+import importlib
+import importlib.util
 import inspect
 import logging
 import os
@@ -15,24 +17,29 @@ from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
-try:
-    import numpy as np  # type: ignore
-
-    _NUMPY_AVAILABLE = True
-except Exception as exc:  # pragma: no cover - fallback when numpy is missing
-    np = None  # type: ignore
-    _NUMPY_AVAILABLE = False
-    logger.warning("numpy not available for OCR processing: %s", exc)
 from pkg.types.config import AppConfig
 
-try:
-    import cv2  # type: ignore
+_NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
+_CV2_AVAILABLE = importlib.util.find_spec("cv2") is not None
 
-    _CV2_AVAILABLE = True
-except Exception as exc:  # pragma: no cover - fallback when cv2 is missing
-    cv2 = None  # type: ignore
-    _CV2_AVAILABLE = False
-    logger.warning("cv2 not available for OCR processing: %s", exc)
+
+class _LazyModule:
+    def __init__(self, name: str):
+        self._name = name
+        self._module = None
+
+    def _load(self):
+        if self._module is None:
+            logger.debug("Lazy import module=%s", self._name)
+            self._module = importlib.import_module(self._name)
+        return self._module
+
+    def __getattr__(self, item):
+        return getattr(self._load(), item)
+
+
+np = _LazyModule("numpy") if _NUMPY_AVAILABLE else None  # type: ignore
+cv2 = _LazyModule("cv2") if _CV2_AVAILABLE else None  # type: ignore
 
 _LABEL_EXCLUDES = {
     "NIK",
