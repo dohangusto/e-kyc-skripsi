@@ -37,17 +37,21 @@ def build_runtime() -> HttpServer:
     logger.info(
         "Boot: face config model=%s threshold=%s max_side=%s max_upload=%s "
         "min_area_ktp=%s min_area_selfie=%s min_blur_ktp=%s min_blur_selfie=%s "
-        "brightness=[%s,%s] allow_multi=%s media_storage=%s",
+        "brightness=[%s,%s] upscale_threshold=%s min_face_size=%s clamp=%s "
+        "allow_multi=%s media_storage=%s",
         config.insightface_model_pack,
         config.face_match_threshold,
         config.face_max_image_side,
         config.face_max_upload_bytes,
-        config.face_min_area_ratio_ktp,
+        config.face_ktp_min_area_ratio,
         config.face_min_area_ratio_selfie,
         config.face_min_blur_ktp,
         config.face_min_blur_selfie,
         config.face_brightness_min,
         config.face_brightness_max,
+        config.face_upscale_threshold,
+        config.face_min_size,
+        config.face_similarity_clamp,
         config.face_allow_multi_select,
         config.media_storage_url,
     )

@@ -51,12 +51,15 @@ class TestFaceMatchService(unittest.TestCase):
             model_pack="buffalo_s",
             max_image_side=1600,
             max_upload_bytes=6_000_000,
-            min_area_ratio_ktp=0.02,
+            ktp_min_area_ratio=0.02,
             min_area_ratio_selfie=0.02,
             min_blur_ktp=80.0,
             min_blur_selfie=80.0,
             brightness_min=40.0,
             brightness_max=220.0,
+            upscale_threshold=0.05,
+            min_face_size=160,
+            similarity_clamp=True,
             allow_multi_select=False,
             debug_dir=Path("/tmp/api-ai-support-face"),
             match_threshold=0.78,
@@ -151,6 +154,38 @@ class TestFaceMatchService(unittest.TestCase):
         self.assertEqual(result["status"], svc.STATUS_OK)
         self.assertAlmostEqual(result["match_score"], 1.0, places=3)
         self.assertEqual(result["match_score_100"], 100)
+
+    def test_l2_normalize(self):
+        vec = np.array([3.0, 4.0], dtype=np.float32)
+        normed = svc._l2_normalize(vec)
+        self.assertAlmostEqual(float(np.linalg.norm(normed)), 1.0, places=6)
+
+    def test_similarity_identical(self):
+        vec = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        sim = svc._cosine_similarity(svc._l2_normalize(vec), svc._l2_normalize(vec))
+        self.assertAlmostEqual(sim, 1.0, places=5)
+
+    def test_similarity_orthogonal(self):
+        vec_a = np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        vec_b = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+        sim = svc._cosine_similarity(svc._l2_normalize(vec_a), svc._l2_normalize(vec_b))
+        self.assertAlmostEqual(sim, 0.0, places=5)
+
+    def test_select_face_for_ktp(self):
+        settings = self._settings()
+        image = np.zeros((1000, 1000, 3), dtype=np.uint8)
+        face_small = SimpleNamespace(
+            bbox=np.array([0.0, 0.0, 100.0, 100.0], dtype=np.float32),
+            det_score=0.99,
+            embedding=np.array([1.0, 0.0, 0.0], dtype=np.float32),
+        )
+        face_big = SimpleNamespace(
+            bbox=np.array([0.0, 0.0, 200.0, 200.0], dtype=np.float32),
+            det_score=0.5,
+            embedding=np.array([1.0, 0.0, 0.0], dtype=np.float32),
+        )
+        selected = svc._select_face_for_ktp([face_small, face_big], image, settings)
+        self.assertIs(selected, face_big)
 
 
 if __name__ == "__main__":

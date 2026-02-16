@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import logging
-import math
 import threading
 import time
 from dataclasses import dataclass
@@ -50,12 +49,15 @@ class _FaceSettings:
     model_pack: str
     max_image_side: int
     max_upload_bytes: int
-    min_area_ratio_ktp: float
+    ktp_min_area_ratio: float
     min_area_ratio_selfie: float
     min_blur_ktp: float
     min_blur_selfie: float
     brightness_min: float
     brightness_max: float
+    upscale_threshold: float
+    min_face_size: int
+    similarity_clamp: bool
     allow_multi_select: bool
     debug_dir: Path
     match_threshold: float
@@ -152,7 +154,7 @@ def match_face_ktp_selfie(
         detect_start = time.monotonic()
         ktp_faces = analyzer.detect(ktp_proc)
         selfie_faces = analyzer.detect(selfie_proc)
-        detect_embed_ms = _elapsed_ms(detect_start)
+        detection_ms = _elapsed_ms(detect_start)
 
         ktp_info = _build_face_info(ktp_faces)
         selfie_info = _build_face_info(selfie_faces)
@@ -169,13 +171,11 @@ def match_face_ktp_selfie(
                 selfie_media_ref=selfie_media_ref,
                 ktp_info=ktp_info,
                 selfie_info=selfie_info,
-                timing_ms=_timing(start, detect_embed_ms),
+                timing_ms=_timing(start, detection_ms, 0, 0),
                 debug_artifacts=debug_artifacts,
             )
 
-        if (
-            len(ktp_faces) > 1 or len(selfie_faces) > 1
-        ) and not settings.allow_multi_select:
+        if len(selfie_faces) > 1 and not settings.allow_multi_select:
             status = STATUS_MULTIPLE
             reasons = [STATUS_MULTIPLE]
             logger.info("Face match multiple faces request_id=%s", request_id)
@@ -187,19 +187,44 @@ def match_face_ktp_selfie(
                 selfie_media_ref=selfie_media_ref,
                 ktp_info=ktp_info,
                 selfie_info=selfie_info,
-                timing_ms=_timing(start, detect_embed_ms),
+                timing_ms=_timing(start, detection_ms, 0, 0),
                 debug_artifacts=debug_artifacts,
             )
 
-        ktp_face = select_best_face(ktp_faces)
+        if len(ktp_faces) > 1:
+            logger.warning(
+                "Multiple faces detected in KTP request_id=%s count=%s",
+                request_id,
+                len(ktp_faces),
+            )
+        ktp_face = _select_face_for_ktp(ktp_faces, ktp_proc, settings)
+        if ktp_face is None:
+            status = STATUS_NO_FACE
+            reasons = [STATUS_NO_FACE]
+            logger.warning("KTP face rejected by validation request_id=%s", request_id)
+            return _build_response(
+                status=status,
+                reasons=reasons,
+                match_score=0.0,
+                ktp_media_ref=ktp_media_ref,
+                selfie_media_ref=selfie_media_ref,
+                ktp_info=ktp_info,
+                selfie_info=selfie_info,
+                timing_ms=_timing(start, detection_ms, 0, 0),
+                debug_artifacts=debug_artifacts,
+            )
+
         selfie_face = select_best_face(selfie_faces)
         _update_selected_face(ktp_info, ktp_face)
         _update_selected_face(selfie_info, selfie_face)
 
+        _log_face_metrics("ktp", ktp_face, ktp_proc)
+        _log_face_metrics("selfie", selfie_face, selfie_proc)
+
         ktp_quality, ktp_reasons, ktp_face_crop = _compute_quality(
             ktp_proc,
             ktp_face,
-            settings.min_area_ratio_ktp,
+            settings.ktp_min_area_ratio,
             settings.min_blur_ktp,
             settings.brightness_min,
             settings.brightness_max,
@@ -240,18 +265,71 @@ def match_face_ktp_selfie(
             if selfie_face_crop is not None:
                 _write_debug_image(debug_artifacts, "selfie_face", selfie_face_crop)
 
-        ktp_embedding = _extract_embedding(ktp_face)
+        if reasons:
+            logger.warning(
+                "Face match quality warnings request_id=%s reasons=%s",
+                request_id,
+                reasons,
+            )
+
+        ktp_face_for_embedding = ktp_face
+        ktp_embed_image = ktp_proc
+        ktp_area_ratio = _face_area_ratio(_face_bbox(ktp_face), ktp_proc)
+        if ktp_area_ratio < settings.upscale_threshold:
+            upscaled = _upscale_small_face(ktp_proc, ktp_face, settings.min_face_size)
+            if upscaled is not None:
+                detect_up_start = time.monotonic()
+                up_faces = analyzer.detect(upscaled)
+                detection_ms += _elapsed_ms(detect_up_start)
+                if up_faces:
+                    ktp_face_for_embedding = select_best_face(up_faces)
+                    ktp_embed_image = upscaled
+                    logger.debug(
+                        "KTP face upscaled for embedding request_id=%s area_ratio=%s",
+                        request_id,
+                        ktp_area_ratio,
+                    )
+
+        embed_start = time.monotonic()
+        ktp_embedding = _extract_embedding(ktp_face_for_embedding)
         selfie_embedding = _extract_embedding(selfie_face)
-        detect_embed_ms = _elapsed_ms(detect_start)
+        embedding_ms = _elapsed_ms(embed_start)
 
         if ktp_embedding is None or selfie_embedding is None:
             raise ValueError("EMBEDDING_NOT_AVAILABLE")
 
         ktp_norm = _l2_normalize(ktp_embedding)
         selfie_norm = _l2_normalize(selfie_embedding)
-        similarity = _cosine_similarity(ktp_norm, selfie_norm)
-        match_score = max(0.0, min(1.0, similarity))
+        ktp_norm_value = float(np.linalg.norm(ktp_embedding))
+        selfie_norm_value = float(np.linalg.norm(selfie_embedding))
+
+        sim_start = time.monotonic()
+        similarity_raw = _cosine_similarity(ktp_norm, selfie_norm)
+        similarity_ms = _elapsed_ms(sim_start)
+
+        if settings.similarity_clamp:
+            match_score = max(0.0, min(1.0, similarity_raw))
+        else:
+            match_score = similarity_raw
         match_score_100 = int(round(match_score * 100))
+
+        logger.debug(
+            "Face match similarity raw=%s norm_ktp=%s norm_selfie=%s",
+            similarity_raw,
+            ktp_norm_value,
+            selfie_norm_value,
+        )
+
+        if debug and debug_artifacts is not None:
+            debug_artifacts["raw_similarity"] = similarity_raw
+            debug_artifacts["ktp_embedding_norm"] = ktp_norm_value
+            debug_artifacts["selfie_embedding_norm"] = selfie_norm_value
+            ktp_aligned = _aligned_crop(ktp_embed_image, ktp_face_for_embedding)
+            selfie_aligned = _aligned_crop(selfie_proc, selfie_face)
+            if ktp_aligned is not None:
+                _write_debug_image(debug_artifacts, "ktp_aligned", ktp_aligned)
+            if selfie_aligned is not None:
+                _write_debug_image(debug_artifacts, "selfie_aligned", selfie_aligned)
 
         status = STATUS_OK
         response = _build_response(
@@ -263,15 +341,9 @@ def match_face_ktp_selfie(
             selfie_media_ref=selfie_media_ref,
             ktp_info=ktp_info,
             selfie_info=selfie_info,
-            timing_ms=_timing(start, detect_embed_ms),
+            timing_ms=_timing(start, detection_ms, embedding_ms, similarity_ms),
             debug_artifacts=debug_artifacts,
         )
-        if reasons:
-            logger.warning(
-                "Face match quality warnings request_id=%s reasons=%s",
-                request_id,
-                reasons,
-            )
         logger.info(
             "Face match completed request_id=%s status=%s score=%s",
             request_id,
@@ -289,7 +361,7 @@ def match_face_ktp_selfie(
             selfie_media_ref=selfie_media_ref,
             ktp_info=None,
             selfie_info=None,
-            timing_ms=_timing(start, 0),
+            timing_ms=_timing(start, 0, 0, 0),
             debug_artifacts=debug_artifacts,
         )
 
@@ -305,12 +377,15 @@ def _load_face_settings() -> _FaceSettings:
                 model_pack=config.insightface_model_pack,
                 max_image_side=config.face_max_image_side,
                 max_upload_bytes=config.face_max_upload_bytes,
-                min_area_ratio_ktp=config.face_min_area_ratio_ktp,
+                ktp_min_area_ratio=config.face_ktp_min_area_ratio,
                 min_area_ratio_selfie=config.face_min_area_ratio_selfie,
                 min_blur_ktp=config.face_min_blur_ktp,
                 min_blur_selfie=config.face_min_blur_selfie,
                 brightness_min=config.face_brightness_min,
                 brightness_max=config.face_brightness_max,
+                upscale_threshold=config.face_upscale_threshold,
+                min_face_size=config.face_min_size,
+                similarity_clamp=config.face_similarity_clamp,
                 allow_multi_select=config.face_allow_multi_select,
                 debug_dir=Path(config.face_debug_dir),
                 match_threshold=config.face_match_threshold,
@@ -387,6 +462,48 @@ def _update_selected_face(info: dict, face: Any) -> None:
     }
 
 
+def _select_face_for_ktp(
+    faces: list, image: np.ndarray, settings: _FaceSettings
+) -> Any | None:
+    if not faces:
+        return None
+    candidates = []
+    for face in faces:
+        bbox = _face_bbox(face)
+        aspect = _bbox_aspect_ratio(bbox)
+        if aspect < 0.75 or aspect > 1.5:
+            continue
+        area_ratio = _face_area_ratio(bbox, image)
+        candidates.append((face, area_ratio))
+
+    if not candidates:
+        logger.debug("KTP face selection no candidates within aspect ratio")
+        return None
+
+    if len(candidates) == 1:
+        return candidates[0][0]
+
+    filtered = [c for c in candidates if c[1] >= settings.ktp_min_area_ratio]
+    pool = filtered if filtered else candidates
+    selected = max(pool, key=lambda c: _face_score(c[0]))[0]
+    return selected
+
+
+def _log_face_metrics(label: str, face: Any, image: np.ndarray) -> None:
+    bbox = _face_bbox(face)
+    width = max(0, bbox[2] - bbox[0])
+    height = max(0, bbox[3] - bbox[1])
+    area_ratio = _face_area_ratio(bbox, image)
+    logger.debug(
+        "Face metrics label=%s bbox=%s size=%sx%s area_ratio=%s",
+        label,
+        bbox,
+        width,
+        height,
+        area_ratio,
+    )
+
+
 def _compute_quality(
     image: np.ndarray,
     face: Any,
@@ -452,6 +569,24 @@ def _face_bbox(face: Any) -> list[int]:
     return [int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1))]
 
 
+def _face_score(face: Any) -> float:
+    bbox = _face_bbox(face)
+    area = _bbox_area(bbox)
+    det_score = float(getattr(face, "det_score", 0.0) or 0.0)
+    return area * det_score
+
+
+def _bbox_area(bbox: list[int]) -> float:
+    x0, y0, x1, y1 = bbox
+    return float(max(0, x1 - x0) * max(0, y1 - y0))
+
+
+def _bbox_aspect_ratio(bbox: list[int]) -> float:
+    width = max(1, bbox[2] - bbox[0])
+    height = max(1, bbox[3] - bbox[1])
+    return float(width) / float(height)
+
+
 def _face_area_ratio(bbox: list[int], image: np.ndarray) -> float:
     x0, y0, x1, y1 = bbox
     area = max(0, x1 - x0) * max(0, y1 - y0)
@@ -476,6 +611,39 @@ def _crop_with_padding(
     return image[y0:y1, x0:x1]
 
 
+def _upscale_small_face(
+    image: np.ndarray, face: Any, min_size: int
+) -> np.ndarray | None:
+    bbox = _face_bbox(face)
+    crop = _crop_with_padding(image, bbox, 0.2)
+    if crop is None or crop.size == 0:
+        return None
+    height, width = crop.shape[:2]
+    max_side = max(height, width)
+    target = max(min_size, max_side)
+    if target == max_side:
+        return crop
+    scale = target / float(max_side)
+    new_w = max(1, int(round(width * scale)))
+    new_h = max(1, int(round(height * scale)))
+    resized = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+    return resized
+
+
+def _aligned_crop(image: np.ndarray, face: Any) -> np.ndarray | None:
+    kps = getattr(face, "kps", None)
+    if kps is None:
+        return None
+    try:
+        from insightface.utils.face_align import norm_crop
+    except Exception:
+        return None
+    try:
+        return norm_crop(image, kps)
+    except Exception:
+        return None
+
+
 def _extract_embedding(face: Any) -> np.ndarray | None:
     if hasattr(face, "normed_embedding") and face.normed_embedding is not None:
         return face.normed_embedding
@@ -486,23 +654,25 @@ def _extract_embedding(face: Any) -> np.ndarray | None:
 
 def _l2_normalize(vec: np.ndarray) -> np.ndarray:
     norm = float(np.linalg.norm(vec))
-    if norm == 0 or math.isclose(norm, 0.0):
-        return vec
-    return vec / norm
+    return vec / (norm + 1e-12)
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    denom = float(np.linalg.norm(a) * np.linalg.norm(b))
-    if denom == 0 or math.isclose(denom, 0.0):
-        return 0.0
-    similarity = float(np.dot(a, b) / denom)
-    return max(min(similarity, 1.0), -1.0)
+    return float(np.dot(a, b))
 
 
-def _timing(start: float, detect_embed_ms: int) -> dict:
+def _timing(
+    start: float,
+    detection_ms: int,
+    embedding_ms: int,
+    similarity_ms: int,
+) -> dict:
     return {
         "total": _elapsed_ms(start),
-        "detect_embed": detect_embed_ms,
+        "detect_embed": detection_ms + embedding_ms,
+        "detection_time_ms": detection_ms,
+        "embedding_time_ms": embedding_ms,
+        "similarity_time_ms": similarity_ms,
     }
 
 

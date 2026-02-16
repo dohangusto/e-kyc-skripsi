@@ -20,7 +20,9 @@ class InsightFaceAnalyzer:
             providers=["CPUExecutionProvider"],
         )
         self._app.prepare(ctx_id=-1, det_size=(det_size, det_size))
-        logger.info("InsightFace initialized model=%s det_size=%s", model_name, det_size)
+        logger.info(
+            "InsightFace initialized model=%s det_size=%s", model_name, det_size
+        )
 
     def detect(self, image) -> list:
         faces = self._app.get(image)
@@ -29,14 +31,14 @@ class InsightFaceAnalyzer:
 
 
 def select_best_face(faces: Iterable) -> object:
-    def _score(face) -> tuple[float, float]:
+    def _score(face) -> float:
         det_score = getattr(face, "det_score", 0.0) or 0.0
         bbox = getattr(face, "bbox", None)
         area = 0.0
         if bbox is not None and len(bbox) >= 4:
             x0, y0, x1, y1 = bbox[:4]
             area = max(0.0, float(x1 - x0)) * max(0.0, float(y1 - y0))
-        return float(det_score), area
+        return float(det_score) * area
 
     return max(faces, key=_score)
 

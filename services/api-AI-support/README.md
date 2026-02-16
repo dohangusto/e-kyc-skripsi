@@ -37,7 +37,8 @@ Key environment variables (see `pkg/types/config.py` for defaults):
 - `INSIGHTFACE_MODEL_PACK`
 - `FACE_MAX_IMAGE_SIDE`
 - `FACE_MAX_UPLOAD_BYTES`
-- `FACE_MIN_AREA_RATIO_KTP` (fallback ke `FACE_MIN_AREA_RATIO`)
+- `FACE_KTP_MIN_AREA_RATIO` (fallback ke `FACE_MIN_AREA_RATIO_KTP` -> `FACE_MIN_AREA_RATIO`)
+- `FACE_MIN_AREA_RATIO_KTP`
 - `FACE_MIN_AREA_RATIO_SELFIE` (fallback ke `FACE_MIN_AREA_RATIO`)
 - `FACE_MIN_AREA_RATIO`
 - `FACE_MIN_BLUR_KTP` (fallback ke `FACE_MIN_BLUR`)
@@ -45,6 +46,9 @@ Key environment variables (see `pkg/types/config.py` for defaults):
 - `FACE_MIN_BLUR`
 - `FACE_BRIGHTNESS_MIN`
 - `FACE_BRIGHTNESS_MAX`
+- `FACE_UPSCALE_THRESHOLD`
+- `FACE_MIN_SIZE`
+- `FACE_SIMILARITY_CLAMP`
 - `FACE_ALLOW_MULTI_SELECT`
 - `FACE_DEBUG_DIR`
 - `OCR_DEBUG_DIR`
@@ -94,5 +98,4 @@ Recommended when running locally on macOS.
    ```bash
    python services/api-AI-support/cmd/main.py
    ```
-
 

@@ -12,12 +12,15 @@ class AppConfig:
     insightface_model_pack: str
     face_max_image_side: int
     face_max_upload_bytes: int
-    face_min_area_ratio_ktp: float
+    face_ktp_min_area_ratio: float
     face_min_area_ratio_selfie: float
     face_min_blur_ktp: float
     face_min_blur_selfie: float
     face_brightness_min: float
     face_brightness_max: float
+    face_upscale_threshold: float
+    face_min_size: int
+    face_similarity_clamp: bool
     face_allow_multi_select: bool
     face_debug_dir: str
     ocr_debug_dir: str
@@ -55,9 +58,13 @@ class AppConfig:
             ),
             face_max_image_side=int(os.getenv("FACE_MAX_IMAGE_SIDE", "2400")),
             face_max_upload_bytes=int(os.getenv("FACE_MAX_UPLOAD_BYTES", "6000000")),
-            face_min_area_ratio_ktp=float(
+            face_ktp_min_area_ratio=float(
                 os.getenv(
-                    "FACE_MIN_AREA_RATIO_KTP", os.getenv("FACE_MIN_AREA_RATIO", "0.01")
+                    "FACE_KTP_MIN_AREA_RATIO",
+                    os.getenv(
+                        "FACE_MIN_AREA_RATIO_KTP",
+                        os.getenv("FACE_MIN_AREA_RATIO", "0.01"),
+                    ),
                 )
             ),
             face_min_area_ratio_selfie=float(
@@ -74,6 +81,9 @@ class AppConfig:
             ),
             face_brightness_min=float(os.getenv("FACE_BRIGHTNESS_MIN", "40")),
             face_brightness_max=float(os.getenv("FACE_BRIGHTNESS_MAX", "220")),
+            face_upscale_threshold=float(os.getenv("FACE_UPSCALE_THRESHOLD", "0.05")),
+            face_min_size=int(os.getenv("FACE_MIN_SIZE", "160")),
+            face_similarity_clamp=_env_bool("FACE_SIMILARITY_CLAMP", True),
             face_allow_multi_select=_env_bool("FACE_ALLOW_MULTI_SELECT", False),
             face_debug_dir=os.getenv("FACE_DEBUG_DIR", "/tmp/api-ai-support-face"),
             ocr_debug_dir=os.getenv("OCR_DEBUG_DIR", "/tmp/api-ai-support-ocr"),
