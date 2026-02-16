@@ -1,31 +1,28 @@
 from __future__ import annotations
 
+import logging
 from http.server import ThreadingHTTPServer
 from socket import SOCK_STREAM, getaddrinfo
 from threading import Thread
 from typing import Tuple
 
-from internal.domain.health import HealthServicePort
-from internal.domain.ocr import OcrServicePort
-from internal.infrastructure.http.health_handler import HealthRequestHandler
+from internal.infrastructure.http.ocr_http_handler import OcrHttpHandler
+
+logger = logging.getLogger(__name__)
 
 
 class HttpServer:
     def __init__(
         self,
         bind: str,
-        service: HealthServicePort,
-        ocr_service: OcrServicePort | None = None,
         ktp_ocr_extractor=None,
         ktp_ocr_professional_extractor=None,
     ):
         host, port = _parse_bind(bind)
         handler = type(
-            "BoundHealthRequestHandler",
-            (HealthRequestHandler,),
+            "BoundOcrHttpHandler",
+            (OcrHttpHandler,),
             {
-                "service": service,
-                "ocr_service": ocr_service,
                 "ktp_ocr_extractor": staticmethod(ktp_ocr_extractor)
                 if ktp_ocr_extractor is not None
                 else None,
@@ -41,15 +38,20 @@ class HttpServer:
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
+            logger.debug("HTTP server already running")
             return
+        logger.info("HTTP server starting")
         self._thread = Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
+        logger.info("HTTP server ready")
 
     def wait(self) -> None:
         if self._thread:
+            logger.debug("HTTP server waiting for thread")
             self._thread.join()
 
     def stop(self) -> None:
+        logger.info("HTTP server stopping")
         self._server.shutdown()
         self._server.server_close()
         if self._thread:
@@ -65,4 +67,5 @@ def _parse_bind(bind: str) -> Tuple[str, int]:
     if not resolved:
         raise ValueError("unable to resolve bind")
     _, _, _, _, sockaddr = resolved[0]
+    logger.debug("HTTP bind resolved host=%s port=%s", sockaddr[0], sockaddr[1])
     return sockaddr[0], sockaddr[1]

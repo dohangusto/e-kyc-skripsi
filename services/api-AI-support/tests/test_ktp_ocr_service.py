@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
-from internal.service import ktp_ocr_service as svc
+from internal.service import ocr_service as svc
 
 
 class TestKtpOcrParsing(unittest.TestCase):
@@ -80,7 +80,7 @@ class TestOcrEngineInit(unittest.TestCase):
             svc._reset_ocr_engine_for_tests()
             dummy_engine = object()
             with mock.patch(
-                "internal.service.ktp_ocr_service._create_paddle_ocr",
+                "internal.service.ocr_service._create_paddle_ocr",
                 return_value=dummy_engine,
             ) as factory:
                 first = svc._get_ocr_engine(settings)

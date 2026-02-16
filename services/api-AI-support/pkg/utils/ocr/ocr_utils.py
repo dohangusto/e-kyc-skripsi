@@ -2,45 +2,32 @@ from __future__ import annotations
 
 import cgi
 import json
+import logging
+from functools import wraps
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 from typing import Any, Callable
-from urllib.parse import parse_qs, urlparse
+
+logger = logging.getLogger(__name__)
 
 
-def handle_ktp_ocr(
-    handler: BaseHTTPRequestHandler,
-    extractor: Callable[..., dict] | None,
-) -> None:
-    if extractor is None:
-        handler.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
-        handler.end_headers()
-        return
-    parsed = urlparse(handler.path)
-    image, _, fields = read_image_with_fields(handler)
-    if not image:
-        _send_json(handler, HTTPStatus.BAD_REQUEST, {"error": "MISSING_IMAGE"})
-        return
-    params = parse_qs(parsed.query)
-    request_id = (
-        _get_first(fields, "request_id")
-        or _get_first(params, "request_id")
-        or handler.headers.get("X-Request-Id")
-    )
-    ground_truth_source = fields or _flatten_params(params)
-    ground_truth, error = _parse_ground_truth(ground_truth_source)
-    if error:
-        _send_json(handler, HTTPStatus.BAD_REQUEST, {"error": error})
-        return
-    try:
-        result = extractor(image, request_id=request_id, ground_truth=ground_truth)
-    except TypeError:
-        result = extractor(image)
-    status = HTTPStatus.OK if result.get("error") is None else HTTPStatus.BAD_REQUEST
-    _send_json(handler, status, result)
+def _log_call(fn: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        logger.debug("ocr_utils.%s called", fn.__name__)
+        try:
+            result = fn(*args, **kwargs)
+            logger.debug("ocr_utils.%s completed", fn.__name__)
+            return result
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("ocr_utils.%s failed: %s", fn.__name__, exc)
+            raise
+
+    return wrapper
 
 
+@_log_call
 def read_image(handler: BaseHTTPRequestHandler) -> tuple[bytes | None, str | None]:
     content_type = handler.headers.get("Content-Type", "")
     if content_type.startswith("multipart/form-data"):
@@ -66,6 +53,7 @@ def read_image(handler: BaseHTTPRequestHandler) -> tuple[bytes | None, str | Non
     return data, content_type or None
 
 
+@_log_call
 def read_image_with_fields(
     handler: BaseHTTPRequestHandler,
 ) -> tuple[bytes | None, str | None, dict[str, str]]:
@@ -95,7 +83,8 @@ def read_image_with_fields(
     return data, content_type or None, {}
 
 
-def _send_json(
+@_log_call
+def send_json(
     handler: BaseHTTPRequestHandler, status: HTTPStatus, payload: dict[str, Any]
 ) -> None:
     body = json.dumps(payload).encode("utf-8")
@@ -106,7 +95,8 @@ def _send_json(
     handler.wfile.write(body)
 
 
-def _parse_ground_truth(fields: dict[str, str]) -> tuple[dict | None, str | None]:
+@_log_call
+def parse_ground_truth(fields: dict[str, str]) -> tuple[dict | None, str | None]:
     if not fields:
         return None, None
     if "ground_truth" in fields:
@@ -125,7 +115,20 @@ def _parse_ground_truth(fields: dict[str, str]) -> tuple[dict | None, str | None
     return (ground_truth or None), None
 
 
-def _get_first(container: dict, key: str) -> str | None:
+@_log_call
+def parse_bool(value: str | None, default: bool) -> bool:
+    if value is None:
+        return default
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
+@_log_call
+def get_first(container: dict, key: str) -> str | None:
     if isinstance(container, dict) and key in container:
         value = container[key]
         if isinstance(value, list):
@@ -134,7 +137,8 @@ def _get_first(container: dict, key: str) -> str | None:
     return None
 
 
-def _flatten_params(params: dict[str, list[str]]) -> dict[str, str]:
+@_log_call
+def flatten_params(params: dict[str, list[str]]) -> dict[str, str]:
     flattened: dict[str, str] = {}
     for key, values in params.items():
         if values:
