@@ -2,8 +2,20 @@ import { useState } from "react";
 import { auditUsecases } from "@/shared/lib/usecases";
 import { piiJustifications } from "@/shared/constants/pii-justifications";
 import { Button } from "@/presentation/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/presentation/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/presentation/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/presentation/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/presentation/components/ui/select";
 import { Textarea } from "@/presentation/components/ui/textarea";
 import { toast } from "sonner";
 import type { Role } from "@/domain/types";
@@ -17,6 +29,7 @@ type PiiRevealGateProps = {
   fieldKey: string;
   actor: { role: Role; name: string };
   allowReveal: boolean;
+  policyDisabled?: boolean;
 };
 
 const getSessionKey = (caseId: string, fieldKey: string) =>
@@ -30,6 +43,7 @@ export const PiiRevealGate = ({
   fieldKey,
   actor,
   allowReveal,
+  policyDisabled = false,
 }: PiiRevealGateProps) => {
   const [open, setOpen] = useState(false);
   const [reasonCode, setReasonCode] = useState("");
@@ -47,7 +61,9 @@ export const PiiRevealGate = ({
       actorName: actor.name,
       action: "PII_REVEALED",
       reasonCode,
-      notes: notes.trim() ? `field=${fieldKey}; ${notes.trim()}` : `field=${fieldKey}`,
+      notes: notes.trim()
+        ? `field=${fieldKey}; ${notes.trim()}`
+        : `field=${fieldKey}`,
       createdAt: new Date().toISOString(),
     };
 
@@ -60,15 +76,23 @@ export const PiiRevealGate = ({
     toast.success("PII revealed (logged)");
   };
 
+  const canReveal = allowReveal && !policyDisabled;
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="font-mono text-sm">
-        {allowReveal && revealed ? fullValue : maskedValue}
+        {canReveal && revealed ? fullValue : maskedValue}
       </span>
       {allowReveal ? (
-        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-          {revealed ? "Reveal" : "Reveal"}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => (canReveal ? setOpen(true) : null)}
+          disabled={!canReveal}
+          title={!canReveal ? "Disabled by policy" : undefined}
+        >
+          Reveal
         </Button>
       ) : null}
       <Dialog open={open} onOpenChange={setOpen}>

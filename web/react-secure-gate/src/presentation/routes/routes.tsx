@@ -11,6 +11,7 @@ import { AuditPage } from "@/presentation/pages/audit-page";
 import { NotFoundPage } from "@/presentation/components/not-found-page";
 import { QCPage } from "@/presentation/pages/qc-page";
 import { QCDetailPage } from "@/presentation/pages/qc-detail-page";
+import { AnalyticsPage } from "@/presentation/pages/analytics-page";
 
 export const routes = [
   {
@@ -55,6 +56,14 @@ export const routes = [
         element: (
           <RoleGuard allow={["VERIFIER", "SUPERVISOR"]}>
             <AuditPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "analytics",
+        element: (
+          <RoleGuard allow={["VERIFIER", "SUPERVISOR"]}>
+            <AnalyticsPage />
           </RoleGuard>
         ),
       },

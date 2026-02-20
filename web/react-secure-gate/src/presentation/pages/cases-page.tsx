@@ -33,6 +33,7 @@ import { Checkbox } from "@/presentation/components/ui/checkbox";
 import { caseUsecases } from "@/shared/lib/usecases";
 import { maskNik } from "@/shared/lib/mask-nik";
 import { useRole } from "@/presentation/components/role-context";
+import { useFeatureFlags } from "@/presentation/components/feature-flags-context";
 import { Badge } from "@/presentation/components/ui/badge";
 import {
   Dialog,
@@ -129,7 +130,15 @@ export const CasesPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { role, actorName } = useRole();
+  const { flags } = useFeatureFlags();
   const initial = useMemo(() => {
+    if (!flags.enableSavedViews) {
+      return {
+        loaded: [],
+        defaultState: buildState({}),
+        defaultViewId: null,
+      };
+    }
     const loaded = loadSavedViews(role);
     const defaultView = loaded.find((view) => view.isDefault);
     return {
@@ -137,7 +146,7 @@ export const CasesPage = () => {
       defaultState: buildState(defaultView?.state ?? {}),
       defaultViewId: defaultView?.id ?? null,
     };
-  }, [role]);
+  }, [flags.enableSavedViews, role]);
 
   const [search, setSearch] = useState(initial.defaultState.query);
   const [debouncedSearch, setDebouncedSearch] = useState(
@@ -341,6 +350,11 @@ export const CasesPage = () => {
   };
 
   const canAct = role === "VERIFIER";
+  const showSavedViews = flags.enableSavedViews;
+  const showBulkTriage = flags.enableBulkTriage && canAct;
+  const gridCols = showBulkTriage
+    ? "grid-cols-[0.4fr_2fr_1.5fr_1.5fr_1fr_1fr_1.2fr_1.2fr_1fr_1fr]"
+    : "grid-cols-[2fr_1.5fr_1.5fr_1fr_1fr_1.2fr_1.2fr_1fr_1fr]";
 
   return (
     <div className="space-y-6">
@@ -349,39 +363,41 @@ export const CasesPage = () => {
         description="Queue for eligibility and eKYC review"
         actions={
           <div className="flex items-center gap-2">
-            <Select
-              value={activeViewId ?? "ALL"}
-              onValueChange={(value) => {
-                if (value === "ALL") {
-                  clearFilters();
-                  return;
-                }
-                if (value === "SAVE") {
-                  setSaveDialogOpen(true);
-                  return;
-                }
-                if (value === "MANAGE") {
-                  setManageDialogOpen(true);
-                  return;
-                }
-                const selected = views.find((view) => view.id === value);
-                if (selected) applyView(selected);
-              }}
-            >
-              <SelectTrigger className="h-8 w-[180px]">
-                <SelectValue placeholder="Views" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All cases</SelectItem>
-                {views.map((view) => (
-                  <SelectItem key={view.id} value={view.id}>
-                    {view.name}
-                  </SelectItem>
-                ))}
-                <SelectItem value="SAVE">Save current view...</SelectItem>
-                <SelectItem value="MANAGE">Manage views...</SelectItem>
-              </SelectContent>
-            </Select>
+            {showSavedViews ? (
+              <Select
+                value={activeViewId ?? "ALL"}
+                onValueChange={(value) => {
+                  if (value === "ALL") {
+                    clearFilters();
+                    return;
+                  }
+                  if (value === "SAVE") {
+                    setSaveDialogOpen(true);
+                    return;
+                  }
+                  if (value === "MANAGE") {
+                    setManageDialogOpen(true);
+                    return;
+                  }
+                  const selected = views.find((view) => view.id === value);
+                  if (selected) applyView(selected);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[180px]">
+                  <SelectValue placeholder="Views" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All cases</SelectItem>
+                  {views.map((view) => (
+                    <SelectItem key={view.id} value={view.id}>
+                      {view.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="SAVE">Save current view...</SelectItem>
+                  <SelectItem value="MANAGE">Manage views...</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : null}
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Refresh
             </Button>
@@ -389,7 +405,7 @@ export const CasesPage = () => {
         }
       />
 
-      {selectedIds.length > 0 && canAct ? (
+      {selectedIds.length > 0 && showBulkTriage ? (
         <Card className="flex flex-wrap items-center gap-2 p-3">
           <span className="text-sm text-muted-foreground">
             Selected {selectedIds.length} cases
@@ -617,13 +633,19 @@ export const CasesPage = () => {
         />
       ) : (
         <Card className="overflow-hidden">
-          <div className="grid grid-cols-[0.4fr_2fr_1.5fr_1.5fr_1fr_1fr_1.2fr_1.2fr_1fr_1fr] gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground">
-            <span>
-              <Checkbox
-                checked={selectedIds.length === items.length}
-                onCheckedChange={(checked) => selectAllOnPage(Boolean(checked))}
-              />
-            </span>
+          <div
+            className={`grid ${gridCols} gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground`}
+          >
+            {showBulkTriage ? (
+              <span>
+                <Checkbox
+                  checked={selectedIds.length === items.length}
+                  onCheckedChange={(checked) =>
+                    selectAllOnPage(Boolean(checked))
+                  }
+                />
+              </span>
+            ) : null}
             <span>Applicant</span>
             <span>NIK</span>
             <span>Region</span>
@@ -666,16 +688,18 @@ export const CasesPage = () => {
                     onKeyDown={(event) => {
                       if (event.key === "Enter") navigate(`/cases/${item.id}`);
                     }}
-                    className="grid cursor-pointer grid-cols-[0.4fr_2fr_1.5fr_1.5fr_1fr_1fr_1.2fr_1.2fr_1fr_1fr] items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40"
+                    className={`grid cursor-pointer ${gridCols} items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40`}
                   >
-                    <span onClick={(event) => event.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedIds.includes(item.id)}
-                        onCheckedChange={(checked) =>
-                          toggleSelected(item.id, Boolean(checked))
-                        }
-                      />
-                    </span>
+                    {showBulkTriage ? (
+                      <span onClick={(event) => event.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.includes(item.id)}
+                          onCheckedChange={(checked) =>
+                            toggleSelected(item.id, Boolean(checked))
+                          }
+                        />
+                      </span>
+                    ) : null}
                     <div className="flex flex-col">
                       <span className="font-medium text-foreground">
                         {item.applicant.name}
@@ -774,85 +798,97 @@ export const CasesPage = () => {
         </Card>
       )}
 
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save current view</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="View name"
-              value={viewName}
-              onChange={(event) => setViewName(event.target.value)}
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={makeDefault}
-                onCheckedChange={(checked) => setMakeDefault(Boolean(checked))}
-              />
-              Make default view on open
-            </label>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveCurrentView} disabled={!viewName.trim()}>
-              Save view
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Manage views</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {views.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                No saved views.
-              </div>
-            ) : (
-              views.map((view) => (
-                <div key={view.id} className="flex items-center gap-2">
-                  <Input
-                    value={view.name}
-                    onChange={(event) =>
-                      handleRenameView({ ...view, name: event.target.value })
+      {showSavedViews ? (
+        <>
+          <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save current view</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  placeholder="View name"
+                  value={viewName}
+                  onChange={(event) => setViewName(event.target.value)}
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={makeDefault}
+                    onCheckedChange={(checked) =>
+                      setMakeDefault(Boolean(checked))
                     }
                   />
-                  <Button
-                    size="sm"
-                    variant={view.isDefault ? "secondary" : "outline"}
-                    onClick={() =>
-                      handleRenameView({ ...view, isDefault: true })
-                    }
-                  >
-                    Default
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDeleteView(view.id)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setManageDialogOpen(false)}
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  Make default view on open
+                </label>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setSaveDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={saveCurrentView} disabled={!viewName.trim()}>
+                  Save view
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Manage views</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                {views.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">
+                    No saved views.
+                  </div>
+                ) : (
+                  views.map((view) => (
+                    <div key={view.id} className="flex items-center gap-2">
+                      <Input
+                        value={view.name}
+                        onChange={(event) =>
+                          handleRenameView({
+                            ...view,
+                            name: event.target.value,
+                          })
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        variant={view.isDefault ? "secondary" : "outline"}
+                        onClick={() =>
+                          handleRenameView({ ...view, isDefault: true })
+                        }
+                      >
+                        Default
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteView(view.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setManageDialogOpen(false)}
+                >
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      ) : null}
     </div>
   );
 };

@@ -17,6 +17,7 @@ import { listGlobalAuditEventsUsecase } from "@/domain/usecases/list-global-audi
 import { recordAuditEventUsecase } from "@/domain/usecases/record-audit-event-usecase";
 import type { ListAuditParams } from "@/data/repositories/audit-repository";
 import type { AuditEvent } from "@/domain/entities/audit-event";
+import { getReasonAnalyticsUsecase } from "@/domain/usecases/get-reason-analytics-usecase";
 import { listQCSamplesUsecase } from "@/domain/usecases/list-qc-samples-usecase";
 import { createQCSampleUsecase } from "@/domain/usecases/create-qc-sample-usecase";
 import { getQCSampleDetailUsecase } from "@/domain/usecases/get-qc-sample-detail-usecase";
@@ -25,6 +26,7 @@ import type {
   CreateSampleParams,
   ListSamplesParams,
 } from "@/data/repositories/qc-repository";
+import type { AnalyticsParams } from "@/domain/usecases/get-reason-analytics-usecase";
 
 export const caseUsecases = {
   listCases: (params?: ListCasesParams) =>
@@ -78,4 +80,9 @@ export const qcUsecases = {
     payload: { verdict: QCVerdict; notes?: string },
     actor: { role: Role; name: string },
   ) => recordQCReviewUsecase(qcRepository, sampleId, caseId, payload, actor),
+};
+
+export const analyticsUsecases = {
+  getReasonAnalytics: (params?: AnalyticsParams) =>
+    getReasonAnalyticsUsecase(auditRepository, caseRepository, params),
 };

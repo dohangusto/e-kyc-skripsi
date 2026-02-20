@@ -6,6 +6,7 @@ import {
   Settings,
   ClipboardList,
   ClipboardCheck,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
@@ -39,6 +40,12 @@ const navItems: Array<{
     label: "Audit",
     to: "/audit",
     icon: ClipboardList,
+    roles: ["VERIFIER", "SUPERVISOR"],
+  },
+  {
+    label: "Analytics",
+    to: "/analytics",
+    icon: BarChart3,
     roles: ["VERIFIER", "SUPERVISOR"],
   },
   {

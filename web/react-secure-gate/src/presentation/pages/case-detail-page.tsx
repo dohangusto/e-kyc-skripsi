@@ -12,6 +12,7 @@ import { RiskBadge } from "@/presentation/components/risk-badge";
 import { SignalBadge } from "@/presentation/components/signal-badge";
 import { PiiRevealGate } from "@/presentation/components/pii-reveal-gate";
 import { DecisionDialog } from "@/presentation/components/decision-dialog";
+import { useFeatureFlags } from "@/presentation/components/feature-flags-context";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
@@ -66,6 +67,7 @@ const auditActionLabels: Record<AuditEvent["action"], string> = {
 export const CaseDetailPage = () => {
   const { id } = useParams();
   const { role, actorName } = useRole();
+  const { flags } = useFeatureFlags();
   const queryClient = useQueryClient();
   const [decisionType, setDecisionType] = useState<DecisionType | null>(null);
 
@@ -191,6 +193,7 @@ export const CaseDetailPage = () => {
   const canDecide =
     role === "VERIFIER" &&
     ["FALLBACK_REVIEW", "EKYC_SUBMITTED"].includes(caseDetail.status);
+  const canManualApprove = canDecide && flags.enableManualApprove;
   const actor = { role, name: actorName };
 
   return (
@@ -205,8 +208,15 @@ export const CaseDetailPage = () => {
             ) : (
               <>
                 <Button
-                  onClick={() => setDecisionType("APPROVE_MANUAL")}
-                  disabled={!canDecide}
+                  onClick={() =>
+                    canManualApprove ? setDecisionType("APPROVE_MANUAL") : null
+                  }
+                  disabled={!canManualApprove}
+                  title={
+                    !flags.enableManualApprove
+                      ? "Disabled by policy"
+                      : undefined
+                  }
                 >
                   Approve
                 </Button>
@@ -276,6 +286,7 @@ export const CaseDetailPage = () => {
                 fieldKey="NIK"
                 actor={actor}
                 allowReveal={role === "VERIFIER"}
+                policyDisabled={!flags.enablePIIReveal}
               />
             </div>
             <div>
@@ -383,6 +394,7 @@ export const CaseDetailPage = () => {
                       fieldKey="OCR_NIK"
                       actor={actor}
                       allowReveal={role === "VERIFIER"}
+                      policyDisabled={!flags.enablePIIReveal}
                     />
                   </div>
                   <div className="text-xs">
@@ -394,6 +406,7 @@ export const CaseDetailPage = () => {
                       fieldKey="OCR_NAME"
                       actor={actor}
                       allowReveal={role === "VERIFIER"}
+                      policyDisabled={!flags.enablePIIReveal}
                     />
                   </div>
                 </div>
@@ -447,6 +460,7 @@ export const CaseDetailPage = () => {
                       fieldKey="OCR_NIK"
                       actor={actor}
                       allowReveal={role === "VERIFIER"}
+                      policyDisabled={!flags.enablePIIReveal}
                     />
                   </div>
                   <div>
@@ -458,6 +472,7 @@ export const CaseDetailPage = () => {
                       fieldKey="OCR_NAME"
                       actor={actor}
                       allowReveal={role === "VERIFIER"}
+                      policyDisabled={!flags.enablePIIReveal}
                     />
                   </div>
                   {caseDetail.evidence.ktpOcr.birthDate ? (
@@ -477,6 +492,7 @@ export const CaseDetailPage = () => {
                         fieldKey="OCR_ADDRESS"
                         actor={actor}
                         allowReveal={role === "VERIFIER"}
+                        policyDisabled={!flags.enablePIIReveal}
                       />
                     </div>
                   ) : null}
@@ -596,6 +612,7 @@ export const CaseDetailPage = () => {
             })
           }
           isSubmitting={decisionMutation.isPending}
+          requireRejectTypingConfirm={flags.requireRejectTypingConfirm}
         />
       ) : null}
     </div>
