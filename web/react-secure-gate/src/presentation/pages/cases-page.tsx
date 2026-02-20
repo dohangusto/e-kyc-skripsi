@@ -42,6 +42,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/presentation/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/presentation/components/ui/tabs";
 import type {
   CasesQueryState,
   AssignedFilter,
@@ -107,6 +113,7 @@ const sortOptions = [
 ] as const;
 
 const pageSizeOptions = [10, 20, 50];
+const TAB_STORAGE_KEY = "rsg.cases.activeTab";
 
 const formatAge = (hours: number) => {
   if (hours < 24) return `${Math.round(hours)}h`;
@@ -131,6 +138,14 @@ export const CasesPage = () => {
   const queryClient = useQueryClient();
   const { role, actorName } = useRole();
   const { flags } = useFeatureFlags();
+  const [activeTab, setActiveTab] = useState<"ALL" | "MY_QUEUE">(() => {
+    if (typeof window === "undefined") return "ALL";
+    const stored = localStorage.getItem(TAB_STORAGE_KEY);
+    if (stored === "MY_QUEUE" || stored === "ALL") {
+      return stored;
+    }
+    return role === "VERIFIER" ? "MY_QUEUE" : "ALL";
+  });
   const initial = useMemo(() => {
     if (!flags.enableSavedViews) {
       return {
@@ -224,6 +239,7 @@ export const CasesPage = () => {
       faceMatch,
       riskLevel,
       sort,
+      assignedToName: activeTab === "MY_QUEUE" ? actorName : undefined,
     }),
     [
       page,
@@ -234,6 +250,8 @@ export const CasesPage = () => {
       faceMatch,
       riskLevel,
       sort,
+      activeTab,
+      actorName,
     ],
   );
 
@@ -266,6 +284,10 @@ export const CasesPage = () => {
     ) => caseUsecases.bulkTriage(selectedIds, action, actor),
     onSuccess: () => {
       setSelectedIds([]);
+      setActiveTab("MY_QUEUE");
+      if (typeof window !== "undefined") {
+        localStorage.setItem(TAB_STORAGE_KEY, "MY_QUEUE");
+      }
       queryClient.invalidateQueries({ queryKey: ["cases", "queue"] });
     },
   });
@@ -355,6 +377,18 @@ export const CasesPage = () => {
   const gridCols = showBulkTriage
     ? "grid-cols-[0.4fr_2fr_1.5fr_1.5fr_1fr_1fr_1.2fr_1.2fr_1fr_1fr]"
     : "grid-cols-[2fr_1.5fr_1.5fr_1fr_1fr_1.2fr_1.2fr_1fr_1fr]";
+  const handleTabChange = (value: string) => {
+    const next = value === "MY_QUEUE" ? "MY_QUEUE" : "ALL";
+    setActiveTab(next);
+    setPage(1);
+    setSelectedIds([]);
+    if (next === "MY_QUEUE") {
+      setAssigned("ALL");
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TAB_STORAGE_KEY, next);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -404,6 +438,19 @@ export const CasesPage = () => {
           </div>
         }
       />
+
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList>
+          <TabsTrigger value="ALL">All Cases</TabsTrigger>
+          <TabsTrigger value="MY_QUEUE">My Queue</TabsTrigger>
+        </TabsList>
+        <TabsContent value="ALL" className="mt-4" />
+        <TabsContent value="MY_QUEUE" className="mt-4">
+          <div className="text-xs text-muted-foreground">
+            Cases assigned to you
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {selectedIds.length > 0 && showBulkTriage ? (
         <Card className="flex flex-wrap items-center gap-2 p-3">
@@ -557,6 +604,7 @@ export const CasesPage = () => {
               setAssigned(value as AssignedFilter);
               setPage(1);
             }}
+            disabled={activeTab === "MY_QUEUE"}
           >
             <SelectTrigger>
               <SelectValue placeholder="Assigned" />

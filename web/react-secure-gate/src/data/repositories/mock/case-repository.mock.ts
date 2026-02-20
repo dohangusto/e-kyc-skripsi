@@ -3,7 +3,11 @@ import type {
   ListCasesParams,
   ListCasesResult,
 } from "@/data/repositories/case-repository";
-import { getCaseFromStore, listCaseStore, updateCaseInStore } from "@/data/mocks/case-store";
+import {
+  getCaseFromStore,
+  listCaseStore,
+  updateCaseInStore,
+} from "@/data/mocks/case-store";
 import { addAuditEvent, listAuditStore } from "@/data/mocks/audit-store";
 import { sleep } from "@/shared/lib/sleep";
 import { NotFoundError } from "@/shared/lib/errors";
@@ -33,6 +37,12 @@ const applyFilters = (params?: ListCasesParams) => {
 
   if (params.riskLevel && params.riskLevel !== "ALL") {
     results = results.filter((item) => item.riskLevel === params.riskLevel);
+  }
+
+  if (params.assignedToName) {
+    results = results.filter(
+      (item) => item.assignedTo?.name === params.assignedToName,
+    );
   }
 
   if (params.query) {
@@ -168,8 +178,8 @@ export const mockCaseRepository: CaseRepository = {
       action: mapDecisionToAction(payload),
       reasonCode: payload.reasonCode,
       notes: payload.notes
-        ? `${payload.notes} (fromStatus=${current.status} toStatus=${nextStatus})`
-        : `fromStatus=${current.status} toStatus=${nextStatus}`,
+        ? `${payload.notes} (fromStatus=${current.status} toStatus=${nextStatus} owner=${current.assignedTo?.name ?? "UNASSIGNED"})`
+        : `fromStatus=${current.status} toStatus=${nextStatus} owner=${current.assignedTo?.name ?? "UNASSIGNED"}`,
       createdAt: new Date().toISOString(),
     };
 

@@ -118,6 +118,40 @@ export const CaseDetailPage = () => {
     },
   });
 
+  const assignMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error("Case id missing");
+      return caseUsecases.assignCase(id, { role, name: actorName });
+    },
+    onSuccess: async () => {
+      toast.success("Assigned to you");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["case", id] }),
+        queryClient.invalidateQueries({ queryKey: ["case", id, "audit"] }),
+      ]);
+    },
+    onError: () => {
+      toast.error("Failed to assign case");
+    },
+  });
+
+  const unassignMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error("Case id missing");
+      return caseUsecases.unassignCase(id, { role, name: actorName });
+    },
+    onSuccess: async () => {
+      toast.success("Unassigned");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["case", id] }),
+        queryClient.invalidateQueries({ queryKey: ["case", id, "audit"] }),
+      ]);
+    },
+    onError: () => {
+      toast.error("Failed to unassign case");
+    },
+  });
+
   const summaryNarrative = useMemo(() => {
     if (!caseDetail) return "";
     const notes: string[] = [];
@@ -190,11 +224,32 @@ export const CaseDetailPage = () => {
   const isTerminal = ["APPROVED_MANUAL", "REJECTED", "NEED_REVERIFY"].includes(
     caseDetail.status,
   );
+  const isVerifier = role === "VERIFIER";
+  const isUnassigned = !caseDetail.assignedTo?.name;
+  const isOwnedByMe = caseDetail.assignedTo?.name === actorName;
+  const isOwnedByOther = Boolean(caseDetail.assignedTo?.name) && !isOwnedByMe;
   const canDecide =
-    role === "VERIFIER" &&
+    isVerifier &&
+    isOwnedByMe &&
     ["FALLBACK_REVIEW", "EKYC_SUBMITTED"].includes(caseDetail.status);
   const canManualApprove = canDecide && flags.enableManualApprove;
   const actor = { role, name: actorName };
+
+  const handleDecisionOpen = (type: DecisionType) => {
+    if (!isOwnedByMe) {
+      toast.error(
+        isUnassigned
+          ? "Assign the case to yourself to make a decision."
+          : `This case is assigned to ${caseDetail.assignedTo?.name}.`,
+      );
+      return;
+    }
+    if (type === "APPROVE_MANUAL" && !flags.enableManualApprove) {
+      toast.error("Manual approval is disabled by policy.");
+      return;
+    }
+    setDecisionType(type);
+  };
 
   return (
     <div className="space-y-6">
@@ -205,12 +260,55 @@ export const CaseDetailPage = () => {
           <div className="flex flex-wrap items-center gap-2">
             {role === "SUPERVISOR" ? (
               <Badge variant="secondary">Read-only</Badge>
-            ) : (
+            ) : null}
+            {isVerifier && !isTerminal && isUnassigned ? (
               <>
                 <Button
-                  onClick={() =>
-                    canManualApprove ? setDecisionType("APPROVE_MANUAL") : null
+                  onClick={() => assignMutation.mutate()}
+                  disabled={assignMutation.isPending}
+                >
+                  Assign to me
+                </Button>
+                <Button
+                  onClick={() => handleDecisionOpen("APPROVE_MANUAL")}
+                  disabled={!canManualApprove}
+                  title={
+                    !flags.enableManualApprove
+                      ? "Disabled by policy"
+                      : "Assign to proceed"
                   }
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDecisionOpen("REJECT")}
+                  disabled={!canDecide}
+                  title="Assign to proceed"
+                >
+                  Reject
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleDecisionOpen("REQUEST_REVERIFY")}
+                  disabled={!canDecide}
+                  title="Assign to proceed"
+                >
+                  Request Re-Verification
+                </Button>
+              </>
+            ) : null}
+            {isVerifier && !isTerminal && isOwnedByMe ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => unassignMutation.mutate()}
+                  disabled={unassignMutation.isPending}
+                >
+                  Unassign
+                </Button>
+                <Button
+                  onClick={() => handleDecisionOpen("APPROVE_MANUAL")}
                   disabled={!canManualApprove}
                   title={
                     !flags.enableManualApprove
@@ -222,27 +320,40 @@ export const CaseDetailPage = () => {
                 </Button>
                 <Button
                   variant="destructive"
-                  onClick={() => setDecisionType("REJECT")}
+                  onClick={() => handleDecisionOpen("REJECT")}
                   disabled={!canDecide}
                 >
                   Reject
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => setDecisionType("REQUEST_REVERIFY")}
+                  onClick={() => handleDecisionOpen("REQUEST_REVERIFY")}
                   disabled={!canDecide}
                 >
                   Request Re-Verification
                 </Button>
               </>
-            )}
+            ) : null}
           </div>
         }
       />
 
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>Owner:</span>
+        <Badge variant="outline">
+          {caseDetail.assignedTo?.name ?? "Unassigned"}
+        </Badge>
+      </div>
+
       {isTerminal ? (
         <div className="rounded-md border border-muted bg-muted/40 p-3 text-sm text-muted-foreground">
           This case is already finalized.
+        </div>
+      ) : null}
+
+      {isOwnedByOther && isVerifier ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          Assigned to {caseDetail.assignedTo?.name}. You cannot make decisions.
         </div>
       ) : null}
 

@@ -18,6 +18,7 @@ export type ListCasesParams = {
   faceMatch?: "ALL" | FaceMatch;
   riskLevel?: "ALL" | RiskLevel;
   sort?: "NEWEST" | "OLDEST";
+  assignedToName?: string;
 };
 
 export type ListCasesResult = {
