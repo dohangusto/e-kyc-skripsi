@@ -1,25 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/presentation/components/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/presentation/components/ui/card";
 import { caseUsecases } from "@/shared/lib/usecases";
 import type { CaseStatus } from "@/domain/types";
 
-const isSameDay = (date: Date, other: Date) => date.toDateString() === other.toDateString();
+const isSameDay = (date: Date, other: Date) =>
+  date.toDateString() === other.toDateString();
 
-const countByStatus = (cases: { status: CaseStatus }[], statuses: CaseStatus[]) =>
-  cases.filter((item) => statuses.includes(item.status)).length;
+const countByStatus = (
+  cases: { status: CaseStatus }[],
+  statuses: CaseStatus[],
+) => cases.filter((item) => statuses.includes(item.status)).length;
 
 export const DashboardPage = () => {
-  const { data: cases = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["cases", "summary"],
-    queryFn: () => caseUsecases.listCases(),
+    queryFn: () => caseUsecases.listCases({ page: 1, pageSize: 200 }),
   });
 
-  const pendingCount = countByStatus(cases, ["EKYC_IN_PROGRESS", "EKYC_SUBMITTED"]);
+  const cases = data?.items ?? [];
+  const pendingCount = countByStatus(cases, [
+    "EKYC_IN_PROGRESS",
+    "EKYC_SUBMITTED",
+  ]);
   const fallbackCount = countByStatus(cases, ["FALLBACK_REVIEW"]);
   const approvedTodayCount = cases.filter((item) => {
-    if (!["APPROVED_MANUAL", "AUTO_VERIFIED"].includes(item.status)) return false;
-    return isSameDay(new Date(item.updatedAt), new Date());
+    if (!["APPROVED_MANUAL", "AUTO_VERIFIED"].includes(item.status))
+      return false;
+    return isSameDay(new Date(item.updatedAt ?? item.createdAt), new Date());
   }).length;
 
   return (
@@ -35,7 +49,9 @@ export const DashboardPage = () => {
             <CardDescription>Currently waiting for completion</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold">{isLoading ? "—" : pendingCount}</div>
+            <div className="text-3xl font-semibold">
+              {isLoading ? "-" : pendingCount}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -44,7 +60,9 @@ export const DashboardPage = () => {
             <CardDescription>Needs manual supervision</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold">{isLoading ? "—" : fallbackCount}</div>
+            <div className="text-3xl font-semibold">
+              {isLoading ? "-" : fallbackCount}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -53,7 +71,9 @@ export const DashboardPage = () => {
             <CardDescription>Auto + manual approvals</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold">{isLoading ? "—" : approvedTodayCount}</div>
+            <div className="text-3xl font-semibold">
+              {isLoading ? "-" : approvedTodayCount}
+            </div>
           </CardContent>
         </Card>
       </div>

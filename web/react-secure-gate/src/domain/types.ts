@@ -14,3 +14,12 @@ export type FaceMatch = "MATCH" | "MISMATCH" | "PENDING";
 export type Liveness = "PASS" | "FAIL" | "UNCERTAIN";
 export type OcrConsistency = "CONSISTENT" | "INCONSISTENT";
 export type Restriction = "FULL" | "LIMITED";
+
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+export type Eligibility = "ELIGIBLE" | "INELIGIBLE";
+
+export type Region = {
+  province: string;
+  city: string;
+  district?: string;
+};

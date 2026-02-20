@@ -1,4 +1,4 @@
-import type { CaseStatus } from "@/domain/types";
+import type { CaseStatus, Eligibility, RiskLevel } from "@/domain/types";
 import type { Applicant } from "@/domain/entities/applicant";
 import type { VerificationSignals } from "@/domain/entities/verification-signals";
 
@@ -8,5 +8,7 @@ export type VerificationCase = {
   status: CaseStatus;
   signals: VerificationSignals;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  riskLevel: RiskLevel;
+  eligibility: Eligibility;
 };

@@ -1,6 +1,8 @@
+import type { Region } from "@/domain/types";
+
 export type Applicant = {
-  id: string;
-  fullName: string;
-  nationalId: string;
-  dateOfBirth: string;
+  id?: string;
+  nik: string;
+  name: string;
+  region: Region;
 };

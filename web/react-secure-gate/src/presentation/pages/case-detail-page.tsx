@@ -60,15 +60,16 @@ export const CaseDetailPage = () => {
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <div>
               <span className="font-medium text-foreground">Name:</span>{" "}
-              {caseDetail.applicant.fullName}
+              {caseDetail.applicant.name}
             </div>
             <div>
-              <span className="font-medium text-foreground">National ID:</span>{" "}
-              {caseDetail.applicant.nationalId}
+              <span className="font-medium text-foreground">NIK:</span>{" "}
+              {caseDetail.applicant.nik}
             </div>
             <div>
-              <span className="font-medium text-foreground">DOB:</span>{" "}
-              {caseDetail.applicant.dateOfBirth}
+              <span className="font-medium text-foreground">Region:</span>{" "}
+              {caseDetail.applicant.region.province} /{" "}
+              {caseDetail.applicant.region.city}
             </div>
           </CardContent>
         </Card>
