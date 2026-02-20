@@ -22,6 +22,13 @@ const actionConfig: Record<
   PII_REVEALED: { label: "PII revealed", variant: "outline" },
   QC_SAMPLE_CREATED: { label: "QC sample created", variant: "secondary" },
   QC_REVIEW_RECORDED: { label: "QC review recorded", variant: "outline" },
+  CASE_ASSIGNED: { label: "Case assigned", variant: "secondary" },
+  CASE_UNASSIGNED: { label: "Case unassigned", variant: "outline" },
+  CASE_TRIAGE_TAG_UPDATED: { label: "Triage tag updated", variant: "outline" },
+  CASE_BULK_TRIAGE_APPLIED: {
+    label: "Bulk triage applied",
+    variant: "outline",
+  },
 };
 
 export const ActionBadge = ({ action }: ActionBadgeProps) => {

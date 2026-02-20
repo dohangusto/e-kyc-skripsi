@@ -3,11 +3,7 @@ import type {
   ListCasesParams,
   ListCasesResult,
 } from "@/data/repositories/case-repository";
-import {
-  getCaseFromStore,
-  listCaseStore,
-  updateCaseInStore,
-} from "@/data/mocks/case-store";
+import { getCaseFromStore, listCaseStore, updateCaseInStore } from "@/data/mocks/case-store";
 import { addAuditEvent, listAuditStore } from "@/data/mocks/audit-store";
 import { sleep } from "@/shared/lib/sleep";
 import { NotFoundError } from "@/shared/lib/errors";
@@ -155,6 +151,7 @@ export const mockCaseRepository: CaseRepository = {
       status: nextStatus,
       updatedAt: new Date().toISOString(),
       decidedAt: new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString(),
       signals: {
         ...current.signals,
         restriction: mapDecisionToRestriction(payload),
@@ -179,5 +176,124 @@ export const mockCaseRepository: CaseRepository = {
     addAuditEvent(auditEvent);
 
     return updated;
+  },
+  async assignCase(caseId, actor) {
+    await sleep(DEFAULT_DELAY_MS);
+    const current = getCaseFromStore(caseId);
+    if (!current) {
+      throw new NotFoundError(`Case ${caseId} not found`);
+    }
+
+    const updated = {
+      ...current,
+      assignedTo: { name: actor.name, role: actor.role },
+      lastUpdatedAt: new Date().toISOString(),
+    };
+
+    updateCaseInStore(updated);
+
+    addAuditEvent({
+      id: `evt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      caseId,
+      actorRole: actor.role,
+      actorName: actor.name,
+      action: "CASE_ASSIGNED",
+      notes: `assignedTo=${actor.name}`,
+      createdAt: new Date().toISOString(),
+    });
+
+    return updated;
+  },
+  async unassignCase(caseId, actor) {
+    await sleep(DEFAULT_DELAY_MS);
+    const current = getCaseFromStore(caseId);
+    if (!current) {
+      throw new NotFoundError(`Case ${caseId} not found`);
+    }
+
+    const updated = {
+      ...current,
+      assignedTo: null,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+
+    updateCaseInStore(updated);
+
+    addAuditEvent({
+      id: `evt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      caseId,
+      actorRole: actor.role,
+      actorName: actor.name,
+      action: "CASE_UNASSIGNED",
+      notes: "unassigned",
+      createdAt: new Date().toISOString(),
+    });
+
+    return updated;
+  },
+  async setTriageTag(caseId, tag, actor) {
+    await sleep(DEFAULT_DELAY_MS);
+    const current = getCaseFromStore(caseId);
+    if (!current) {
+      throw new NotFoundError(`Case ${caseId} not found`);
+    }
+
+    const updated = {
+      ...current,
+      triageTag: tag,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+
+    updateCaseInStore(updated);
+
+    addAuditEvent({
+      id: `evt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      caseId,
+      actorRole: actor.role,
+      actorName: actor.name,
+      action: "CASE_TRIAGE_TAG_UPDATED",
+      notes: tag ? `tag=${tag}` : "tag=cleared",
+      createdAt: new Date().toISOString(),
+    });
+
+    return updated;
+  },
+  async bulkTriage(caseIds, action, actor) {
+    await sleep(DEFAULT_DELAY_MS);
+    let updatedCount = 0;
+    const now = new Date().toISOString();
+
+    caseIds.forEach((caseId) => {
+      const current = getCaseFromStore(caseId);
+      if (!current) return;
+      let updated = current;
+
+      if (action.type === "ASSIGN_TO_ME") {
+        updated = {
+          ...current,
+          assignedTo: { name: actor.name, role: actor.role },
+          lastUpdatedAt: now,
+        };
+      } else if (action.type === "UNASSIGN") {
+        updated = { ...current, assignedTo: null, lastUpdatedAt: now };
+      } else if (action.type === "TAG") {
+        updated = { ...current, triageTag: action.tag, lastUpdatedAt: now };
+      }
+
+      updateCaseInStore(updated);
+      updatedCount += 1;
+    });
+
+    addAuditEvent({
+      id: `evt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      caseId: "bulk",
+      actorRole: actor.role,
+      actorName: actor.name,
+      action: "CASE_BULK_TRIAGE_APPLIED",
+      notes: `action=${action.type}${action.type === "TAG" ? ` tag=${action.tag ?? "cleared"}` : ""}; updated=${updatedCount}`,
+      createdAt: new Date().toISOString(),
+    });
+
+    return { updated: updatedCount };
   },
 };

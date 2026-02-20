@@ -4,6 +4,7 @@ import type {
   FaceMatch,
   Liveness,
   RiskLevel,
+  Role,
 } from "@/domain/types";
 import type { Applicant } from "@/domain/entities/applicant";
 import type { VerificationSignals } from "@/domain/entities/verification-signals";
@@ -38,6 +39,9 @@ export type VerificationCase = {
   createdAt: string;
   updatedAt?: string;
   decidedAt?: string;
+  lastUpdatedAt: string;
+  assignedTo?: { name: string; role: Role } | null;
+  triageTag?: "FOLLOW_UP" | "SUSPICIOUS" | null;
   riskLevel: RiskLevel;
   eligibility: Eligibility;
   evidence: Evidence;

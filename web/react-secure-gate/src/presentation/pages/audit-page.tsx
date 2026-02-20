@@ -41,6 +41,10 @@ const actionOptions: Array<{
   { label: "PII revealed", value: "PII_REVEALED" },
   { label: "QC sample created", value: "QC_SAMPLE_CREATED" },
   { label: "QC review recorded", value: "QC_REVIEW_RECORDED" },
+  { label: "Case assigned", value: "CASE_ASSIGNED" },
+  { label: "Case unassigned", value: "CASE_UNASSIGNED" },
+  { label: "Triage tag updated", value: "CASE_TRIAGE_TAG_UPDATED" },
+  { label: "Bulk triage applied", value: "CASE_BULK_TRIAGE_APPLIED" },
 ];
 
 const sortOptions = [

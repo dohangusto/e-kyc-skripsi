@@ -254,6 +254,9 @@ export const mockCases: VerificationCase[] = Array.from(
       createdAt,
       updatedAt: createdAt,
       decidedAt: createdAt,
+      lastUpdatedAt: createdAt,
+      assignedTo: null,
+      triageTag: null,
       riskLevel,
       eligibility,
       evidence: {

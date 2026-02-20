@@ -37,4 +37,25 @@ export interface CaseRepository {
     payload: DecisionPayload,
     actor: { role: Role; name: string },
   ): Promise<VerificationCase>;
+  assignCase(
+    caseId: string,
+    actor: { role: Role; name: string },
+  ): Promise<VerificationCase>;
+  unassignCase(
+    caseId: string,
+    actor: { role: Role; name: string },
+  ): Promise<VerificationCase>;
+  setTriageTag(
+    caseId: string,
+    tag: "FOLLOW_UP" | "SUSPICIOUS" | null,
+    actor: { role: Role; name: string },
+  ): Promise<VerificationCase>;
+  bulkTriage(
+    caseIds: string[],
+    action:
+      | { type: "ASSIGN_TO_ME" }
+      | { type: "UNASSIGN" }
+      | { type: "TAG"; tag: "FOLLOW_UP" | "SUSPICIOUS" | null },
+    actor: { role: Role; name: string },
+  ): Promise<{ updated: number }>;
 }

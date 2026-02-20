@@ -7,6 +7,10 @@ import { getCaseDetailUsecase } from "@/domain/usecases/get-case-detail-usecase"
 import { listAuditEventsUsecase } from "@/domain/usecases/list-audit-events-usecase";
 import { listCasesUsecase } from "@/domain/usecases/list-cases-usecase";
 import { decideCaseUsecase } from "@/domain/usecases/decide-case-usecase";
+import { assignCaseUsecase } from "@/domain/usecases/assign-case-usecase";
+import { unassignCaseUsecase } from "@/domain/usecases/unassign-case-usecase";
+import { setTriageTagUsecase } from "@/domain/usecases/set-triage-tag-usecase";
+import { bulkTriageUsecase } from "@/domain/usecases/bulk-triage-usecase";
 import type { ListCasesParams } from "@/data/repositories/case-repository";
 import type { DecisionPayload, QCVerdict, Role } from "@/domain/types";
 import { listGlobalAuditEventsUsecase } from "@/domain/usecases/list-global-audit-events-usecase";
@@ -33,6 +37,23 @@ export const caseUsecases = {
     payload: DecisionPayload,
     actor: { role: Role; name: string },
   ) => decideCaseUsecase(caseRepository, caseId, payload, actor),
+  assignCase: (caseId: string, actor: { role: Role; name: string }) =>
+    assignCaseUsecase(caseRepository, caseId, actor),
+  unassignCase: (caseId: string, actor: { role: Role; name: string }) =>
+    unassignCaseUsecase(caseRepository, caseId, actor),
+  setTriageTag: (
+    caseId: string,
+    tag: "FOLLOW_UP" | "SUSPICIOUS" | null,
+    actor: { role: Role; name: string },
+  ) => setTriageTagUsecase(caseRepository, caseId, tag, actor),
+  bulkTriage: (
+    caseIds: string[],
+    action:
+      | { type: "ASSIGN_TO_ME" }
+      | { type: "UNASSIGN" }
+      | { type: "TAG"; tag: "FOLLOW_UP" | "SUSPICIOUS" | null },
+    actor: { role: Role; name: string },
+  ) => bulkTriageUsecase(caseRepository, caseIds, action, actor),
 };
 
 export const auditUsecases = {
