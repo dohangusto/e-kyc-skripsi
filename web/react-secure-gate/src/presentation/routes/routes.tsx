@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { AdminLayout } from "@/presentation/layouts/admin-layout";
 import { DashboardPage } from "@/presentation/pages/dashboard-page";
+import { HomePage } from "@/presentation/pages/home-page";
 import { CasesPage } from "@/presentation/pages/cases-page";
 import { CaseDetailPage } from "@/presentation/pages/case-detail-page";
 import { ReportsPage } from "@/presentation/pages/reports-page";
@@ -18,7 +19,15 @@ export const routes = [
     path: "/",
     element: <AdminLayout />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <Navigate to="/home" replace /> },
+      {
+        path: "home",
+        element: (
+          <RoleGuard allow={["VERIFIER", "SUPERVISOR"]}>
+            <HomePage />
+          </RoleGuard>
+        ),
+      },
       {
         path: "dashboard",
         element: (

@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Table2,
   ListChecks,
+  Home,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
@@ -45,6 +46,12 @@ const navItems: Array<{
   icon: typeof LayoutDashboard;
   roles: Role[];
 }> = [
+  {
+    label: "Home",
+    to: "/home",
+    icon: Home,
+    roles: ["VERIFIER", "SUPERVISOR"],
+  },
   {
     label: "Dashboard",
     to: "/dashboard",
