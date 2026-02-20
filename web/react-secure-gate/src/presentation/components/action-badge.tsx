@@ -34,51 +34,29 @@ export const actionAbbreviationMap: Record<AuditEvent["action"], string> = {
   CASE_BULK_TRIAGE_APPLIED: "BTA",
 };
 
-const actionConfig: Record<AuditEvent["action"], { className: string }> = {
-  CASE_VIEWED: {
-    className: "border-slate-200 bg-slate-50 text-slate-700",
-  },
-  DECISION_APPROVED_MANUAL: {
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
-  DECISION_REJECTED: {
-    className: "border-red-200 bg-red-50 text-red-700",
-  },
-  DECISION_REQUEST_REVERIFY: {
-    className: "border-blue-200 bg-blue-50 text-blue-700",
-  },
-  PII_REVEALED: {
-    className: "border-amber-200 bg-amber-50 text-amber-700",
-  },
-  QC_SAMPLE_CREATED: {
-    className: "border-blue-200 bg-blue-50 text-blue-700",
-  },
-  QC_REVIEW_RECORDED: {
-    className: "border-amber-200 bg-amber-50 text-amber-700",
-  },
-  CASE_ASSIGNED: {
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
-  CASE_UNASSIGNED: {
-    className: "border-slate-200 bg-slate-50 text-slate-700",
-  },
-  CASE_TRIAGE_TAG_UPDATED: {
-    className: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  },
-  CASE_BULK_TRIAGE_APPLIED: {
-    className: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  },
+export const actionClassMap: Record<AuditEvent["action"], string> = {
+  CASE_VIEWED: "border-slate-200 bg-slate-50 text-slate-700",
+  DECISION_APPROVED_MANUAL: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  DECISION_REJECTED: "border-red-200 bg-red-50 text-red-700",
+  DECISION_REQUEST_REVERIFY: "border-blue-200 bg-blue-50 text-blue-700",
+  PII_REVEALED: "border-amber-200 bg-amber-50 text-amber-700",
+  QC_SAMPLE_CREATED: "border-blue-200 bg-blue-50 text-blue-700",
+  QC_REVIEW_RECORDED: "border-amber-200 bg-amber-50 text-amber-700",
+  CASE_ASSIGNED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  CASE_UNASSIGNED: "border-slate-200 bg-slate-50 text-slate-700",
+  CASE_TRIAGE_TAG_UPDATED: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  CASE_BULK_TRIAGE_APPLIED: "border-indigo-200 bg-indigo-50 text-indigo-700",
 };
 
 export const ActionBadge = ({
   action,
   abbreviated = false,
 }: ActionBadgeProps) => {
-  const config = actionConfig[action];
+  const config = actionClassMap[action];
   const fullLabel = actionLabelMap[action];
   const shortLabel = actionAbbreviationMap[action];
   return (
-    <Badge variant="outline" className={config.className} title={fullLabel}>
+    <Badge variant="outline" className={config} title={fullLabel}>
       {abbreviated ? shortLabel : fullLabel}
     </Badge>
   );

@@ -13,6 +13,7 @@ import { NotFoundPage } from "@/presentation/components/not-found-page";
 import { QCPage } from "@/presentation/pages/qc-page";
 import { QCDetailPage } from "@/presentation/pages/qc-detail-page";
 import { AnalyticsPage } from "@/presentation/pages/analytics-page";
+import { ClusteringPage } from "@/presentation/pages/clustering-page";
 
 export const routes = [
   {
@@ -89,6 +90,14 @@ export const routes = [
         element: (
           <RoleGuard allow={["SUPERVISOR"]}>
             <QCDetailPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "clustering",
+        element: (
+          <RoleGuard allow={["VERIFIER"]}>
+            <ClusteringPage />
           </RoleGuard>
         ),
       },

@@ -11,6 +11,7 @@ import {
   Table2,
   ListChecks,
   Home,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
@@ -38,7 +39,14 @@ import {
   getReasonAbbreviation,
   getReasonLabel,
   reasonLabelMap,
+  reasonClassMap,
 } from "@/shared/constants/reason-abbreviations";
+import {
+  actionAbbreviationMap,
+  actionClassMap,
+  actionLabelMap,
+} from "@/presentation/components/action-badge";
+import { actorBadgeClassMap } from "@/shared/constants/audit-badges";
 
 const navItems: Array<{
   label: string;
@@ -87,6 +95,12 @@ const navItems: Array<{
     to: "/qc",
     icon: ClipboardCheck,
     roles: ["SUPERVISOR"],
+  },
+  {
+    label: "Clustering",
+    to: "/clustering",
+    icon: Sparkles,
+    roles: ["VERIFIER"],
   },
   {
     label: "Settings",
@@ -139,18 +153,23 @@ export const Sidebar = () => {
     {
       short: "V",
       full: "Verifier",
-      className: "border-slate-200 bg-slate-50 text-slate-700",
+      className: actorBadgeClassMap.VERIFIER,
     },
     {
       short: "S",
       full: "Supervisor",
-      className: "border-slate-200 bg-slate-50 text-slate-700",
+      className: actorBadgeClassMap.SUPERVISOR,
     },
   ];
+  const actionLegendItems = Object.keys(actionLabelMap).map((action) => ({
+    short: actionAbbreviationMap[action as keyof typeof actionLabelMap],
+    full: actionLabelMap[action as keyof typeof actionLabelMap],
+    className: actionClassMap[action as keyof typeof actionLabelMap],
+  }));
   const reasonLegendItems = Object.keys(reasonLabelMap).map((reason) => ({
     short: getReasonAbbreviation(reason),
     full: getReasonLabel(reason),
-    className: "border-slate-200 bg-slate-50 text-slate-700",
+    className: reasonClassMap[reason],
   }));
 
   return (
@@ -205,6 +224,7 @@ export const Sidebar = () => {
             </div>
             <div className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2">
               <LegendPopover label="Actor (level)" items={actorLegendItems} />
+              <LegendPopover label="Action" items={actionLegendItems} />
               <LegendPopover label="Reason" items={reasonLegendItems} />
             </div>
           </div>

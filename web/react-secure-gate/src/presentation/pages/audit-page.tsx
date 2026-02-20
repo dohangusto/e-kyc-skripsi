@@ -25,7 +25,10 @@ import { truncate } from "@/shared/lib/truncate";
 import {
   getReasonAbbreviation,
   getReasonLabel,
+  getReasonClass,
 } from "@/shared/constants/reason-abbreviations";
+import { actorBadgeClassMap } from "@/shared/constants/audit-badges";
+import { cn } from "@/shared/lib/utils";
 
 const roleOptions: Array<{ label: string; value: "ALL" | Role }> = [
   { label: "All roles", value: "ALL" },
@@ -273,7 +276,10 @@ export const AuditPage = () => {
                   </span>
                   <Badge
                     variant="outline"
-                    className="w-fit text-[10px]"
+                    className={cn(
+                      "w-fit text-[10px]",
+                      actorBadgeClassMap[event.actorRole],
+                    )}
                     title={
                       event.actorRole === "VERIFIER" ? "Verifier" : "Supervisor"
                     }
@@ -291,6 +297,10 @@ export const AuditPage = () => {
                   {event.reasonCode ? (
                     <Badge
                       variant="outline"
+                      className={cn(
+                        "text-[10px]",
+                        getReasonClass(event.reasonCode),
+                      )}
                       title={getReasonLabel(event.reasonCode)}
                     >
                       {getReasonAbbreviation(event.reasonCode)}
