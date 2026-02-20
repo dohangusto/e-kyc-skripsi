@@ -5,6 +5,7 @@ import {
   FileText,
   Settings,
   ClipboardList,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
@@ -39,6 +40,12 @@ const navItems: Array<{
     to: "/audit",
     icon: ClipboardList,
     roles: ["VERIFIER", "SUPERVISOR"],
+  },
+  {
+    label: "QC",
+    to: "/qc",
+    icon: ClipboardCheck,
+    roles: ["SUPERVISOR"],
   },
   {
     label: "Settings",

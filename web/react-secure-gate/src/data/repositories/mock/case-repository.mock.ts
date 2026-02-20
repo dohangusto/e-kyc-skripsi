@@ -3,7 +3,11 @@ import type {
   ListCasesParams,
   ListCasesResult,
 } from "@/data/repositories/case-repository";
-import { mockCases } from "@/data/mocks/cases";
+import {
+  getCaseFromStore,
+  listCaseStore,
+  updateCaseInStore,
+} from "@/data/mocks/case-store";
 import { addAuditEvent, listAuditStore } from "@/data/mocks/audit-store";
 import { sleep } from "@/shared/lib/sleep";
 import { NotFoundError } from "@/shared/lib/errors";
@@ -13,11 +17,9 @@ import type { AuditEvent, AuditAction } from "@/domain/entities/audit-event";
 const DEFAULT_DELAY_MS = 350;
 const DEFAULT_PAGE_SIZE = 20;
 
-let casesStore = [...mockCases];
-
 const applyFilters = (params?: ListCasesParams) => {
-  if (!params) return [...casesStore];
-  let results = [...casesStore];
+  if (!params) return listCaseStore();
+  let results = listCaseStore();
 
   if (params.status && params.status !== "ALL") {
     results = results.filter((item) => item.status === params.status);
@@ -58,7 +60,7 @@ const applyFilters = (params?: ListCasesParams) => {
 };
 
 const paginate = (
-  items: typeof casesStore,
+  items: ReturnType<typeof listCaseStore>,
   params?: ListCasesParams,
 ): ListCasesResult => {
   const pageSize = params?.pageSize ?? DEFAULT_PAGE_SIZE;
@@ -125,7 +127,7 @@ export const mockCaseRepository: CaseRepository = {
   },
   async getCaseById(id) {
     await sleep(DEFAULT_DELAY_MS);
-    const found = casesStore.find((item) => item.id === id);
+    const found = getCaseFromStore(id);
     if (!found) {
       throw new NotFoundError(`Case ${id} not found`);
     }
@@ -142,27 +144,24 @@ export const mockCaseRepository: CaseRepository = {
   },
   async decideCase(caseId, payload, actor) {
     await sleep(DEFAULT_DELAY_MS);
-    const caseIndex = casesStore.findIndex((item) => item.id === caseId);
-    if (caseIndex === -1) {
+    const current = getCaseFromStore(caseId);
+    if (!current) {
       throw new NotFoundError(`Case ${caseId} not found`);
     }
 
-    const current = casesStore[caseIndex];
+    const nextStatus = mapDecisionToStatus(payload);
     const updated = {
       ...current,
-      status: mapDecisionToStatus(payload),
+      status: nextStatus,
       updatedAt: new Date().toISOString(),
+      decidedAt: new Date().toISOString(),
       signals: {
         ...current.signals,
         restriction: mapDecisionToRestriction(payload),
       },
     };
 
-    casesStore = [
-      ...casesStore.slice(0, caseIndex),
-      updated,
-      ...casesStore.slice(caseIndex + 1),
-    ];
+    updateCaseInStore(updated);
 
     const auditEvent: AuditEvent = {
       id: `evt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -171,7 +170,9 @@ export const mockCaseRepository: CaseRepository = {
       actorName: actor.name,
       action: mapDecisionToAction(payload),
       reasonCode: payload.reasonCode,
-      notes: payload.notes,
+      notes: payload.notes
+        ? `${payload.notes} (fromStatus=${current.status} toStatus=${nextStatus})`
+        : `fromStatus=${current.status} toStatus=${nextStatus}`,
       createdAt: new Date().toISOString(),
     };
 

@@ -37,6 +37,7 @@ export type VerificationCase = {
   signals: VerificationSignals;
   createdAt: string;
   updatedAt?: string;
+  decidedAt?: string;
   riskLevel: RiskLevel;
   eligibility: Eligibility;
   evidence: Evidence;

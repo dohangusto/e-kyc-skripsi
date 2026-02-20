@@ -9,13 +9,14 @@ import type {
 } from "@/domain/types";
 import { PageHeader } from "@/presentation/components/page-header";
 import { EmptyState } from "@/presentation/components/empty-state";
+import { ErrorPanel } from "@/presentation/components/error-panel";
+import { TableSkeleton } from "@/presentation/components/table-skeleton";
 import { StatusBadge } from "@/presentation/components/status-badge";
 import { RiskBadge } from "@/presentation/components/risk-badge";
 import { SignalBadge } from "@/presentation/components/signal-badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Card } from "@/presentation/components/ui/card";
 import { Input } from "@/presentation/components/ui/input";
-import { Skeleton } from "@/presentation/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -278,19 +279,13 @@ export const CasesPage = () => {
       </Card>
 
       {isError ? (
-        <Card className="space-y-3 p-6">
-          <div className="text-sm font-medium">Unable to load cases.</div>
-          <div className="text-sm text-muted-foreground">
-            Please retry or adjust filters.
-          </div>
-          <Button onClick={() => refetch()}>Retry</Button>
-        </Card>
+        <ErrorPanel
+          title="Unable to load cases."
+          description="Please retry or adjust filters."
+          onRetry={() => refetch()}
+        />
       ) : isLoading ? (
-        <Card className="space-y-3 p-4">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-12 w-full" />
-          ))}
-        </Card>
+        <TableSkeleton />
       ) : items.length === 0 ? (
         <EmptyState
           title="No cases found"

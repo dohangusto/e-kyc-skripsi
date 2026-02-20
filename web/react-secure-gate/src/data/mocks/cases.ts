@@ -8,8 +8,12 @@ import type {
   Restriction,
 } from "@/domain/types";
 
-const ktpImageUrl = new URL("./assets/ktp-placeholder.svg", import.meta.url).href;
-const selfieImageUrl = new URL("./assets/selfie-placeholder.svg", import.meta.url).href;
+const ktpImageUrl = new URL("./assets/ktp-placeholder.svg", import.meta.url)
+  .href;
+const selfieImageUrl = new URL(
+  "./assets/selfie-placeholder.svg",
+  import.meta.url,
+).href;
 
 const regions = [
   {
@@ -103,7 +107,7 @@ const mulberry32 = (seed: number) => {
   };
 };
 
-const shuffle = <T,>(items: T[], random: () => number) => {
+const shuffle = <T>(items: T[], random: () => number) => {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
     const j = Math.floor(random() * (i + 1));
@@ -114,7 +118,7 @@ const shuffle = <T,>(items: T[], random: () => number) => {
 
 const buildNik = (regionCode: string, index: number) => {
   const sequence = String(100000 + index).padStart(6, "0");
-  const suffix = String(700000 + (index * 7) % 1000000).padStart(6, "0");
+  const suffix = String(700000 + ((index * 7) % 1000000)).padStart(6, "0");
   return `${regionCode}${sequence}${suffix}`;
 };
 
@@ -218,48 +222,54 @@ const deriveScores = (signals: ReturnType<typeof deriveSignals>) => {
 const random = mulberry32(42);
 const shuffledStatuses = shuffle(statusPool, random);
 
-export const mockCases: VerificationCase[] = Array.from({ length: 60 }, (_, index) => {
-  const status = shuffledStatuses[index];
-  const region = regions[index % regions.length];
-  const signals = deriveSignals(status, index);
-  const eligibility = deriveEligibility(status, index);
-  const riskLevel = deriveRiskLevel(signals, eligibility);
-  const createdAt = new Date(Date.now() - index * 1000 * 60 * 60 * 6).toISOString();
-  const applicantName = `${firstNames[index % firstNames.length]} ${lastNames[index % lastNames.length]}`;
-  const nik = buildNik(region.code, index);
-  const { faceScore, livenessScore } = deriveScores(signals);
+export const mockCases: VerificationCase[] = Array.from(
+  { length: 60 },
+  (_, index) => {
+    const status = shuffledStatuses[index];
+    const region = regions[index % regions.length];
+    const signals = deriveSignals(status, index);
+    const eligibility = deriveEligibility(status, index);
+    const riskLevel = deriveRiskLevel(signals, eligibility);
+    const createdAt = new Date(
+      Date.now() - index * 1000 * 60 * 60 * 6,
+    ).toISOString();
+    const applicantName = `${firstNames[index % firstNames.length]} ${lastNames[index % lastNames.length]}`;
+    const nik = buildNik(region.code, index);
+    const { faceScore, livenessScore } = deriveScores(signals);
 
-  return {
-    id: `case-${1000 + index}`,
-    applicant: {
-      id: `app-${2000 + index}`,
-      nik,
-      name: applicantName,
-      region: {
-        province: region.province,
-        city: region.city,
-        district: region.districts[index % region.districts.length],
+    return {
+      id: `case-${1000 + index}`,
+      applicant: {
+        id: `app-${2000 + index}`,
+        nik,
+        name: applicantName,
+        region: {
+          province: region.province,
+          city: region.city,
+          district: region.districts[index % region.districts.length],
+        },
       },
-    },
-    status,
-    signals,
-    createdAt,
-    updatedAt: createdAt,
-    riskLevel,
-    eligibility,
-    evidence: {
-      ktpImageUrl,
-      ktpOcr: deriveOcr(nik, applicantName, index, signals.ocrConsistency),
-      selfieWithKtpUrl: selfieImageUrl,
-      liveness: {
-        result: signals.liveness,
-        gestures: gestureSets[index % gestureSets.length],
-        score: livenessScore,
+      status,
+      signals,
+      createdAt,
+      updatedAt: createdAt,
+      decidedAt: createdAt,
+      riskLevel,
+      eligibility,
+      evidence: {
+        ktpImageUrl,
+        ktpOcr: deriveOcr(nik, applicantName, index, signals.ocrConsistency),
+        selfieWithKtpUrl: selfieImageUrl,
+        liveness: {
+          result: signals.liveness,
+          gestures: gestureSets[index % gestureSets.length],
+          score: livenessScore,
+        },
+        faceMatch: {
+          result: signals.faceMatch,
+          score: faceScore,
+        },
       },
-      faceMatch: {
-        result: signals.faceMatch,
-        score: faceScore,
-      },
-    },
-  };
-});
+    };
+  },
+);

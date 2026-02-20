@@ -4,7 +4,7 @@ import type {
   ListAuditResult,
 } from "@/data/repositories/audit-repository";
 import { sleep } from "@/shared/lib/sleep";
-import { listAuditStore } from "@/data/mocks/audit-store";
+import { addAuditEvent, listAuditStore } from "@/data/mocks/audit-store";
 
 const DEFAULT_DELAY_MS = 350;
 const DEFAULT_PAGE_SIZE = 20;
@@ -28,18 +28,22 @@ const applyFilters = (params?: ListAuditParams) => {
         event.caseId.toLowerCase().includes(query) ||
         event.actorName.toLowerCase().includes(query) ||
         event.reasonCode?.toLowerCase().includes(query) ||
-        event.notes?.toLowerCase().includes(query)
+        event.notes?.toLowerCase().includes(query),
     );
   }
 
   if (params?.dateFrom) {
     const fromTime = new Date(params.dateFrom).getTime();
-    results = results.filter((event) => new Date(event.createdAt).getTime() >= fromTime);
+    results = results.filter(
+      (event) => new Date(event.createdAt).getTime() >= fromTime,
+    );
   }
 
   if (params?.dateTo) {
     const toTime = new Date(params.dateTo).getTime();
-    results = results.filter((event) => new Date(event.createdAt).getTime() <= toTime);
+    results = results.filter(
+      (event) => new Date(event.createdAt).getTime() <= toTime,
+    );
   }
 
   const sort = params?.sort ?? "NEWEST";
@@ -52,7 +56,10 @@ const applyFilters = (params?: ListAuditParams) => {
   return results;
 };
 
-const paginate = (items: ReturnType<typeof listAuditStore>, params?: ListAuditParams): ListAuditResult => {
+const paginate = (
+  items: ReturnType<typeof listAuditStore>,
+  params?: ListAuditParams,
+): ListAuditResult => {
   const pageSize = params?.pageSize ?? DEFAULT_PAGE_SIZE;
   const page = params?.page ?? 1;
   const totalItems = items.length;
@@ -75,5 +82,9 @@ export const mockAuditRepository: AuditRepository = {
     await sleep(DEFAULT_DELAY_MS);
     const filtered = applyFilters(params);
     return paginate(filtered, params);
+  },
+  async recordAuditEvent(event) {
+    await sleep(150);
+    addAuditEvent(event);
   },
 };

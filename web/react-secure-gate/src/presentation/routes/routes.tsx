@@ -8,6 +8,9 @@ import { SettingsPage } from "@/presentation/pages/settings-page";
 import { NotAuthorizedPage } from "@/presentation/pages/not-authorized-page";
 import { RoleGuard } from "@/presentation/routes/role-guard";
 import { AuditPage } from "@/presentation/pages/audit-page";
+import { NotFoundPage } from "@/presentation/components/not-found-page";
+import { QCPage } from "@/presentation/pages/qc-page";
+import { QCDetailPage } from "@/presentation/pages/qc-detail-page";
 
 export const routes = [
   {
@@ -56,6 +59,22 @@ export const routes = [
         ),
       },
       {
+        path: "qc",
+        element: (
+          <RoleGuard allow={["SUPERVISOR"]}>
+            <QCPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "qc/:id",
+        element: (
+          <RoleGuard allow={["SUPERVISOR"]}>
+            <QCDetailPage />
+          </RoleGuard>
+        ),
+      },
+      {
         path: "settings",
         element: (
           <RoleGuard allow={["VERIFIER"]}>
@@ -64,6 +83,7 @@ export const routes = [
         ),
       },
       { path: "unauthorized", element: <NotAuthorizedPage /> },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ];

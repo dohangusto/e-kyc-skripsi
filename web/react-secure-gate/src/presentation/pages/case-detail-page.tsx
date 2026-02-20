@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import type { DecisionType } from "@/domain/types";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/presentation/components/empty-state";
 import { StatusBadge } from "@/presentation/components/status-badge";
 import { RiskBadge } from "@/presentation/components/risk-badge";
 import { SignalBadge } from "@/presentation/components/signal-badge";
+import { PiiRevealGate } from "@/presentation/components/pii-reveal-gate";
 import { DecisionDialog } from "@/presentation/components/decision-dialog";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -25,8 +26,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
-import { Skeleton } from "@/presentation/components/ui/skeleton";
-import { caseUsecases } from "@/shared/lib/usecases";
+import { DetailSkeleton } from "@/presentation/components/detail-skeleton";
+import { caseUsecases, auditUsecases } from "@/shared/lib/usecases";
 import { formatDateTime } from "@/shared/lib/format-date-time";
 import { maskNik } from "@/shared/lib/mask-nik";
 import { NotFoundError } from "@/shared/lib/errors";
@@ -57,14 +58,16 @@ const auditActionLabels: Record<AuditEvent["action"], string> = {
   DECISION_APPROVED_MANUAL: "Approved (manual)",
   DECISION_REJECTED: "Rejected",
   DECISION_REQUEST_REVERIFY: "Requested re-verification",
+  PII_REVEALED: "PII revealed",
+  QC_SAMPLE_CREATED: "QC sample created",
+  QC_REVIEW_RECORDED: "QC review recorded",
 };
 
 export const CaseDetailPage = () => {
   const { id } = useParams();
-  const { role } = useRole();
+  const { role, actorName } = useRole();
   const queryClient = useQueryClient();
   const [decisionType, setDecisionType] = useState<DecisionType | null>(null);
-  const [showNik, setShowNik] = useState(false);
 
   const {
     data: caseDetail,
@@ -97,7 +100,7 @@ export const CaseDetailPage = () => {
       if (!id) throw new Error("Case id missing");
       return caseUsecases.decideCase(id, payload, {
         role,
-        name: role === "VERIFIER" ? "Verifier 1" : "Supervisor 1",
+        name: actorName,
       });
     },
     onSuccess: async () => {
@@ -134,14 +137,23 @@ export const CaseDetailPage = () => {
     return notes.join(" ");
   }, [caseDetail]);
 
+  useEffect(() => {
+    if (!id) return;
+    const key = `case_viewed::${id}::${role}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "true");
+    auditUsecases.recordAuditEvent({
+      id: `evt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      caseId: id,
+      actorRole: role,
+      actorName,
+      action: "CASE_VIEWED",
+      createdAt: new Date().toISOString(),
+    });
+  }, [id, role, actorName]);
+
   if (isCaseLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-40 w-full" />
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (caseError instanceof NotFoundError) {
@@ -173,6 +185,13 @@ export const CaseDetailPage = () => {
     restrictionBadgeConfig[caseDetail.signals.restriction];
   const livenessBadge = livenessBadgeConfig[caseDetail.signals.liveness];
   const ocrBadge = ocrBadgeConfig[caseDetail.signals.ocrConsistency];
+  const isTerminal = ["APPROVED_MANUAL", "REJECTED", "NEED_REVERIFY"].includes(
+    caseDetail.status,
+  );
+  const canDecide =
+    role === "VERIFIER" &&
+    ["FALLBACK_REVIEW", "EKYC_SUBMITTED"].includes(caseDetail.status);
+  const actor = { role, name: actorName };
 
   return (
     <div className="space-y-6">
@@ -185,18 +204,23 @@ export const CaseDetailPage = () => {
               <Badge variant="secondary">Read-only</Badge>
             ) : (
               <>
-                <Button onClick={() => setDecisionType("APPROVE_MANUAL")}>
+                <Button
+                  onClick={() => setDecisionType("APPROVE_MANUAL")}
+                  disabled={!canDecide}
+                >
                   Approve
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={() => setDecisionType("REJECT")}
+                  disabled={!canDecide}
                 >
                   Reject
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={() => setDecisionType("REQUEST_REVERIFY")}
+                  disabled={!canDecide}
                 >
                   Request Re-Verification
                 </Button>
@@ -205,6 +229,30 @@ export const CaseDetailPage = () => {
           </div>
         }
       />
+
+      {isTerminal ? (
+        <div className="rounded-md border border-muted bg-muted/40 p-3 text-sm text-muted-foreground">
+          This case is already finalized.
+        </div>
+      ) : null}
+
+      {caseDetail.signals.faceMatch === "MISMATCH" ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          Face mismatch detected — manual review required.
+        </div>
+      ) : null}
+
+      {caseDetail.eligibility === "INELIGIBLE" ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          User is not eligible — check source data.
+        </div>
+      ) : null}
+
+      {caseDetail.signals.liveness === "FAIL" ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          Liveness failed — high risk.
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
@@ -220,22 +268,15 @@ export const CaseDetailPage = () => {
             </div>
             <div>
               <div className="text-xs text-muted-foreground">NIK</div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm">
-                  {role === "VERIFIER" && showNik
-                    ? caseDetail.applicant.nik
-                    : maskNik(caseDetail.applicant.nik)}
-                </span>
-                {role === "VERIFIER" ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowNik((prev) => !prev)}
-                  >
-                    {showNik ? "Hide" : "Reveal"}
-                  </Button>
-                ) : null}
-              </div>
+              <PiiRevealGate
+                label=""
+                maskedValue={maskNik(caseDetail.applicant.nik)}
+                fullValue={caseDetail.applicant.nik}
+                caseId={caseDetail.id}
+                fieldKey="NIK"
+                actor={actor}
+                allowReveal={role === "VERIFIER"}
+              />
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Region</div>
@@ -334,10 +375,26 @@ export const CaseDetailPage = () => {
                     OCR (KTP)
                   </div>
                   <div className="mt-2 text-xs">
-                    NIK: {caseDetail.evidence.ktpOcr.nik}
+                    <PiiRevealGate
+                      label="NIK"
+                      maskedValue={maskNik(caseDetail.evidence.ktpOcr.nik)}
+                      fullValue={caseDetail.evidence.ktpOcr.nik}
+                      caseId={caseDetail.id}
+                      fieldKey="OCR_NIK"
+                      actor={actor}
+                      allowReveal={role === "VERIFIER"}
+                    />
                   </div>
                   <div className="text-xs">
-                    Name: {caseDetail.evidence.ktpOcr.name}
+                    <PiiRevealGate
+                      label="Name"
+                      maskedValue={maskNik(caseDetail.evidence.ktpOcr.name)}
+                      fullValue={caseDetail.evidence.ktpOcr.name}
+                      caseId={caseDetail.id}
+                      fieldKey="OCR_NAME"
+                      actor={actor}
+                      allowReveal={role === "VERIFIER"}
+                    />
                   </div>
                 </div>
                 <div className="rounded-md border p-3">
@@ -345,7 +402,7 @@ export const CaseDetailPage = () => {
                     Applicant
                   </div>
                   <div className="mt-2 text-xs">
-                    NIK: {caseDetail.applicant.nik}
+                    NIK: {maskNik(caseDetail.applicant.nik)}
                   </div>
                   <div className="text-xs">
                     Name: {caseDetail.applicant.name}
@@ -381,15 +438,47 @@ export const CaseDetailPage = () => {
                   ))}
                 </div>
                 <div className="space-y-1 text-xs text-muted-foreground">
-                  <div>NIK: {caseDetail.evidence.ktpOcr.nik}</div>
-                  <div>Name: {caseDetail.evidence.ktpOcr.name}</div>
+                  <div>
+                    <PiiRevealGate
+                      label="NIK"
+                      maskedValue={maskNik(caseDetail.evidence.ktpOcr.nik)}
+                      fullValue={caseDetail.evidence.ktpOcr.nik}
+                      caseId={caseDetail.id}
+                      fieldKey="OCR_NIK"
+                      actor={actor}
+                      allowReveal={role === "VERIFIER"}
+                    />
+                  </div>
+                  <div>
+                    <PiiRevealGate
+                      label="Name"
+                      maskedValue={maskNik(caseDetail.evidence.ktpOcr.name)}
+                      fullValue={caseDetail.evidence.ktpOcr.name}
+                      caseId={caseDetail.id}
+                      fieldKey="OCR_NAME"
+                      actor={actor}
+                      allowReveal={role === "VERIFIER"}
+                    />
+                  </div>
                   {caseDetail.evidence.ktpOcr.birthDate ? (
                     <div>
                       Birth date: {caseDetail.evidence.ktpOcr.birthDate}
                     </div>
                   ) : null}
                   {caseDetail.evidence.ktpOcr.address ? (
-                    <div>Address: {caseDetail.evidence.ktpOcr.address}</div>
+                    <div>
+                      <PiiRevealGate
+                        label="Address"
+                        maskedValue={maskNik(
+                          caseDetail.evidence.ktpOcr.address,
+                        )}
+                        fullValue={caseDetail.evidence.ktpOcr.address}
+                        caseId={caseDetail.id}
+                        fieldKey="OCR_ADDRESS"
+                        actor={actor}
+                        allowReveal={role === "VERIFIER"}
+                      />
+                    </div>
                   ) : null}
                 </div>
               </div>

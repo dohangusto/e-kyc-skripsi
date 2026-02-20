@@ -31,3 +31,25 @@ export type DecisionPayload = {
   reasonCode: string;
   notes?: string;
 };
+
+export type QCVerdict = "PASS" | "FAIL" | "NEEDS_FOLLOWUP";
+
+export type QCSample = {
+  id: string;
+  createdAt: string;
+  createdBy: { role: Role; name: string };
+  criteria: {
+    fromDateISO: string;
+    toDateISO: string;
+    statuses: CaseStatus[];
+    sampleSize: number;
+  };
+  caseIds: string[];
+  results: Array<{
+    caseId: string;
+    verdict: QCVerdict;
+    notes?: string;
+    reviewedAt: string;
+    reviewer: { role: Role; name: string };
+  }>;
+};

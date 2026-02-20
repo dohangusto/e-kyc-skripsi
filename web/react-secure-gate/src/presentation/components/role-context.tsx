@@ -5,14 +5,19 @@ import type { Role } from "@/domain/types";
 type RoleContextValue = {
   role: Role;
   setRole: (role: Role) => void;
+  actorName: string;
 };
 
 const RoleContext = createContext<RoleContextValue | undefined>(undefined);
 
 export const RoleProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<Role>("VERIFIER");
+  const actorName = role === "VERIFIER" ? "Verifier 1" : "Supervisor 1";
 
-  const value = useMemo(() => ({ role, setRole }), [role]);
+  const value = useMemo(
+    () => ({ role, setRole, actorName }),
+    [role, actorName],
+  );
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
 };

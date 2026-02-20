@@ -22,4 +22,5 @@ export type ListAuditResult = {
 
 export interface AuditRepository {
   listAuditEvents(params?: ListAuditParams): Promise<ListAuditResult>;
+  recordAuditEvent(event: AuditEvent): Promise<void>;
 }

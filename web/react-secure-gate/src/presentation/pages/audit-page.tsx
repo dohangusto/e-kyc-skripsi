@@ -6,11 +6,12 @@ import type { Role } from "@/domain/types";
 import { PageHeader } from "@/presentation/components/page-header";
 import { EmptyState } from "@/presentation/components/empty-state";
 import { ActionBadge } from "@/presentation/components/action-badge";
+import { ErrorPanel } from "@/presentation/components/error-panel";
+import { TableSkeleton } from "@/presentation/components/table-skeleton";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Card } from "@/presentation/components/ui/card";
 import { Input } from "@/presentation/components/ui/input";
-import { Skeleton } from "@/presentation/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -28,12 +29,18 @@ const roleOptions: Array<{ label: string; value: "ALL" | Role }> = [
   { label: "Supervisor", value: "SUPERVISOR" },
 ];
 
-const actionOptions: Array<{ label: string; value: "ALL" | AuditEvent["action"] }> = [
+const actionOptions: Array<{
+  label: string;
+  value: "ALL" | AuditEvent["action"];
+}> = [
   { label: "All actions", value: "ALL" },
   { label: "Case viewed", value: "CASE_VIEWED" },
   { label: "Approved manually", value: "DECISION_APPROVED_MANUAL" },
   { label: "Rejected", value: "DECISION_REJECTED" },
   { label: "Requested re-verification", value: "DECISION_REQUEST_REVERIFY" },
+  { label: "PII revealed", value: "PII_REVEALED" },
+  { label: "QC sample created", value: "QC_SAMPLE_CREATED" },
+  { label: "QC review recorded", value: "QC_REVIEW_RECORDED" },
 ];
 
 const sortOptions = [
@@ -69,7 +76,7 @@ export const AuditPage = () => {
       action,
       sort,
     }),
-    [page, pageSize, debouncedSearch, role, action, sort]
+    [page, pageSize, debouncedSearch, role, action, sort],
   );
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
@@ -82,7 +89,8 @@ export const AuditPage = () => {
   const items = data?.items ?? [];
   const currentPage = data?.page ?? page;
   const currentPageSize = data?.pageSize ?? pageSize;
-  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
+  const startIndex =
+    totalItems === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
   const endIndex = totalItems === 0 ? 0 : startIndex + items.length - 1;
 
   const clearFilters = () => {
@@ -117,10 +125,13 @@ export const AuditPage = () => {
               setPage(1);
             }}
           />
-          <Select value={role} onValueChange={(value) => {
-            setRole(value as "ALL" | Role);
-            setPage(1);
-          }}>
+          <Select
+            value={role}
+            onValueChange={(value) => {
+              setRole(value as "ALL" | Role);
+              setPage(1);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Role" />
             </SelectTrigger>
@@ -132,10 +143,13 @@ export const AuditPage = () => {
               ))}
             </SelectContent>
           </Select>
-          <Select value={action} onValueChange={(value) => {
-            setAction(value as "ALL" | AuditEvent["action"]);
-            setPage(1);
-          }}>
+          <Select
+            value={action}
+            onValueChange={(value) => {
+              setAction(value as "ALL" | AuditEvent["action"]);
+              setPage(1);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Action" />
             </SelectTrigger>
@@ -147,10 +161,13 @@ export const AuditPage = () => {
               ))}
             </SelectContent>
           </Select>
-          <Select value={sort} onValueChange={(value) => {
-            setSort(value as "NEWEST" | "OLDEST");
-            setPage(1);
-          }}>
+          <Select
+            value={sort}
+            onValueChange={(value) => {
+              setSort(value as "NEWEST" | "OLDEST");
+              setPage(1);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
@@ -162,10 +179,13 @@ export const AuditPage = () => {
               ))}
             </SelectContent>
           </Select>
-          <Select value={String(pageSize)} onValueChange={(value) => {
-            setPageSize(Number(value));
-            setPage(1);
-          }}>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => {
+              setPageSize(Number(value));
+              setPage(1);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Rows" />
             </SelectTrigger>
@@ -180,7 +200,9 @@ export const AuditPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <span>Showing {startIndex} to {endIndex} of {totalItems} events</span>
+          <span>
+            Showing {startIndex} to {endIndex} of {totalItems} events
+          </span>
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
           </Button>
@@ -188,16 +210,13 @@ export const AuditPage = () => {
       </Card>
 
       {isError ? (
-        <Card className="space-y-2 p-6">
-          <div className="text-sm font-medium">Unable to load audit events.</div>
-          <Button onClick={() => refetch()}>Retry</Button>
-        </Card>
+        <ErrorPanel
+          title="Unable to load audit events."
+          description="Please retry or adjust filters."
+          onRetry={() => refetch()}
+        />
       ) : isLoading ? (
-        <Card className="space-y-3 p-4">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-12 w-full" />
-          ))}
-        </Card>
+        <TableSkeleton />
       ) : items.length === 0 ? (
         <EmptyState
           title="No audit events found"
@@ -220,23 +239,46 @@ export const AuditPage = () => {
                 key={event.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/cases/${event.caseId}`)}
+                onClick={() =>
+                  navigate(
+                    event.action === "QC_SAMPLE_CREATED"
+                      ? `/qc/${event.caseId}`
+                      : `/cases/${event.caseId}`,
+                  )
+                }
                 onKeyDown={(eventKey) => {
-                  if (eventKey.key === "Enter") navigate(`/cases/${event.caseId}`);
+                  if (eventKey.key === "Enter")
+                    navigate(
+                      event.action === "QC_SAMPLE_CREATED"
+                        ? `/qc/${event.caseId}`
+                        : `/cases/${event.caseId}`,
+                    );
                 }}
                 className="grid cursor-pointer grid-cols-[1.4fr_1.4fr_1.6fr_1.2fr_1.2fr_2fr] items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40"
               >
-                <span className="text-xs text-muted-foreground">{formatDateTime(event.createdAt)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatDateTime(event.createdAt)}
+                </span>
                 <div className="flex flex-col">
-                  <span className="font-medium text-foreground">{event.actorName}</span>
+                  <span className="font-medium text-foreground">
+                    {event.actorName}
+                  </span>
                   <Badge variant="outline" className="w-fit text-[10px]">
                     {event.actorRole}
                   </Badge>
                 </div>
                 <ActionBadge action={event.action} />
-                <span className="font-mono text-xs text-muted-foreground">{event.caseId}</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {event.action === "QC_SAMPLE_CREATED"
+                    ? `Sample ${event.caseId}`
+                    : event.caseId}
+                </span>
                 <span className="text-xs text-muted-foreground">
-                  {event.reasonCode ? <Badge variant="outline">{event.reasonCode}</Badge> : "-"}
+                  {event.reasonCode ? (
+                    <Badge variant="outline">{event.reasonCode}</Badge>
+                  ) : (
+                    "-"
+                  )}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {event.notes ? truncate(event.notes, 80) : "-"}

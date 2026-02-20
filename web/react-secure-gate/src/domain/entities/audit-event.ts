@@ -4,7 +4,10 @@ export type AuditAction =
   | "CASE_VIEWED"
   | "DECISION_APPROVED_MANUAL"
   | "DECISION_REJECTED"
-  | "DECISION_REQUEST_REVERIFY";
+  | "DECISION_REQUEST_REVERIFY"
+  | "PII_REVEALED"
+  | "QC_SAMPLE_CREATED"
+  | "QC_REVIEW_RECORDED";
 
 export type AuditEvent = {
   id: string;
