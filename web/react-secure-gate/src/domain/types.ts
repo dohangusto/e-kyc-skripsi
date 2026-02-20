@@ -23,3 +23,11 @@ export type Region = {
   city: string;
   district?: string;
 };
+
+export type DecisionType = "APPROVE_MANUAL" | "REJECT" | "REQUEST_REVERIFY";
+
+export type DecisionPayload = {
+  type: DecisionType;
+  reasonCode: string;
+  notes?: string;
+};

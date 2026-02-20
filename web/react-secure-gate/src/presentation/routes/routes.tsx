@@ -7,6 +7,7 @@ import { ReportsPage } from "@/presentation/pages/reports-page";
 import { SettingsPage } from "@/presentation/pages/settings-page";
 import { NotAuthorizedPage } from "@/presentation/pages/not-authorized-page";
 import { RoleGuard } from "@/presentation/routes/role-guard";
+import { AuditPage } from "@/presentation/pages/audit-page";
 
 export const routes = [
   {
@@ -43,6 +44,14 @@ export const routes = [
         element: (
           <RoleGuard allow={["SUPERVISOR"]}>
             <ReportsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "audit",
+        element: (
+          <RoleGuard allow={["VERIFIER", "SUPERVISOR"]}>
+            <AuditPage />
           </RoleGuard>
         ),
       },

@@ -1,5 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, FileText, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  FolderKanban,
+  FileText,
+  Settings,
+  ClipboardList,
+} from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
 import type { Role } from "@/domain/types";
@@ -29,6 +35,12 @@ const navItems: Array<{
     roles: ["SUPERVISOR"],
   },
   {
+    label: "Audit",
+    to: "/audit",
+    icon: ClipboardList,
+    roles: ["VERIFIER", "SUPERVISOR"],
+  },
+  {
     label: "Settings",
     to: "/settings",
     icon: Settings,
@@ -56,7 +68,7 @@ export const Sidebar = () => {
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-2 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted",
-                    isActive && "bg-muted text-foreground"
+                    isActive && "bg-muted text-foreground",
                   )
                 }
               >

@@ -1,5 +1,15 @@
 import type { VerificationCase } from "@/domain/entities/verification-case";
-import type { CaseStatus, Eligibility, FaceMatch, Liveness, OcrConsistency, Restriction } from "@/domain/types";
+import type {
+  CaseStatus,
+  Eligibility,
+  FaceMatch,
+  Liveness,
+  OcrConsistency,
+  Restriction,
+} from "@/domain/types";
+
+const ktpImageUrl = new URL("./assets/ktp-placeholder.svg", import.meta.url).href;
+const selfieImageUrl = new URL("./assets/selfie-placeholder.svg", import.meta.url).href;
 
 const regions = [
   {
@@ -75,6 +85,13 @@ const statusPool: CaseStatus[] = [
   ...Array(2).fill("NEED_REVERIFY"),
 ];
 
+const gestureSets = [
+  ["TURN_LEFT", "BLINK", "SMILE"],
+  ["TURN_RIGHT", "BLINK"],
+  ["NOD", "SMILE"],
+  ["BLINK", "SMILE", "TURN_LEFT"],
+];
+
 const mulberry32 = (seed: number) => {
   let value = seed;
   return () => {
@@ -139,10 +156,63 @@ const deriveEligibility = (status: CaseStatus, index: number): Eligibility => {
   return "ELIGIBLE";
 };
 
-const deriveRiskLevel = (signals: ReturnType<typeof deriveSignals>, eligibility: Eligibility) => {
-  if (signals.faceMatch === "MISMATCH" || eligibility === "INELIGIBLE") return "HIGH";
-  if (signals.faceMatch === "PENDING" || signals.restriction === "LIMITED") return "MEDIUM";
+const deriveRiskLevel = (
+  signals: ReturnType<typeof deriveSignals>,
+  eligibility: Eligibility,
+) => {
+  if (signals.faceMatch === "MISMATCH" || eligibility === "INELIGIBLE")
+    return "HIGH";
+  if (signals.faceMatch === "PENDING" || signals.restriction === "LIMITED")
+    return "MEDIUM";
   return "LOW";
+};
+
+const deriveOcr = (
+  nik: string,
+  name: string,
+  index: number,
+  ocrConsistency: OcrConsistency,
+) => {
+  const flags: string[] = [];
+  let confidence = 0.92;
+  let ocrName = name;
+
+  if (ocrConsistency === "INCONSISTENT") {
+    const parts = name.split(" ");
+    ocrName = `${parts[0]} X`;
+    confidence = 0.62;
+    flags.push("NAME_MISMATCH");
+  }
+
+  if (index % 7 === 0) {
+    flags.push("LOW_LIGHTING");
+    confidence = Math.min(confidence, 0.7);
+  }
+
+  return {
+    nik,
+    name: ocrName,
+    birthDate: "1994-08-12",
+    address: `Jl. Merdeka No.${(index % 20) + 1}`,
+    confidence,
+    flags: flags.length ? flags : undefined,
+  };
+};
+
+const deriveScores = (signals: ReturnType<typeof deriveSignals>) => {
+  const faceScore =
+    signals.faceMatch === "MATCH"
+      ? 0.93
+      : signals.faceMatch === "PENDING"
+        ? 0.64
+        : 0.32;
+  const livenessScore =
+    signals.liveness === "PASS"
+      ? 0.9
+      : signals.liveness === "UNCERTAIN"
+        ? 0.58
+        : 0.22;
+  return { faceScore, livenessScore };
 };
 
 const random = mulberry32(42);
@@ -155,13 +225,16 @@ export const mockCases: VerificationCase[] = Array.from({ length: 60 }, (_, inde
   const eligibility = deriveEligibility(status, index);
   const riskLevel = deriveRiskLevel(signals, eligibility);
   const createdAt = new Date(Date.now() - index * 1000 * 60 * 60 * 6).toISOString();
+  const applicantName = `${firstNames[index % firstNames.length]} ${lastNames[index % lastNames.length]}`;
+  const nik = buildNik(region.code, index);
+  const { faceScore, livenessScore } = deriveScores(signals);
 
   return {
     id: `case-${1000 + index}`,
     applicant: {
       id: `app-${2000 + index}`,
-      nik: buildNik(region.code, index),
-      name: `${firstNames[index % firstNames.length]} ${lastNames[index % lastNames.length]}`,
+      nik,
+      name: applicantName,
       region: {
         province: region.province,
         city: region.city,
@@ -174,5 +247,19 @@ export const mockCases: VerificationCase[] = Array.from({ length: 60 }, (_, inde
     updatedAt: createdAt,
     riskLevel,
     eligibility,
+    evidence: {
+      ktpImageUrl,
+      ktpOcr: deriveOcr(nik, applicantName, index, signals.ocrConsistency),
+      selfieWithKtpUrl: selfieImageUrl,
+      liveness: {
+        result: signals.liveness,
+        gestures: gestureSets[index % gestureSets.length],
+        score: livenessScore,
+      },
+      faceMatch: {
+        result: signals.faceMatch,
+        score: faceScore,
+      },
+    },
   };
 });

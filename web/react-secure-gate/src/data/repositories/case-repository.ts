@@ -2,9 +2,11 @@ import type { AuditEvent } from "@/domain/entities/audit-event";
 import type { VerificationCase } from "@/domain/entities/verification-case";
 import type {
   CaseStatus,
+  DecisionPayload,
   Eligibility,
   FaceMatch,
   RiskLevel,
+  Role,
 } from "@/domain/types";
 
 export type ListCasesParams = {
@@ -28,6 +30,11 @@ export type ListCasesResult = {
 
 export interface CaseRepository {
   listCases(params?: ListCasesParams): Promise<ListCasesResult>;
-  getCaseById(id: string): Promise<VerificationCase | null>;
+  getCaseById(id: string): Promise<VerificationCase>;
   listAuditEvents(caseId: string): Promise<AuditEvent[]>;
+  decideCase(
+    caseId: string,
+    payload: DecisionPayload,
+    actor: { role: Role; name: string },
+  ): Promise<VerificationCase>;
 }
