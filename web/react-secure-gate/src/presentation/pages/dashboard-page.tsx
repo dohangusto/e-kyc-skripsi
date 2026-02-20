@@ -1,12 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/presentation/components/page-header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/presentation/components/ui/card";
+import { MetricCard } from "@/presentation/components/metric-card";
 import { caseUsecases } from "@/shared/lib/usecases";
 import type { CaseStatus } from "@/domain/types";
 
@@ -42,40 +36,25 @@ export const DashboardPage = () => {
         title="Dashboard"
         description="Operational snapshot for verification throughput."
       />
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Cases</CardTitle>
-            <CardDescription>Currently waiting for completion</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">
-              {isLoading ? "-" : pendingCount}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Fallback Review</CardTitle>
-            <CardDescription>Needs manual supervision</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">
-              {isLoading ? "-" : fallbackCount}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Approved Today</CardTitle>
-            <CardDescription>Auto + manual approvals</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">
-              {isLoading ? "-" : approvedTodayCount}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 md:grid-cols-3">
+        <MetricCard
+          title="Pending Cases"
+          description="Currently waiting for completion"
+          value={isLoading ? "-" : pendingCount}
+          accentClassName="text-slate-700"
+        />
+        <MetricCard
+          title="Fallback Review"
+          description="Needs manual supervision"
+          value={isLoading ? "-" : fallbackCount}
+          accentClassName="text-amber-700"
+        />
+        <MetricCard
+          title="Approved Today"
+          description="Auto + manual approvals"
+          value={isLoading ? "-" : approvedTodayCount}
+          accentClassName="text-emerald-700"
+        />
       </div>
     </div>
   );

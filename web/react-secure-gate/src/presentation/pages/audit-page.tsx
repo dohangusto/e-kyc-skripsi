@@ -22,6 +22,10 @@ import {
 import { auditUsecases } from "@/shared/lib/usecases";
 import { formatDateTime } from "@/shared/lib/format-date-time";
 import { truncate } from "@/shared/lib/truncate";
+import {
+  getReasonAbbreviation,
+  getReasonLabel,
+} from "@/shared/constants/reason-abbreviations";
 
 const roleOptions: Array<{ label: string; value: "ALL" | Role }> = [
   { label: "All roles", value: "ALL" },
@@ -119,8 +123,8 @@ export const AuditPage = () => {
         }
       />
 
-      <Card className="space-y-4 p-4">
-        <div className="grid gap-3 lg:grid-cols-[2fr_repeat(4,1fr)]">
+      <Card className="space-y-5 p-5">
+        <div className="grid gap-4 lg:grid-cols-[2fr_repeat(4,1fr)]">
           <Input
             placeholder="Search actor, reason, notes, case ID..."
             value={search}
@@ -267,11 +271,17 @@ export const AuditPage = () => {
                   <span className="font-medium text-foreground">
                     {event.actorName}
                   </span>
-                  <Badge variant="outline" className="w-fit text-[10px]">
-                    {event.actorRole}
+                  <Badge
+                    variant="outline"
+                    className="w-fit text-[10px]"
+                    title={
+                      event.actorRole === "VERIFIER" ? "Verifier" : "Supervisor"
+                    }
+                  >
+                    {event.actorRole === "VERIFIER" ? "V" : "S"}
                   </Badge>
                 </div>
-                <ActionBadge action={event.action} />
+                <ActionBadge action={event.action} abbreviated />
                 <span className="font-mono text-xs text-muted-foreground">
                   {event.action === "QC_SAMPLE_CREATED"
                     ? `Sample ${event.caseId}`
@@ -279,7 +289,12 @@ export const AuditPage = () => {
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {event.reasonCode ? (
-                    <Badge variant="outline">{event.reasonCode}</Badge>
+                    <Badge
+                      variant="outline"
+                      title={getReasonLabel(event.reasonCode)}
+                    >
+                      {getReasonAbbreviation(event.reasonCode)}
+                    </Badge>
                   ) : (
                     "-"
                   )}

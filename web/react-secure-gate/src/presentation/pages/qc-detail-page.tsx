@@ -142,12 +142,14 @@ const SampleCaseRow = ({
   });
 
   return (
-    <div className="grid grid-cols-[1.4fr_1.4fr_1fr_1fr_1fr] items-center gap-3 px-4 py-3 text-sm">
+    <div className="grid grid-cols-[1.4fr_1.4fr_1fr_1fr_1fr] items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40">
       <span className="font-mono text-xs text-muted-foreground">{caseId}</span>
       <span className="text-sm text-muted-foreground">
         {detail ? detail.applicant.name : "Loading..."}
       </span>
-      <div>{detail ? <StatusBadge status={detail.status} /> : "-"}</div>
+      <div>
+        {detail ? <StatusBadge status={detail.status} abbreviated /> : "-"}
+      </div>
       <div>
         {verdict ? (
           <Badge variant={verdictBadge[verdict.verdict].variant}>
@@ -249,7 +251,7 @@ export const QCDetailPage = () => {
         }
       />
 
-      <Card className="space-y-2 p-4 text-sm text-muted-foreground">
+      <Card className="space-y-2 p-5 text-sm text-muted-foreground">
         <div>Created: {formatDateTime(data.createdAt)}</div>
         <div>
           By: {data.createdBy.name} · {data.createdBy.role}

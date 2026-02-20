@@ -1,11 +1,23 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/presentation/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/presentation/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/presentation/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/presentation/components/ui/select";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { ErrorPanel } from "@/presentation/components/error-panel";
 import { analyticsUsecases } from "@/shared/lib/usecases";
+import { MetricCard } from "@/presentation/components/metric-card";
 
 const rangeOptions = [
   { label: "Last 1 day", value: "1" },
@@ -47,9 +59,7 @@ export const AnalyticsPage = () => {
 
   const renderReasons = (items: { reasonCode: string; count: number }[]) => {
     if (items.length === 0) {
-      return (
-        <div className="text-sm text-muted-foreground">No data yet.</div>
-      );
+      return <div className="text-sm text-muted-foreground">No data yet.</div>;
     }
     const maxCount = Math.max(...items.map((item) => item.count), 1);
     return (
@@ -107,66 +117,30 @@ export const AnalyticsPage = () => {
         />
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Decisions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-20" />
-                ) : (
-                  <div className="text-2xl font-semibold">
-                    {decisionCounts.total}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Approved Manual</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-20" />
-                ) : (
-                  <div className="text-2xl font-semibold">
-                    {decisionCounts.approvedManual}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Rejected</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-20" />
-                ) : (
-                  <div className="text-2xl font-semibold">
-                    {decisionCounts.rejected}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Re-Verify</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-20" />
-                ) : (
-                  <div className="text-2xl font-semibold">
-                    {decisionCounts.reverify}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid gap-6 lg:grid-cols-4">
+            <MetricCard
+              title="Total Decisions"
+              value={isLoading ? "-" : decisionCounts.total}
+              accentClassName="text-slate-700"
+            />
+            <MetricCard
+              title="Approved Manual"
+              value={isLoading ? "-" : decisionCounts.approvedManual}
+              accentClassName="text-emerald-700"
+            />
+            <MetricCard
+              title="Rejected"
+              value={isLoading ? "-" : decisionCounts.rejected}
+              accentClassName="text-red-700"
+            />
+            <MetricCard
+              title="Re-Verify"
+              value={isLoading ? "-" : decisionCounts.reverify}
+              accentClassName="text-blue-700"
+            />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
             <Card>
               <CardHeader>
                 <CardTitle>Fallback Rate</CardTitle>
@@ -179,7 +153,7 @@ export const AnalyticsPage = () => {
                   </>
                 ) : (
                   <>
-                    <div className="text-2xl font-semibold">
+                    <div className="text-2xl font-semibold text-amber-700">
                       {formatPercent(fallbackRate)}
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -208,7 +182,7 @@ export const AnalyticsPage = () => {
             </Card>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Top reject reasons</CardTitle>

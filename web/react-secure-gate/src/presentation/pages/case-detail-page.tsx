@@ -13,10 +13,10 @@ import { SignalBadge } from "@/presentation/components/signal-badge";
 import { PiiRevealGate } from "@/presentation/components/pii-reveal-gate";
 import { DecisionDialog } from "@/presentation/components/decision-dialog";
 import { useFeatureFlags } from "@/presentation/components/feature-flags-context";
+import { CardShell } from "@/presentation/components/card-shell";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
-  Card,
   CardContent,
   CardHeader,
   CardTitle,
@@ -27,6 +27,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
+import { Separator } from "@/presentation/components/ui/separator";
+import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { DetailSkeleton } from "@/presentation/components/detail-skeleton";
 import { caseUsecases, auditUsecases } from "@/shared/lib/usecases";
 import { formatDateTime } from "@/shared/lib/format-date-time";
@@ -34,24 +36,48 @@ import { maskNik } from "@/shared/lib/mask-nik";
 import { NotFoundError } from "@/shared/lib/errors";
 
 const livenessBadgeConfig = {
-  PASS: { label: "Pass", variant: "secondary" as const },
-  FAIL: { label: "Fail", variant: "destructive" as const },
-  UNCERTAIN: { label: "Uncertain", variant: "outline" as const },
+  PASS: {
+    label: "Pass",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  FAIL: { label: "Fail", className: "border-red-200 bg-red-50 text-red-700" },
+  UNCERTAIN: {
+    label: "Uncertain",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  },
 };
 
 const ocrBadgeConfig = {
-  CONSISTENT: { label: "Consistent", variant: "secondary" as const },
-  INCONSISTENT: { label: "Inconsistent", variant: "destructive" as const },
+  CONSISTENT: {
+    label: "Consistent",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  INCONSISTENT: {
+    label: "Inconsistent",
+    className: "border-red-200 bg-red-50 text-red-700",
+  },
 };
 
 const restrictionBadgeConfig = {
-  FULL: { label: "Full", variant: "secondary" as const },
-  LIMITED: { label: "Limited", variant: "outline" as const },
+  FULL: {
+    label: "Full",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
+  },
+  LIMITED: {
+    label: "Limited",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  },
 };
 
 const eligibilityBadgeConfig = {
-  ELIGIBLE: { label: "Eligible", variant: "secondary" as const },
-  INELIGIBLE: { label: "Ineligible", variant: "destructive" as const },
+  ELIGIBLE: {
+    label: "Eligible",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  INELIGIBLE: {
+    label: "Ineligible",
+    className: "border-red-200 bg-red-50 text-red-700",
+  },
 };
 
 const auditActionLabels: Record<AuditEvent["action"], string> = {
@@ -62,6 +88,55 @@ const auditActionLabels: Record<AuditEvent["action"], string> = {
   PII_REVEALED: "PII revealed",
   QC_SAMPLE_CREATED: "QC sample created",
   QC_REVIEW_RECORDED: "QC review recorded",
+};
+
+const bannerStyles = {
+  amber: "border-amber-200 bg-amber-50 text-amber-900",
+  red: "border-red-200 bg-red-50 text-red-900",
+  slate: "border-slate-200 bg-slate-50 text-slate-800",
+};
+
+const Banner = ({
+  tone,
+  text,
+}: {
+  tone: keyof typeof bannerStyles;
+  text: string;
+}) => (
+  <div className={`rounded-md border px-4 py-3 text-sm ${bannerStyles[tone]}`}>
+    {text}
+  </div>
+);
+
+const scoreBarStyles = {
+  emerald: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red: "bg-red-500",
+  blue: "bg-blue-500",
+};
+
+const ScoreBar = ({
+  value,
+  tone,
+}: {
+  value?: number;
+  tone: keyof typeof scoreBarStyles;
+}) => {
+  const safeValue = typeof value === "number" ? value : 0;
+  const width = Math.min(Math.max(safeValue * 100, 0), 100);
+  return (
+    <div className="space-y-1">
+      <div className="h-2 w-full rounded-full bg-muted">
+        <div
+          className={`h-2 rounded-full ${scoreBarStyles[tone]}`}
+          style={{ width: `${width}%` }}
+        />
+      </div>
+      <div className="text-xs text-muted-foreground">
+        {typeof value === "number" ? `${(value * 100).toFixed(0)}%` : "N/A"}
+      </div>
+    </div>
+  );
 };
 
 export const CaseDetailPage = () => {
@@ -251,13 +326,33 @@ export const CaseDetailPage = () => {
     setDecisionType(type);
   };
 
+  const statusBanners = [
+    (caseDetail.status === "FALLBACK_REVIEW" ||
+      caseDetail.signals.faceMatch === "MISMATCH") && {
+      tone: "amber" as const,
+      text: "Manual review required: face mismatch.",
+    },
+    caseDetail.signals.liveness === "FAIL" && {
+      tone: "red" as const,
+      text: "High risk: liveness failed.",
+    },
+    caseDetail.eligibility === "INELIGIBLE" && {
+      tone: "amber" as const,
+      text: "Not eligible.",
+    },
+    caseDetail.signals.restriction === "LIMITED" && {
+      tone: "slate" as const,
+      text: "User has limited access.",
+    },
+  ].filter(Boolean) as Array<{ tone: keyof typeof bannerStyles; text: string }>;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Case Review"
         description="eKYC evidence and decision"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/80 p-2 shadow-sm">
             {role === "SUPERVISOR" ? (
               <Badge variant="secondary">Read-only</Badge>
             ) : null}
@@ -277,6 +372,7 @@ export const CaseDetailPage = () => {
                       ? "Disabled by policy"
                       : "Assign to proceed"
                   }
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
                 >
                   Approve
                 </Button>
@@ -289,10 +385,11 @@ export const CaseDetailPage = () => {
                   Reject
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => handleDecisionOpen("REQUEST_REVERIFY")}
                   disabled={!canDecide}
                   title="Assign to proceed"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
                 >
                   Request Re-Verification
                 </Button>
@@ -304,6 +401,7 @@ export const CaseDetailPage = () => {
                   variant="outline"
                   onClick={() => unassignMutation.mutate()}
                   disabled={unassignMutation.isPending}
+                  className="text-muted-foreground"
                 >
                   Unassign
                 </Button>
@@ -315,6 +413,7 @@ export const CaseDetailPage = () => {
                       ? "Disabled by policy"
                       : undefined
                   }
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
                 >
                   Approve
                 </Button>
@@ -326,9 +425,10 @@ export const CaseDetailPage = () => {
                   Reject
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => handleDecisionOpen("REQUEST_REVERIFY")}
                   disabled={!canDecide}
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
                 >
                   Request Re-Verification
                 </Button>
@@ -345,45 +445,30 @@ export const CaseDetailPage = () => {
         </Badge>
       </div>
 
-      {isTerminal ? (
-        <div className="rounded-md border border-muted bg-muted/40 p-3 text-sm text-muted-foreground">
-          This case is already finalized.
-        </div>
-      ) : null}
+      <div className="space-y-2">
+        {isTerminal ? (
+          <Banner tone="slate" text="This case is already finalized." />
+        ) : null}
+        {isOwnedByOther && isVerifier ? (
+          <Banner
+            tone="red"
+            text={`Assigned to ${caseDetail.assignedTo?.name}. You cannot make decisions.`}
+          />
+        ) : null}
+        {statusBanners.map((banner) => (
+          <Banner key={banner.text} tone={banner.tone} text={banner.text} />
+        ))}
+      </div>
 
-      {isOwnedByOther && isVerifier ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          Assigned to {caseDetail.assignedTo?.name}. You cannot make decisions.
-        </div>
-      ) : null}
-
-      {caseDetail.signals.faceMatch === "MISMATCH" ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          Face mismatch detected — manual review required.
-        </div>
-      ) : null}
-
-      {caseDetail.eligibility === "INELIGIBLE" ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          User is not eligible — check source data.
-        </div>
-      ) : null}
-
-      {caseDetail.signals.liveness === "FAIL" ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          Liveness failed — high risk.
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <CardShell>
           <CardHeader>
             <CardTitle>Applicant</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
+          <CardContent className="space-y-4 text-sm">
             <div>
               <div className="text-xs text-muted-foreground">Name</div>
-              <div className="font-medium text-foreground">
+              <div className="text-base font-semibold text-foreground">
                 {caseDetail.applicant.name}
               </div>
             </div>
@@ -400,169 +485,202 @@ export const CaseDetailPage = () => {
                 policyDisabled={!flags.enablePIIReveal}
               />
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Region</div>
-              <div className="text-sm">
-                {caseDetail.applicant.region.province} /{" "}
-                {caseDetail.applicant.region.city}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <div className="text-xs text-muted-foreground">Region</div>
+                <div className="text-sm font-medium">
+                  {caseDetail.applicant.region.province} /{" "}
+                  {caseDetail.applicant.region.city}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Created</div>
-              <div className="text-sm">
-                {formatDateTime(caseDetail.createdAt)}
+              <div>
+                <div className="text-xs text-muted-foreground">Created</div>
+                <div className="text-sm font-medium">
+                  {formatDateTime(caseDetail.createdAt)}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={eligibilityBadge.variant}>
+              <Badge variant="outline" className={eligibilityBadge.className}>
                 {eligibilityBadge.label}
               </Badge>
             </div>
           </CardContent>
-        </Card>
+        </CardShell>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={caseDetail.status} />
-              <RiskBadge level={caseDetail.riskLevel} />
-              <Badge variant={restrictionBadge.variant}>
-                {restrictionBadge.label} restriction
-              </Badge>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Updated{" "}
-              {formatDateTime(caseDetail.updatedAt ?? caseDetail.createdAt)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Signals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <SignalBadge
-                type="faceMatch"
-                value={caseDetail.signals.faceMatch}
-              />
-              <Badge variant={livenessBadge.variant}>
-                Liveness {livenessBadge.label}
-              </Badge>
-              <Badge variant={ocrBadge.variant}>OCR {ocrBadge.label}</Badge>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Face score:{" "}
-              {caseDetail.evidence.faceMatch.score?.toFixed(2) ?? "-"} ·
-              Liveness score:{" "}
-              {caseDetail.evidence.liveness.score?.toFixed(2) ?? "-"}
-            </div>
-            {caseDetail.signals.faceMatch === "MISMATCH" ||
-            caseDetail.signals.ocrConsistency === "INCONSISTENT" ? (
-              <div className="text-xs text-destructive">
-                Mismatch detected. Review evidence carefully before deciding.
+        <div className="space-y-4">
+          <CardShell>
+            <CardHeader>
+              <CardTitle>Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={caseDetail.status} />
+                <RiskBadge level={caseDetail.riskLevel} />
+                <Badge variant="outline" className={restrictionBadge.className}>
+                  {restrictionBadge.label} restriction
+                </Badge>
               </div>
-            ) : null}
-          </CardContent>
-        </Card>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <div>
+                  Updated{" "}
+                  {formatDateTime(caseDetail.updatedAt ?? caseDetail.createdAt)}
+                </div>
+                <div>Case ID: {caseDetail.id}</div>
+              </div>
+            </CardContent>
+          </CardShell>
+
+          <CardShell>
+            <CardHeader>
+              <CardTitle>Signals</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <SignalBadge
+                  type="faceMatch"
+                  value={caseDetail.signals.faceMatch}
+                />
+                <Badge variant="outline" className={livenessBadge.className}>
+                  Liveness {livenessBadge.label}
+                </Badge>
+                <Badge variant="outline" className={ocrBadge.className}>
+                  OCR {ocrBadge.label}
+                </Badge>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs text-muted-foreground">
+                    Face match score
+                  </div>
+                  <ScoreBar
+                    value={caseDetail.evidence.faceMatch.score}
+                    tone={
+                      caseDetail.signals.faceMatch === "MISMATCH"
+                        ? "red"
+                        : caseDetail.signals.faceMatch === "MATCH"
+                          ? "emerald"
+                          : "amber"
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">
+                    Liveness score
+                  </div>
+                  <ScoreBar
+                    value={caseDetail.evidence.liveness.score}
+                    tone={
+                      caseDetail.signals.liveness === "FAIL"
+                        ? "red"
+                        : caseDetail.signals.liveness === "PASS"
+                          ? "emerald"
+                          : "amber"
+                    }
+                  />
+                </div>
+              </div>
+              {caseDetail.signals.faceMatch === "MISMATCH" ||
+              caseDetail.signals.ocrConsistency === "INCONSISTENT" ? (
+                <div className="text-xs text-destructive">
+                  Mismatch detected. Review evidence carefully before deciding.
+                </div>
+              ) : null}
+            </CardContent>
+          </CardShell>
+        </div>
       </div>
 
-      <Tabs defaultValue="summary" className="w-full">
-        <TabsList>
+      <Tabs defaultValue="summary" className="w-full space-y-4">
+        <TabsList className="bg-muted/40">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="evidence">Evidence</TabsTrigger>
           <TabsTrigger value="audit">Audit</TabsTrigger>
         </TabsList>
-        <TabsContent value="summary" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Review Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>{summaryNarrative}</p>
-              {caseDetail.evidence.ktpOcr.name !== caseDetail.applicant.name ||
-              caseDetail.evidence.ktpOcr.nik !== caseDetail.applicant.nik ? (
-                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-                  OCR data differs from applicant input. Validate identity
-                  fields before approving.
+        <TabsContent value="summary">
+          <CardShell className="space-y-4 p-6">
+            <div className="text-base font-semibold">Review Summary</div>
+            <div className="text-sm text-muted-foreground">
+              {summaryNarrative}
+            </div>
+            {caseDetail.evidence.ktpOcr.name !== caseDetail.applicant.name ||
+            caseDetail.evidence.ktpOcr.nik !== caseDetail.applicant.nik ? (
+              <Banner
+                tone="amber"
+                text="OCR data differs from applicant input. Validate identity fields before approving."
+              />
+            ) : null}
+            <Separator />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-foreground">
+                  OCR (KTP)
                 </div>
-              ) : null}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-md border p-3">
-                  <div className="text-xs font-medium text-foreground">
-                    OCR (KTP)
-                  </div>
-                  <div className="mt-2 text-xs">
-                    <PiiRevealGate
-                      label="NIK"
-                      maskedValue={maskNik(caseDetail.evidence.ktpOcr.nik)}
-                      fullValue={caseDetail.evidence.ktpOcr.nik}
-                      caseId={caseDetail.id}
-                      fieldKey="OCR_NIK"
-                      actor={actor}
-                      allowReveal={role === "VERIFIER"}
-                      policyDisabled={!flags.enablePIIReveal}
-                    />
-                  </div>
-                  <div className="text-xs">
-                    <PiiRevealGate
-                      label="Name"
-                      maskedValue={maskNik(caseDetail.evidence.ktpOcr.name)}
-                      fullValue={caseDetail.evidence.ktpOcr.name}
-                      caseId={caseDetail.id}
-                      fieldKey="OCR_NAME"
-                      actor={actor}
-                      allowReveal={role === "VERIFIER"}
-                      policyDisabled={!flags.enablePIIReveal}
-                    />
-                  </div>
-                </div>
-                <div className="rounded-md border p-3">
-                  <div className="text-xs font-medium text-foreground">
-                    Applicant
-                  </div>
-                  <div className="mt-2 text-xs">
-                    NIK: {maskNik(caseDetail.applicant.nik)}
-                  </div>
-                  <div className="text-xs">
-                    Name: {caseDetail.applicant.name}
-                  </div>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <PiiRevealGate
+                    label="NIK"
+                    maskedValue={maskNik(caseDetail.evidence.ktpOcr.nik)}
+                    fullValue={caseDetail.evidence.ktpOcr.nik}
+                    caseId={caseDetail.id}
+                    fieldKey="OCR_NIK"
+                    actor={actor}
+                    allowReveal={role === "VERIFIER"}
+                    policyDisabled={!flags.enablePIIReveal}
+                  />
+                  <PiiRevealGate
+                    label="Name"
+                    maskedValue={maskNik(caseDetail.evidence.ktpOcr.name)}
+                    fullValue={caseDetail.evidence.ktpOcr.name}
+                    caseId={caseDetail.id}
+                    fieldKey="OCR_NAME"
+                    actor={actor}
+                    allowReveal={role === "VERIFIER"}
+                    policyDisabled={!flags.enablePIIReveal}
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-foreground">
+                  Applicant
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  NIK: {maskNik(caseDetail.applicant.nik)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Name: {caseDetail.applicant.name}
+                </div>
+              </div>
+            </div>
+          </CardShell>
         </TabsContent>
-        <TabsContent value="evidence" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>KTP OCR</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-              <div className="overflow-hidden rounded-lg border bg-muted/40">
-                <img
-                  src={caseDetail.evidence.ktpImageUrl}
-                  alt="KTP"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    Confidence{" "}
-                    {(caseDetail.evidence.ktpOcr.confidence * 100).toFixed(0)}%
-                  </Badge>
-                  {caseDetail.evidence.ktpOcr.flags?.map((flag) => (
-                    <Badge key={flag} variant="outline">
-                      {flag}
-                    </Badge>
-                  ))}
+        <TabsContent value="evidence">
+          <CardShell className="space-y-6 p-6">
+            <div>
+              <div className="text-base font-semibold">Document (KTP)</div>
+              <div className="mt-4 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+                <div className="rounded-lg border border-dashed bg-muted/30 p-3">
+                  <div className="aspect-[4/3] overflow-hidden rounded-md bg-muted/60">
+                    <img
+                      src={caseDetail.evidence.ktpImageUrl}
+                      alt="KTP"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <div>
+                <div className="space-y-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">
+                      Confidence{" "}
+                      {(caseDetail.evidence.ktpOcr.confidence * 100).toFixed(0)}
+                      %
+                    </Badge>
+                    {caseDetail.evidence.ktpOcr.flags?.map((flag) => (
+                      <Badge key={flag} variant="outline">
+                        {flag}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="space-y-2 text-xs text-muted-foreground">
                     <PiiRevealGate
                       label="NIK"
                       maskedValue={maskNik(caseDetail.evidence.ktpOcr.nik)}
@@ -573,8 +691,6 @@ export const CaseDetailPage = () => {
                       allowReveal={role === "VERIFIER"}
                       policyDisabled={!flags.enablePIIReveal}
                     />
-                  </div>
-                  <div>
                     <PiiRevealGate
                       label="Name"
                       maskedValue={maskNik(caseDetail.evidence.ktpOcr.name)}
@@ -585,14 +701,12 @@ export const CaseDetailPage = () => {
                       allowReveal={role === "VERIFIER"}
                       policyDisabled={!flags.enablePIIReveal}
                     />
-                  </div>
-                  {caseDetail.evidence.ktpOcr.birthDate ? (
-                    <div>
-                      Birth date: {caseDetail.evidence.ktpOcr.birthDate}
-                    </div>
-                  ) : null}
-                  {caseDetail.evidence.ktpOcr.address ? (
-                    <div>
+                    {caseDetail.evidence.ktpOcr.birthDate ? (
+                      <div>
+                        Birth date: {caseDetail.evidence.ktpOcr.birthDate}
+                      </div>
+                    ) : null}
+                    {caseDetail.evidence.ktpOcr.address ? (
                       <PiiRevealGate
                         label="Address"
                         maskedValue={maskNik(
@@ -605,80 +719,97 @@ export const CaseDetailPage = () => {
                         allowReveal={role === "VERIFIER"}
                         policyDisabled={!flags.enablePIIReveal}
                       />
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Selfie with KTP</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div className="overflow-hidden rounded-lg border bg-muted/40">
-                <img
-                  src={caseDetail.evidence.selfieWithKtpUrl}
-                  alt="Selfie with KTP"
-                  className="h-full w-full object-cover"
-                />
+            </div>
+            <Separator />
+            <div>
+              <div className="text-base font-semibold">Selfie with KTP</div>
+              <div className="mt-4 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+                <div className="rounded-lg border border-dashed bg-muted/30 p-3">
+                  <div className="aspect-[4/3] overflow-hidden rounded-md bg-muted/60">
+                    <img
+                      src={caseDetail.evidence.selfieWithKtpUrl}
+                      alt="Selfie with KTP"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Fallback evidence when mismatch occurs.
+                </div>
               </div>
-              <p>Fallback evidence when mismatch occurs.</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Liveness</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={livenessBadge.variant}>
-                  Result {livenessBadge.label}
-                </Badge>
-                <Badge variant="secondary">
-                  Score {caseDetail.evidence.liveness.score?.toFixed(2) ?? "-"}
-                </Badge>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {caseDetail.evidence.liveness.gestures.map((gesture) => (
-                  <Badge key={gesture} variant="outline">
-                    {gesture}
+            </div>
+            <Separator />
+            <div>
+              <div className="text-base font-semibold">Liveness</div>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className={livenessBadge.className}>
+                    Result {livenessBadge.label}
                   </Badge>
-                ))}
+                  <Badge
+                    variant="outline"
+                    className="border-blue-200 text-blue-700"
+                  >
+                    Score{" "}
+                    {caseDetail.evidence.liveness.score?.toFixed(2) ?? "-"}
+                  </Badge>
+                </div>
+                <ScoreBar
+                  value={caseDetail.evidence.liveness.score}
+                  tone={
+                    caseDetail.signals.liveness === "FAIL"
+                      ? "red"
+                      : caseDetail.signals.liveness === "PASS"
+                        ? "emerald"
+                        : "amber"
+                  }
+                />
+                <div className="flex flex-wrap gap-2">
+                  {caseDetail.evidence.liveness.gestures.map((gesture) => (
+                    <Badge key={gesture} variant="outline">
+                      {gesture}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardShell>
         </TabsContent>
-        <TabsContent value="audit" className="space-y-4">
+        <TabsContent value="audit">
           {isAuditLoading ? (
-            <Card className="space-y-3 p-6">
+            <CardShell className="space-y-3 p-6">
               {Array.from({ length: 4 }).map((_, index) => (
                 <Skeleton key={index} className="h-10 w-full" />
               ))}
-            </Card>
+            </CardShell>
           ) : auditError ? (
-            <Card className="space-y-2 p-6">
+            <CardShell className="space-y-2 p-6">
               <div className="text-sm font-medium">
                 Unable to load audit trail.
               </div>
               <Button onClick={() => refetchAudit()}>Retry</Button>
-            </Card>
+            </CardShell>
           ) : auditEvents.length === 0 ? (
-            <EmptyState
-              title="No audit events"
-              description="Actions taken on this case will appear here."
-              action={<Button onClick={() => refetchAudit()}>Refresh</Button>}
-            />
+            <CardShell className="p-6">
+              <EmptyState
+                title="No audit events"
+                description="Actions taken on this case will appear here."
+                action={<Button onClick={() => refetchAudit()}>Refresh</Button>}
+              />
+            </CardShell>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Audit Trail</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <CardShell className="space-y-4 p-6">
+              <div className="text-base font-semibold">Audit Trail</div>
+              <div className="space-y-3">
                 {auditEvents.map((event) => (
-                  <div key={event.id} className="rounded-md border p-3 text-sm">
+                  <div
+                    key={event.id}
+                    className="rounded-md border border-border/60 p-3 text-sm"
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="font-medium">
                         {auditActionLabels[event.action]}
@@ -702,8 +833,8 @@ export const CaseDetailPage = () => {
                     ) : null}
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </CardShell>
           )}
         </TabsContent>
       </Tabs>

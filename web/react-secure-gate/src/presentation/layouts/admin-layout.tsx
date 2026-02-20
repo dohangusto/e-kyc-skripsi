@@ -4,7 +4,7 @@ import { Topbar } from "@/presentation/components/topbar";
 
 export const AdminLayout = () => {
   return (
-    <div className="flex h-screen bg-muted/30 text-foreground">
+    <div className="flex h-screen bg-muted/40 text-foreground">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />

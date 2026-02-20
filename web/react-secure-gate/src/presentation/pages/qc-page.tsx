@@ -27,6 +27,7 @@ import {
 import { qcUsecases } from "@/shared/lib/usecases";
 import { formatDateTime } from "@/shared/lib/format-date-time";
 import { useRole } from "@/presentation/components/role-context";
+import { statusAbbreviationMap } from "@/presentation/components/status-badge";
 
 const terminalStatuses: CaseStatus[] = [
   "APPROVED_MANUAL",
@@ -129,7 +130,7 @@ export const QCPage = () => {
             {items.map((sample) => (
               <div
                 key={sample.id}
-                className="grid grid-cols-[1.4fr_2fr_1fr_1fr] items-center gap-3 px-4 py-3 text-sm"
+                className="grid grid-cols-[1.4fr_2fr_1fr_1fr] items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40"
               >
                 <span className="text-xs text-muted-foreground">
                   {formatDateTime(sample.createdAt)}
@@ -137,8 +138,10 @@ export const QCPage = () => {
                 <div className="text-xs text-muted-foreground">
                   {formatDateTime(sample.criteria.fromDateISO)} →{" "}
                   {formatDateTime(sample.criteria.toDateISO)} ·
-                  {sample.criteria.statuses.join(", ")} · size{" "}
-                  {sample.criteria.sampleSize}
+                  {sample.criteria.statuses
+                    .map((status) => statusAbbreviationMap[status])
+                    .join(", ")}{" "}
+                  · size {sample.criteria.sampleSize}
                 </div>
                 <span className="text-xs text-muted-foreground">
                   {sample.results.length} / {sample.caseIds.length}

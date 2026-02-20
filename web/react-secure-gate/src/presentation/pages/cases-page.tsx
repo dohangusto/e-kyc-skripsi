@@ -453,7 +453,7 @@ export const CasesPage = () => {
       </Tabs>
 
       {selectedIds.length > 0 && showBulkTriage ? (
-        <Card className="flex flex-wrap items-center gap-2 p-3">
+        <Card className="flex flex-wrap items-center gap-2 p-4">
           <span className="text-sm text-muted-foreground">
             Selected {selectedIds.length} cases
           </span>
@@ -498,8 +498,8 @@ export const CasesPage = () => {
         </Card>
       ) : null}
 
-      <Card className="space-y-4 p-4">
-        <div className="grid gap-3 lg:grid-cols-[2fr_repeat(7,1fr)]">
+      <Card className="space-y-5 p-5">
+        <div className="grid gap-4 lg:grid-cols-[2fr_repeat(7,1fr)]">
           <Input
             placeholder="Search name or NIK..."
             value={search}
@@ -776,18 +776,20 @@ export const CasesPage = () => {
                         "-"
                       )}
                     </span>
-                    <StatusBadge status={item.status} />
+                    <StatusBadge status={item.status} abbreviated />
                     <div className="flex flex-wrap gap-1">
                       <SignalBadge
                         type="faceMatch"
                         value={item.signals.faceMatch}
+                        abbreviated
                       />
                       <SignalBadge
                         type="restriction"
                         value={item.signals.restriction}
+                        abbreviated
                       />
                     </div>
-                    <RiskBadge level={item.riskLevel} />
+                    <RiskBadge level={item.riskLevel} abbreviated />
                     <div
                       className="flex items-center gap-2"
                       onClick={(event) => event.stopPropagation()}

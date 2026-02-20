@@ -64,11 +64,11 @@ export const SettingsPage = () => {
         <CardHeader>
           <CardTitle>Feature Flags</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="divide-y divide-border/60">
           {flagItems.map((item) => (
             <div
               key={item.key}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-muted/50 p-3"
+              className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
             >
               <div>
                 <div className="text-sm font-medium">{item.title}</div>
