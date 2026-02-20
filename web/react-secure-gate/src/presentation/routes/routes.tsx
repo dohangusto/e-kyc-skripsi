@@ -14,6 +14,7 @@ import { QCPage } from "@/presentation/pages/qc-page";
 import { QCDetailPage } from "@/presentation/pages/qc-detail-page";
 import { AnalyticsPage } from "@/presentation/pages/analytics-page";
 import { ClusteringPage } from "@/presentation/pages/clustering-page";
+import { CandidatesPage } from "@/presentation/pages/candidates-page";
 
 export const routes = [
   {
@@ -98,6 +99,14 @@ export const routes = [
         element: (
           <RoleGuard allow={["VERIFIER"]}>
             <ClusteringPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "candidates",
+        element: (
+          <RoleGuard allow={["VERIFIER"]}>
+            <CandidatesPage />
           </RoleGuard>
         ),
       },

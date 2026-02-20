@@ -12,6 +12,7 @@ import {
   ListChecks,
   Home,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
@@ -100,6 +101,12 @@ const navItems: Array<{
     label: "Clustering",
     to: "/clustering",
     icon: Sparkles,
+    roles: ["VERIFIER"],
+  },
+  {
+    label: "Candidates",
+    to: "/candidates",
+    icon: Users,
     roles: ["VERIFIER"],
   },
   {

@@ -1,17 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/presentation/components/page-header";
 import { Button } from "@/presentation/components/ui/button";
 import { Card } from "@/presentation/components/ui/card";
 import { Input } from "@/presentation/components/ui/input";
 import { maskNik } from "@/shared/lib/mask-nik";
-
-type ClusterResult = {
-  name: string;
-  nik: string;
-  cluster: string;
-  score: number;
-  dependents: number;
-};
+import { clusteringStore } from "@/shared/lib/clustering-store";
+import type { ClusterResult } from "@/shared/types/clustering";
+import { toast } from "sonner";
 
 const clusteringResults: ClusterResult[] = [
   {
@@ -73,9 +69,12 @@ const clusteringResults: ClusterResult[] = [
 ];
 
 export const ClusteringPage = () => {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<"idle" | "running" | "done">("idle");
   const [progress, setProgress] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
+  const [sessionName, setSessionName] = useState("");
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const logTimerRef = useRef<number | null>(null);
 
@@ -115,6 +114,8 @@ export const ClusteringPage = () => {
     setStatus("running");
     setProgress(0);
     setLogs([]);
+    setSessionName("");
+    setSavedSessionId(null);
     timerRef.current = window.setInterval(() => {
       setProgress((prev) => {
         const next = Math.min(prev + Math.random() * 18 + 6, 100);
@@ -136,6 +137,16 @@ export const ClusteringPage = () => {
         return [...prev, logLines[prev.length]];
       });
     }, 420);
+  };
+
+  const handleSaveSession = () => {
+    if (!sessionName.trim()) {
+      toast.error("Nama session wajib diisi.");
+      return;
+    }
+    const session = clusteringStore.addSession(sessionName.trim(), results);
+    setSavedSessionId(session.id);
+    toast.success("Session clustering disimpan.");
   };
 
   return (
@@ -207,6 +218,39 @@ export const ClusteringPage = () => {
                 )}
               </div>
             </div>
+          </div>
+        ) : null}
+
+        {status === "done" ? (
+          <div className="space-y-3 rounded-xl border border-border/60 bg-white/80 p-4">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">
+              Nama Session Clustering
+            </div>
+            <div className="grid gap-3 md:grid-cols-[1.4fr_auto]">
+              <Input
+                placeholder="Contoh: Batch Kandidat April"
+                value={sessionName}
+                onChange={(event) => setSessionName(event.target.value)}
+              />
+              <Button
+                onClick={handleSaveSession}
+                disabled={Boolean(savedSessionId)}
+              >
+                {savedSessionId ? "Saved" : "Save Session"}
+              </Button>
+            </div>
+            {savedSessionId ? (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Session tersimpan dan siap ditinjau.</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => navigate("/candidates")}
+                >
+                  Buka Candidates
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Card>
