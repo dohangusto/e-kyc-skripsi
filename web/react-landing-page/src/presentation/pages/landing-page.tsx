@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   Camera,
   CheckCircle2,
@@ -168,6 +168,9 @@ const SectionHeading = ({
 export const LandingPage = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const slideWidth = 82;
+  const slideOffset = (100 - slideWidth) / 2;
 
   const verificationSteps = [
     {
@@ -209,12 +212,28 @@ export const LandingPage = () => {
     return () => window.clearInterval(timer);
   }, [isCarouselPaused, verificationSteps.length]);
 
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => setIsReady(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+
   const handlePrev = () => {
     setActiveSlide((prev) => (prev - 1 + verificationSteps.length) % verificationSteps.length);
   };
 
   const handleNext = () => {
     setActiveSlide((prev) => (prev + 1) % verificationSteps.length);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      handlePrev();
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      handleNext();
+    }
   };
 
   return (
@@ -336,54 +355,85 @@ export const LandingPage = () => {
       <main className="relative">
         <section
           id="langkah"
-          className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16 lg:px-10"
+          className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-16 lg:px-10"
         >
-          <SectionHeading
-            eyebrow="Persiapan"
-            title="Siapkan data dan dokumen utama sebelum mulai verifikasi"
-            description="Bagian ini merangkum persiapan penting agar proses verifikasi berjalan lancar dan cepat disetujui."
-          />
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center">
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-brand-700/60">
+              Persiapan
+            </span>
+            <h2 className="text-4xl font-semibold text-brand-700 md:text-5xl">
+              Siapkan data dan dokumen utama sebelum mulai verifikasi
+            </h2>
+            <p className="text-base text-brand-700/70 md:text-lg">
+              Bagian ini merangkum persiapan penting agar proses verifikasi berjalan lancar dan
+              cepat disetujui.
+            </p>
+          </div>
           <div
-            className="relative"
+            className="relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             onMouseEnter={() => setIsCarouselPaused(true)}
             onMouseLeave={() => setIsCarouselPaused(false)}
+            onKeyDown={handleKeyDown}
+            tabIndex={0}
+            role="group"
+            aria-roledescription="carousel"
+            aria-label="Langkah persiapan verifikasi"
           >
-            <div className="overflow-hidden rounded-[32px] border border-brand-700/10 bg-white/70 shadow-lift">
+            <div className="relative overflow-hidden rounded-[40px] border border-brand-700/10 bg-white/80 shadow-[0_35px_70px_-55px_rgba(10,16,24,0.45)] backdrop-blur">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/85 via-white/60 to-brand-50/60" />
+              <div className="absolute -top-24 right-10 h-40 w-40 rounded-full bg-amber-400/15 blur-[80px] animate-pulseSoft" />
+              <div className="absolute bottom-0 left-6 h-24 w-24 rounded-full bg-brand-100/35 blur-[55px]" />
+              <div className="pointer-events-none absolute -left-16 top-1/2 h-24 w-56 -translate-y-1/2 rotate-12 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-40" />
               <div
-                className="flex transition-transform duration-700 ease-out"
-                style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+                className="relative flex transition-transform duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+                style={{
+                  transform: `translateX(calc(${slideOffset}% - ${activeSlide * slideWidth}%))`,
+                }}
               >
                 {verificationSteps.map((step, index) => {
                   const Icon = step.icon;
+                  const isActive = activeSlide === index;
                   return (
-                    <div key={step.title} className="min-w-full p-6 md:p-10">
-                      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-brand-700 to-[#1b2730] p-8 text-brand-50">
-                        <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-brand-500/30 blur-[40px]" />
-                        <div className="absolute bottom-4 left-10 h-16 w-16 rounded-full bg-brand-100/40 blur-[36px]" />
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500/20 text-brand-50">
-                              <Icon className="h-6 w-6" />
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-[0.3em] text-brand-50/60">
-                                Langkah {index + 1}
-                              </p>
-                              <h3 className="text-2xl font-semibold">{step.title}</h3>
-                            </div>
+                    <div key={step.title} className="min-w-[82%] px-4 py-8 md:px-6 md:py-12">
+                      <div
+                        className={`relative rounded-[36px] transition-all duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                          isReady && isActive
+                            ? "opacity-100 translate-y-0"
+                            : "opacity-70 translate-y-6"
+                        }`}
+                      >
+                        <div className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[#0f172a] p-8 text-brand-50 shadow-[0_28px_60px_-50px_rgba(5,10,20,0.65)]">
+                          <div className="absolute left-0 top-0 h-[2px] w-full bg-amber-400/80" />
+                          <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-amber-400/12 blur-[45px]" />
+                          <div className="absolute bottom-4 left-10 h-16 w-16 rounded-full bg-brand-100/12 blur-[36px]" />
+                          <div className="pointer-events-none absolute right-6 top-8 text-[72px] font-semibold text-white/5">
+                            {String(index + 1).padStart(2, "0")}
                           </div>
-                          <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold">
-                            {step.badge}
-                          </span>
-                        </div>
-                        <p className="mt-6 text-base text-brand-50/80">{step.description}</p>
-                        <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                          <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 text-sm">
-                            <CheckCircle2 className="h-5 w-5 text-brand-500" />
-                            <span>{step.highlight}</span>
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.18)]">
+                                <Icon className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.3em] text-brand-50/60">
+                                  Langkah {index + 1}
+                                </p>
+                                <h3 className="text-2xl font-semibold">{step.title}</h3>
+                              </div>
+                            </div>
+                            <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs font-semibold text-brand-50/90">
+                              {step.badge}
+                            </span>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-brand-50/70">
-                            {step.detail}
+                          <p className="mt-6 text-base text-brand-50/75">{step.description}</p>
+                          <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                              <CheckCircle2 className="h-5 w-5 text-amber-300" />
+                              <span>{step.highlight}</span>
+                            </div>
+                            <div className="rounded-2xl border border-brand-500/25 bg-brand-500/10 px-4 py-3 text-xs text-brand-50/70">
+                              {step.detail}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -396,34 +446,39 @@ export const LandingPage = () => {
             <div className="mt-6 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700/20 bg-white/80 text-brand-700 transition duration-300 hover:-translate-y-0.5 hover:border-brand-700/40 hover:shadow-lift"
+                  className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-700/20 bg-transparent text-brand-700/70 transition duration-300 hover:-translate-y-0.5 hover:border-amber-400/60 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
                   type="button"
                   onClick={handlePrev}
                   aria-label="Sebelumnya"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-5 w-5 transition group-hover:-translate-x-0.5" />
                 </button>
                 <button
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700/20 bg-white/80 text-brand-700 transition duration-300 hover:-translate-y-0.5 hover:border-brand-700/40 hover:shadow-lift"
+                  className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-700/20 bg-transparent text-brand-700/70 transition duration-300 hover:-translate-y-0.5 hover:border-amber-400/60 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
                   type="button"
                   onClick={handleNext}
                   aria-label="Berikutnya"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
                 </button>
               </div>
-              <div className="flex flex-1 items-center justify-center gap-2">
-                {verificationSteps.map((step, index) => (
-                  <button
-                    key={step.title}
-                    type="button"
-                    onClick={() => setActiveSlide(index)}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      activeSlide === index ? "w-10 bg-brand-500" : "w-4 bg-brand-700/20"
-                    }`}
-                    aria-label={`Lihat ${step.title}`}
+              <div className="flex flex-1 items-center justify-center">
+                <div
+                  className="relative h-[3px] w-full max-w-lg overflow-hidden rounded-full bg-brand-700/25"
+                  role="progressbar"
+                  aria-label="Progres langkah verifikasi"
+                  aria-valuenow={activeSlide + 1}
+                  aria-valuemin={1}
+                  aria-valuemax={verificationSteps.length}
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200 transition-transform duration-700 ease-out"
+                    style={{
+                      width: `${100 / verificationSteps.length}%`,
+                      transform: `translateX(${activeSlide * 100}%)`,
+                    }}
                   />
-                ))}
+                </div>
               </div>
               <div className="hidden items-center gap-2 text-xs text-brand-700/60 md:flex">
                 <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulseSoft" />
