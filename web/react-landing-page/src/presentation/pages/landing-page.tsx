@@ -97,21 +97,37 @@ const faqs = [
     question: "Siapa yang wajib verifikasi lewat aplikasi?",
     answer:
       "Semua calon penerima bantuan sosial Kabupaten Batubara diwajibkan melakukan verifikasi identitas agar bantuan tepat sasaran.",
+    tag: "Kebijakan",
+    meta: "Berlaku untuk calon penerima bansos",
+    tip: "Pastikan nomor HP aktif agar notifikasi verifikasi masuk.",
+    icon: ShieldCheck,
   },
   {
     question: "Apakah saya harus datang ke kantor?",
     answer:
-      "Tidak. Seluruh proses dapat dilakukan dari smartphone. Hanya jika ada kendala khusus, petugas akan menghubungi Anda.",
+      "Tidak. Seluruh proses dapat dilakukan dari smartphone. Jika ada kendala khusus, petugas akan menghubungi Anda.",
+    tag: "Proses",
+    meta: "Verifikasi dari rumah",
+    tip: "Siapkan KTP dan pencahayaan yang cukup sebelum mulai.",
+    icon: Smartphone,
   },
   {
     question: "Bagaimana jika data saya salah?",
     answer:
       "Anda bisa memperbarui data langsung di aplikasi dan mengunggah ulang dokumen tanpa biaya tambahan.",
+    tag: "Perbaikan",
+    meta: "Bisa diperbarui kapan saja",
+    tip: "Gunakan foto yang jelas agar verifikasi ulang lebih cepat.",
+    icon: IdCard,
   },
   {
     question: "Apakah aplikasi tersedia untuk iPhone?",
     answer:
       "Ya. Aplikasi tersedia untuk Android dan iOS agar semua warga bisa melakukan verifikasi dengan mudah.",
+    tag: "Akses Aplikasi",
+    meta: "Android dan iOS tersedia",
+    tip: "Unduh hanya dari toko resmi untuk keamanan data.",
+    icon: UserCheck,
   },
 ];
 
@@ -524,27 +540,94 @@ export const LandingPage = () => {
           </div>
         </section>
 
-        <section id="faq" className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-20 lg:px-10">
-          <SectionHeading
-            eyebrow="FAQ"
-            title="Pertanyaan yang sering diajukan"
-            description="Jika masih ragu, lihat jawaban singkat di bawah ini."
-          />
-          <div className="grid gap-4">
-            {faqs.map((faq) => (
-              <details
-                key={faq.question}
-                className="group rounded-2xl border border-brand-700/10 bg-white/80 px-6 py-4 transition duration-300 open:shadow-lift"
-              >
-                <summary className="flex cursor-pointer items-center justify-between gap-4 text-base font-semibold text-brand-700">
-                  {faq.question}
-                  <span className="text-brand-500 transition duration-300 group-open:rotate-45">
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm text-brand-700/70">{faq.answer}</p>
-              </details>
-            ))}
+        <section id="faq" className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid opacity-20" />
+          <div className="absolute -top-24 right-0 h-80 w-80 rounded-full bg-brand-500/20 blur-[140px]" />
+          <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-brand-100/80 blur-[120px]" />
+          <div className="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-20 lg:px-10">
+            <SectionHeading
+              eyebrow="FAQ"
+              title="Pertanyaan yang sering diajukan"
+              description="Jika masih ragu, lihat jawaban singkat di bawah ini."
+            />
+            <div className="grid gap-8 lg:grid-cols-[0.42fr_0.58fr] lg:items-start">
+              <div className="glass-panel relative overflow-hidden rounded-[32px] px-6 py-8">
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-brand-500/20 blur-2xl" />
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-700 text-brand-50 shadow-glow">
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-700/60">
+                      Bantuan Cepat
+                    </p>
+                    <h3 className="text-2xl font-semibold text-brand-700">
+                      Jawaban ringkas, jelas, dan resmi.
+                    </h3>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-brand-700/70">
+                  FAQ ini merangkum pertanyaan yang paling sering ditanyakan warga. Jika masih
+                  bingung, hubungi kanal resmi di bagian bawah halaman.
+                </p>
+                <div className="mt-6 grid gap-3">
+                  <div className="flex items-center gap-3 rounded-2xl border border-brand-700/10 bg-white/80 px-4 py-3 text-sm text-brand-700/70">
+                    <ShieldCheck className="h-4 w-4 text-brand-500" />
+                    <span>Jawaban mengacu pada panduan resmi Dinas Sosial.</span>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-brand-700/10 bg-white/80 px-4 py-3 text-sm text-brand-700/70">
+                    <CheckCircle2 className="h-4 w-4 text-brand-500" />
+                    <span>Proses verifikasi bisa dilakukan langsung dari rumah.</span>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-brand-700/10 bg-white/80 px-4 py-3 text-sm text-brand-700/70">
+                    <Smartphone className="h-4 w-4 text-brand-500" />
+                    <span>Bantuan di aplikasi tersedia kapan pun dibutuhkan.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                {faqs.map((faq) => {
+                  const Icon = faq.icon;
+                  return (
+                    <details
+                      key={faq.question}
+                      className="group relative overflow-hidden rounded-3xl border border-brand-700/10 bg-white/80 px-6 py-5 transition duration-300 hover:-translate-y-0.5 hover:border-brand-700/30 hover:shadow-lift"
+                    >
+                      <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-open:opacity-100">
+                        <div className="absolute -top-24 right-0 h-32 w-32 rounded-full bg-brand-500/20 blur-2xl" />
+                      </div>
+                      <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+                        <div className="flex gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 transition duration-300 group-open:bg-brand-700 group-open:text-brand-50">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-700/50">
+                              {faq.tag}
+                            </span>
+                            <h3 className="text-base font-semibold text-brand-700 md:text-lg">
+                              {faq.question}
+                            </h3>
+                            <p className="text-xs text-brand-700/60">{faq.meta}</p>
+                          </div>
+                        </div>
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-700/20 bg-white text-brand-700 transition duration-300 group-hover:-translate-y-0.5 group-open:rotate-45 group-open:border-brand-500 group-open:text-brand-500">
+                          +
+                        </span>
+                      </summary>
+                      <div className="mt-4 grid gap-3 text-sm text-brand-700/70 group-open:animate-in group-open:fade-in-0 group-open:slide-in-from-top-2">
+                        <p>{faq.answer}</p>
+                        <div className="flex items-center gap-3 rounded-2xl border border-brand-700/10 bg-brand-50/80 px-4 py-3 text-xs text-brand-700/70">
+                          <CheckCircle2 className="h-4 w-4 text-brand-500" />
+                          <span>{faq.tip}</span>
+                        </div>
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -588,15 +671,20 @@ export const LandingPage = () => {
       <footer className="border-t border-brand-700/10 bg-brand-50">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 text-sm text-brand-700/70 lg:px-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="font-semibold text-brand-700">Bansos Batubara</p>
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-semibold text-brand-700">Bansos Batubara</p>
+              <p className="text-xs text-brand-700/60">
+                Layanan verifikasi identitas digital resmi Pemkab Batubara.
+              </p>
+            </div>
             <div className="flex flex-wrap gap-4">
               <span>Call Center: 1500-177</span>
               <span>Email: bantuan@batubara.go.id</span>
             </div>
           </div>
-          <p>
-            Dikelola oleh Dinas Sosial Kabupaten Batubara. Pastikan hanya mengunduh aplikasi dari
-            toko resmi untuk keamanan data Anda.
+          <p className="text-xs text-brand-700/60">
+            Butuh bantuan? Hubungi kanal resmi di atas. Unduh aplikasi hanya dari toko resmi untuk
+            menjaga keamanan data Anda.
           </p>
         </div>
       </footer>
