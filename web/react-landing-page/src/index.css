@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 190 20% 94%;
+    --foreground: 204 25% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 204 25% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 204 25% 20%;
+
+    --primary: 26 100% 65%;
+    --primary-foreground: 204 35% 15%;
+
+    --secondary: 206 20% 86%;
+    --secondary-foreground: 204 25% 20%;
+
+    --muted: 200 15% 88%;
+    --muted-foreground: 206 15% 35%;
+
+    --accent: 26 100% 65%;
+    --accent-foreground: 204 35% 15%;
+
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 206 20% 80%;
+    --input: 206 20% 80%;
+    --ring: 26 100% 65%;
+
+    --radius: 1rem;
+
+    --chart-1: 26 100% 65%;
+    --chart-2: 206 22% 55%;
+    --chart-3: 204 25% 20%;
+    --chart-4: 40 80% 65%;
+    --chart-5: 10 70% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-brand-50 text-brand-700 antialiased;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/40 bg-white/60 shadow-lift backdrop-blur-xl;
+  }
+
+  .cta-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 shadow-glow transition duration-300 hover:-translate-y-0.5 hover:bg-[#ffb076] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+  }
+
+  .ghost-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-brand-700/20 bg-white/60 px-6 py-3 text-sm font-semibold text-brand-700 transition duration-300 hover:-translate-y-0.5 hover:border-brand-700/50 hover:bg-white;
+  }
+}
+
+@layer utilities {
+  .bg-grid {
+    background-image: linear-gradient(rgba(37, 52, 63, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(37, 52, 63, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 25px rgba(255, 155, 81, 0.45);
+  }
+}
