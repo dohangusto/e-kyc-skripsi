@@ -25,28 +25,28 @@ export const statusAbbreviationMap: Record<CaseStatus, string> = {
 
 export const statusClassMap: Record<CaseStatus, { className: string }> = {
   ELIGIBILITY_FAILED: {
-    className: "border-red-200 bg-red-50 text-red-700",
+    className: "border-[#FF9B51]/80 bg-[#25343F] text-[#EAEFEF]",
   },
   EKYC_IN_PROGRESS: {
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+    className: "border-[#FF9B51]/70 bg-[#FF9B51]/20 text-[#25343F]",
   },
   EKYC_SUBMITTED: {
-    className: "border-slate-200 bg-slate-50 text-slate-700",
+    className: "border-[#BFC9D1]/90 bg-[#EAEFEF] text-[#25343F]",
   },
   AUTO_VERIFIED: {
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-[#25343F]/50 bg-[#BFC9D1]/35 text-[#25343F]",
   },
   FALLBACK_REVIEW: {
-    className: "border-amber-200 bg-amber-50 text-amber-700",
+    className: "border-[#FF9B51]/75 bg-[#FF9B51]/35 text-[#25343F]",
   },
   APPROVED_MANUAL: {
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-[#25343F]/70 bg-[#EAEFEF]/70 text-[#FF9B51]",
   },
   REJECTED: {
-    className: "border-red-200 bg-red-50 text-red-700",
+    className: "border-[#25343F] bg-[#25343F] text-[#FF9B51]",
   },
   NEED_REVERIFY: {
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+    className: "border-[#25343F]/30 bg-[#25343F]/10 text-[#25343F]",
   },
 };
 

@@ -29,34 +29,30 @@ export const restrictionAbbreviationMap: Record<Restriction, string> = {
 
 export const faceMatchClassMap: Record<FaceMatch, { className: string }> = {
   MATCH: {
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-[#BFC9D1]/80 bg-[#EAEFEF] text-[#25343F]",
   },
   MISMATCH: {
-    className: "border-red-200 bg-red-50 text-red-700",
+    className: "border-[#25343F] bg-[#25343F] text-[#FF9B51]",
   },
   PENDING: {
-    className: "border-amber-200 bg-amber-50 text-amber-700",
+    className: "border-[#FF9B51]/60 bg-[#FF9B51]/15 text-[#25343F]",
   },
 };
 
 export const restrictionClassMap: Record<Restriction, { className: string }> = {
   FULL: {
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+    className: "border-[#25343F]/40 bg-[#BFC9D1]/35 text-[#25343F]",
   },
   LIMITED: {
-    className: "border-amber-200 bg-amber-50 text-amber-700",
+    className: "border-[#FF9B51]/70 bg-[#FF9B51]/25 text-[#25343F]",
   },
 };
 
 export const SignalBadge = (props: SignalBadgeProps) => {
   const config =
-    props.type === "faceMatch"
-      ? faceMatchClassMap[props.value]
-      : restrictionClassMap[props.value];
+    props.type === "faceMatch" ? faceMatchClassMap[props.value] : restrictionClassMap[props.value];
   const label =
-    props.type === "faceMatch"
-      ? faceMatchLabelMap[props.value]
-      : restrictionLabelMap[props.value];
+    props.type === "faceMatch" ? faceMatchLabelMap[props.value] : restrictionLabelMap[props.value];
   const shortLabel =
     props.type === "faceMatch"
       ? faceMatchAbbreviationMap[props.value]

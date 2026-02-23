@@ -35,23 +35,22 @@ export const actionAbbreviationMap: Record<AuditEvent["action"], string> = {
 };
 
 export const actionClassMap: Record<AuditEvent["action"], string> = {
-  CASE_VIEWED: "border-slate-200 bg-slate-50 text-slate-700",
-  DECISION_APPROVED_MANUAL: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  DECISION_REJECTED: "border-red-200 bg-red-50 text-red-700",
-  DECISION_REQUEST_REVERIFY: "border-blue-200 bg-blue-50 text-blue-700",
-  PII_REVEALED: "border-amber-200 bg-amber-50 text-amber-700",
-  QC_SAMPLE_CREATED: "border-blue-200 bg-blue-50 text-blue-700",
-  QC_REVIEW_RECORDED: "border-amber-200 bg-amber-50 text-amber-700",
-  CASE_ASSIGNED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  CASE_UNASSIGNED: "border-slate-200 bg-slate-50 text-slate-700",
-  CASE_TRIAGE_TAG_UPDATED: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  CASE_BULK_TRIAGE_APPLIED: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  CASE_VIEWED: "border-[#BFC9D1]/80 bg-[#EAEFEF]/80 text-[#25343F]",
+  DECISION_APPROVED_MANUAL: "border-[#25343F]/70 bg-[#EAEFEF]/70 text-[#FF9B51]",
+  DECISION_REJECTED: "border-[#25343F] bg-[#25343F] text-[#FF9B51]",
+  DECISION_REQUEST_REVERIFY: "border-[#FF9B51]/80 bg-[#FF9B51]/30 text-[#25343F]",
+  PII_REVEALED:
+    "border-[#FF9B51]/60 bg-[linear-gradient(135deg,rgba(255,155,81,0.25),rgba(234,239,239,0.8))] text-[#25343F]",
+  QC_SAMPLE_CREATED: "border-[#BFC9D1]/70 bg-[#BFC9D1]/30 text-[#25343F]",
+  QC_REVIEW_RECORDED: "border-[#25343F]/50 bg-[#EAEFEF]/80 text-[#FF9B51]",
+  CASE_ASSIGNED: "border-[#FF9B51]/60 bg-[#BFC9D1]/40 text-[#25343F]",
+  CASE_UNASSIGNED: "border-[#25343F]/30 bg-[#25343F]/10 text-[#25343F]",
+  CASE_TRIAGE_TAG_UPDATED: "border-[#FF9B51]/70 bg-[#FF9B51]/15 text-[#25343F]",
+  CASE_BULK_TRIAGE_APPLIED:
+    "border-[#25343F]/60 bg-[linear-gradient(135deg,rgba(191,201,209,0.45),rgba(255,155,81,0.25))] text-[#25343F]",
 };
 
-export const ActionBadge = ({
-  action,
-  abbreviated = false,
-}: ActionBadgeProps) => {
+export const ActionBadge = ({ action, abbreviated = false }: ActionBadgeProps) => {
   const config = actionClassMap[action];
   const fullLabel = actionLabelMap[action];
   const shortLabel = actionAbbreviationMap[action];
