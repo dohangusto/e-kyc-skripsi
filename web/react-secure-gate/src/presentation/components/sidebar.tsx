@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -16,8 +16,11 @@ import {
   Users,
   MessageSquare,
   ChevronDown,
+  Pencil,
+  Trash2,
+  PlusCircle,
+  Eye,
 } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
 import type { Role } from "@/domain/types";
 import { LegendPopover } from "@/presentation/components/legend-popover";
@@ -51,85 +54,155 @@ import {
   actionLabelMap,
 } from "@/presentation/components/action-badge";
 import { actorBadgeClassMap } from "@/shared/constants/audit-badges";
+import {
+  Sidebar as AppSidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/presentation/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/presentation/components/ui/dropdown-menu";
 
 const navItems: Array<{
   label: string;
   to: string;
   icon: typeof LayoutDashboard;
   roles: Role[];
+  console: "ekyc" | "audit";
 }> = [
   {
     label: "Home",
     to: "/home",
     icon: Home,
     roles: ["VERIFIER", "SUPERVISOR"],
+    console: "ekyc",
   },
   {
     label: "Dashboard",
     to: "/dashboard",
     icon: LayoutDashboard,
     roles: ["VERIFIER", "SUPERVISOR"],
+    console: "ekyc",
   },
   {
     label: "Cases",
     to: "/cases",
     icon: FolderKanban,
     roles: ["VERIFIER"],
+    console: "ekyc",
   },
   {
     label: "Reports",
     to: "/reports",
     icon: FileText,
     roles: ["SUPERVISOR"],
+    console: "audit",
   },
   {
     label: "Audit",
     to: "/audit",
     icon: ClipboardList,
     roles: ["VERIFIER", "SUPERVISOR"],
+    console: "audit",
   },
   {
     label: "Analytics",
     to: "/analytics",
     icon: BarChart3,
     roles: ["VERIFIER", "SUPERVISOR"],
+    console: "audit",
   },
   {
     label: "QC",
     to: "/qc",
     icon: ClipboardCheck,
     roles: ["SUPERVISOR"],
+    console: "audit",
   },
   {
     label: "Clustering",
     to: "/clustering",
     icon: Sparkles,
     roles: ["VERIFIER"],
+    console: "ekyc",
   },
   {
     label: "Candidates",
     to: "/candidates",
     icon: Users,
     roles: ["VERIFIER"],
+    console: "ekyc",
   },
   {
     label: "Chat",
     to: "/chat",
     icon: MessageSquare,
     roles: ["VERIFIER"],
+    console: "ekyc",
   },
   {
     label: "Settings",
     to: "/settings",
     icon: Settings,
     roles: ["VERIFIER"],
+    console: "ekyc",
   },
 ];
 
+const consoleOptions = [
+  {
+    id: "ekyc" as const,
+    label: "eKYC Console",
+    description: "Pemrosesan calon penerima",
+    icon: ShieldCheck,
+  },
+  {
+    id: "audit" as const,
+    label: "Audit Console",
+    description: "Audit aktivitas platform",
+    icon: ClipboardList,
+  },
+] as const;
+
+const CONSOLE_STORAGE_KEY = "rsg.sidebar.console";
+
+const getInitials = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
 export const Sidebar = () => {
-  const { role } = useRole();
+  const { role, actorName } = useRole();
+  const location = useLocation();
+  const [activeConsole, setActiveConsole] = useState<"ekyc" | "audit">(() => {
+    if (typeof window === "undefined") {
+      return role === "SUPERVISOR" ? "audit" : "ekyc";
+    }
+    const stored = window.localStorage.getItem(CONSOLE_STORAGE_KEY);
+    if (stored === "ekyc" || stored === "audit") {
+      return stored;
+    }
+    return role === "SUPERVISOR" ? "audit" : "ekyc";
+  });
   const [casesLegendOpen, setCasesLegendOpen] = useState(true);
   const [auditLegendOpen, setAuditLegendOpen] = useState(true);
+
   const statusLegendItems = Object.keys(statusLabelMap).map((status) => ({
     short: statusAbbreviationMap[status as keyof typeof statusLabelMap],
     full: statusLabelMap[status as keyof typeof statusLabelMap],
@@ -190,41 +263,100 @@ export const Sidebar = () => {
     className: reasonClassMap[reason],
   }));
 
+  const roleLabel = role === "VERIFIER" ? "Verifier" : "Supervisor";
+  const actorInitials = useMemo(() => getInitials(actorName), [actorName]);
+
+  const isActive = (to: string) =>
+    location.pathname === to || location.pathname.startsWith(`${to}/`);
+
+  const filteredNavItems = useMemo(
+    () =>
+      navItems.filter(
+        (item) =>
+          item.roles.includes(role) && (item.console === activeConsole || item.label === "Home")
+      ),
+    [activeConsole, role]
+  );
+
+  const activeConsoleOption =
+    consoleOptions.find((option) => option.id === activeConsole) ?? consoleOptions[0];
+
+  const handleConsoleChange = (next: "ekyc" | "audit") => {
+    setActiveConsole(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(CONSOLE_STORAGE_KEY, next);
+    }
+  };
+
   return (
-    <aside className="flex h-full w-64 flex-col border-r bg-card overflow-hidden">
-      <div className="flex h-14 items-center border-b px-6 text-sm font-semibold">
-        Secure Gate Admin
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <nav className="space-y-1 p-4 text-sm">
-          {navItems
-            .filter((item) => item.roles.includes(role))
-            .map((item) => {
-              const Icon = item.icon;
+    <AppSidebar>
+      <SidebarHeader className="border-b">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-muted/60"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground">
+                SG
+              </div>
+              <div className="flex-1 leading-tight group-data-[state=collapsed]:sr-only">
+                <div className="text-sm font-semibold">Secure Gate Admin</div>
+                <div className="text-xs text-muted-foreground">{activeConsoleOption.label}</div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=collapsed]:hidden" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" sideOffset={12}>
+            <DropdownMenuLabel>Console</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {consoleOptions.map((option) => {
+              const Icon = option.icon;
               return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-2 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground",
-                      isActive &&
-                        "border-l-2 border-primary bg-primary/10 pl-2 text-primary font-medium"
-                    )
-                  }
+                <DropdownMenuItem
+                  key={option.id}
+                  onClick={() => handleConsoleChange(option.id)}
+                  className={activeConsole === option.id ? "bg-muted/60" : undefined}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </NavLink>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-card/80">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">{option.label}</div>
+                    <div className="text-xs text-muted-foreground">{option.description}</div>
+                  </div>
+                </DropdownMenuItem>
               );
             })}
-        </nav>
-        <div className="border-t">
-          <div className="flex h-12 items-center gap-2 px-6 text-sm font-semibold text-foreground">
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-            Legends
-          </div>
-          <div className="space-y-4 px-4 pb-4 text-xs">
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredNavItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton asChild isActive={isActive(item.to)}>
+                      <Link to={item.to}>
+                        <Icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Legends</SidebarGroupLabel>
+          <SidebarGroupContent className="group-data-[state=collapsed]:hidden">
             <div>
               <button
                 type="button"
@@ -244,7 +376,7 @@ export const Sidebar = () => {
               {casesLegendOpen ? (
                 <div
                   id="legend-cases-table"
-                  className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2"
+                  className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2 text-xs"
                 >
                   <LegendPopover label="Status" items={statusLegendItems} />
                   <LegendPopover label="Signals" items={signalLegendItems} />
@@ -271,7 +403,7 @@ export const Sidebar = () => {
               {auditLegendOpen ? (
                 <div
                   id="legend-audit-table"
-                  className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2"
+                  className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2 text-xs"
                 >
                   <LegendPopover label="Actor (level)" items={actorLegendItems} />
                   <LegendPopover label="Action" items={actionLegendItems} />
@@ -279,9 +411,60 @@ export const Sidebar = () => {
                 </div>
               ) : null}
             </div>
-          </div>
-        </div>
-      </div>
-    </aside>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t bg-card/95">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="group flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-muted/60"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                {actorInitials}
+              </div>
+              <div className="flex-1 leading-tight group-data-[state=collapsed]:sr-only">
+                <div className="text-sm font-semibold text-foreground">{actorName}</div>
+                <div className="text-xs text-muted-foreground">{roleLabel}</div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180 group-data-[state=collapsed]:hidden" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="end" sideOffset={12}>
+            <DropdownMenuLabel className="p-0">
+              <div className="flex items-center gap-3 px-2 py-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  {actorInitials}
+                </div>
+                <div className="leading-tight">
+                  <div className="text-sm font-semibold text-foreground">{actorName}</div>
+                  <div className="text-xs text-muted-foreground">{roleLabel}</div>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <Eye className="h-4 w-4" />
+              View Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Pencil className="h-4 w-4" />
+              Edit Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <PlusCircle className="h-4 w-4" />
+              Create Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4" />
+              Delete Profile
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarFooter>
+    </AppSidebar>
   );
 };

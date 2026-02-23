@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { useRole } from "@/presentation/components/role-context";
+import { SidebarTrigger } from "@/presentation/components/ui/sidebar";
 import {
   Sheet,
   SheetContent,
@@ -13,15 +14,7 @@ import {
 import { toast } from "sonner";
 
 export const Topbar = () => {
-  const {
-    isAuthenticated,
-    isLocked,
-    login,
-    logout,
-    unlockPage,
-    lockPage,
-    actorName,
-  } = useRole();
+  const { isAuthenticated, isLocked, login, logout, unlockPage, lockPage, actorName } = useRole();
   const [loginOpen, setLoginOpen] = useState(false);
   const [unlockOpen, setUnlockOpen] = useState(false);
   const [lockOpen, setLockOpen] = useState(false);
@@ -66,49 +59,30 @@ export const Topbar = () => {
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-6">
-      <div className="text-sm font-semibold tracking-tight">
-        React Secure Gate
+      <div className="flex items-center gap-3 text-sm font-semibold tracking-tight">
+        {isAuthenticated ? <SidebarTrigger /> : null}
+        <span>React Secure Gate</span>
       </div>
       <div className="flex items-center gap-3">
         {isLocked ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => setUnlockOpen(true)}
-          >
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setUnlockOpen(true)}>
             <Unlock className="h-4 w-4" />
             Unlock
           </Button>
         ) : null}
         {isAuthenticated && !isLocked ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => setLockOpen(true)}
-          >
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setLockOpen(true)}>
             <Unlock className="h-4 w-4 rotate-180" />
             Lock Page
           </Button>
         ) : null}
         {isAuthenticated ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={logout}
-          >
+          <Button variant="outline" size="sm" className="gap-2" onClick={logout}>
             <UserCircle className="h-4 w-4" />
             Logout
           </Button>
         ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => setLoginOpen(true)}
-          >
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setLoginOpen(true)}>
             <UserCircle className="h-4 w-4" />
             Login
           </Button>
@@ -123,9 +97,7 @@ export const Topbar = () => {
           </SheetHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                NIK
-              </label>
+              <label className="text-xs font-medium text-muted-foreground">NIK</label>
               <Input
                 placeholder="e.g. 1234567890"
                 value={nik}
@@ -133,9 +105,7 @@ export const Topbar = () => {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                Password
-              </label>
+              <label className="text-xs font-medium text-muted-foreground">Password</label>
               <Input
                 type="password"
                 placeholder="••••••"
@@ -157,15 +127,11 @@ export const Topbar = () => {
         <SheetContent side="right">
           <SheetHeader>
             <SheetTitle>Lock Page</SheetTitle>
-            <SheetDescription>
-              Enter your password to lock the page.
-            </SheetDescription>
+            <SheetDescription>Enter your password to lock the page.</SheetDescription>
           </SheetHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                Password
-              </label>
+              <label className="text-xs font-medium text-muted-foreground">Password</label>
               <Input
                 type="password"
                 placeholder="••••••"
@@ -184,15 +150,11 @@ export const Topbar = () => {
         <SheetContent side="right">
           <SheetHeader>
             <SheetTitle>Unlock Page</SheetTitle>
-            <SheetDescription>
-              Enter your password to continue.
-            </SheetDescription>
+            <SheetDescription>Enter your password to continue.</SheetDescription>
           </SheetHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                Password
-              </label>
+              <label className="text-xs font-medium text-muted-foreground">Password</label>
               <Input
                 type="password"
                 placeholder="••••••"

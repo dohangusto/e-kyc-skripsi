@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "@/presentation/components/sidebar";
 import { Topbar } from "@/presentation/components/topbar";
 import { useRole } from "@/presentation/components/role-context";
+import { SidebarInset, SidebarProvider } from "@/presentation/components/ui/sidebar";
 
 export const AdminLayout = () => {
   const { isAuthenticated, isLocked } = useRole();
@@ -9,13 +10,13 @@ export const AdminLayout = () => {
   const isHome = location.pathname === "/home";
   const isChat = location.pathname.startsWith("/chat");
   return (
-    <div className="flex h-screen bg-muted/40 text-foreground">
+    <SidebarProvider className="bg-muted/40 text-foreground">
       {isAuthenticated ? (
         <div className={isLocked ? "pointer-events-none opacity-50" : undefined}>
           <Sidebar />
         </div>
       ) : null}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <SidebarInset>
         <Topbar />
         {isAuthenticated ? (
           <main
@@ -95,7 +96,7 @@ export const AdminLayout = () => {
             </div>
           </div>
         ) : null}
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
