@@ -87,7 +87,7 @@ export const AuditPage = () => {
       action,
       sort,
     }),
-    [page, pageSize, debouncedSearch, role, action, sort],
+    [page, pageSize, debouncedSearch, role, action, sort]
   );
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
@@ -100,8 +100,7 @@ export const AuditPage = () => {
   const items = data?.items ?? [];
   const currentPage = data?.page ?? page;
   const currentPageSize = data?.pageSize ?? pageSize;
-  const startIndex =
-    totalItems === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
   const endIndex = totalItems === 0 ? 0 : startIndex + items.length - 1;
 
   const clearFilters = () => {
@@ -236,84 +235,74 @@ export const AuditPage = () => {
         />
       ) : (
         <Card className="overflow-hidden">
-          <div className="grid grid-cols-[1.4fr_1.4fr_1.6fr_1.2fr_1.2fr_2fr] gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground">
-            <span>Time</span>
-            <span>Actor</span>
-            <span>Action</span>
-            <span>Case ID</span>
-            <span>Reason</span>
-            <span>Notes</span>
-          </div>
-          <div className="divide-y">
-            {items.map((event) => (
-              <div
-                key={event.id}
-                role="button"
-                tabIndex={0}
-                onClick={() =>
-                  navigate(
-                    event.action === "QC_SAMPLE_CREATED"
-                      ? `/qc/${event.caseId}`
-                      : `/cases/${event.caseId}`,
-                  )
-                }
-                onKeyDown={(eventKey) => {
-                  if (eventKey.key === "Enter")
+          <div className="max-h-[60vh] overflow-y-auto">
+            <div className="sticky top-0 z-10 grid grid-cols-[1.4fr_1.4fr_1.6fr_1.2fr_1.2fr_2fr] gap-3 border-b bg-muted/60 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground backdrop-blur">
+              <span>Time</span>
+              <span>Actor</span>
+              <span>Action</span>
+              <span>Case ID</span>
+              <span>Reason</span>
+              <span>Notes</span>
+            </div>
+            <div className="divide-y">
+              {items.map((event) => (
+                <div
+                  key={event.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() =>
                     navigate(
                       event.action === "QC_SAMPLE_CREATED"
                         ? `/qc/${event.caseId}`
-                        : `/cases/${event.caseId}`,
-                    );
-                }}
-                className="grid cursor-pointer grid-cols-[1.4fr_1.4fr_1.6fr_1.2fr_1.2fr_2fr] items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40"
-              >
-                <span className="text-xs text-muted-foreground">
-                  {formatDateTime(event.createdAt)}
-                </span>
-                <div className="flex flex-col">
-                  <span className="font-medium text-foreground">
-                    {event.actorName}
+                        : `/cases/${event.caseId}`
+                    )
+                  }
+                  onKeyDown={(eventKey) => {
+                    if (eventKey.key === "Enter")
+                      navigate(
+                        event.action === "QC_SAMPLE_CREATED"
+                          ? `/qc/${event.caseId}`
+                          : `/cases/${event.caseId}`
+                      );
+                  }}
+                  className="grid cursor-pointer grid-cols-[1.4fr_1.4fr_1.6fr_1.2fr_1.2fr_2fr] items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40"
+                >
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateTime(event.createdAt)}
                   </span>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "w-fit text-[10px]",
-                      actorBadgeClassMap[event.actorRole],
-                    )}
-                    title={
-                      event.actorRole === "VERIFIER" ? "Verifier" : "Supervisor"
-                    }
-                  >
-                    {event.actorRole === "VERIFIER" ? "V" : "S"}
-                  </Badge>
-                </div>
-                <ActionBadge action={event.action} abbreviated />
-                <span className="font-mono text-xs text-muted-foreground">
-                  {event.action === "QC_SAMPLE_CREATED"
-                    ? `Sample ${event.caseId}`
-                    : event.caseId}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {event.reasonCode ? (
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">{event.actorName}</span>
                     <Badge
                       variant="outline"
-                      className={cn(
-                        "text-[10px]",
-                        getReasonClass(event.reasonCode),
-                      )}
-                      title={getReasonLabel(event.reasonCode)}
+                      className={cn("w-fit text-[10px]", actorBadgeClassMap[event.actorRole])}
+                      title={event.actorRole === "VERIFIER" ? "Verifier" : "Supervisor"}
                     >
-                      {getReasonAbbreviation(event.reasonCode)}
+                      {event.actorRole === "VERIFIER" ? "V" : "S"}
                     </Badge>
-                  ) : (
-                    "-"
-                  )}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {event.notes ? truncate(event.notes, 80) : "-"}
-                </span>
-              </div>
-            ))}
+                  </div>
+                  <ActionBadge action={event.action} abbreviated />
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {event.action === "QC_SAMPLE_CREATED" ? `Sample ${event.caseId}` : event.caseId}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {event.reasonCode ? (
+                      <Badge
+                        variant="outline"
+                        className={cn("text-[10px]", getReasonClass(event.reasonCode))}
+                        title={getReasonLabel(event.reasonCode)}
+                      >
+                        {getReasonAbbreviation(event.reasonCode)}
+                      </Badge>
+                    ) : (
+                      "-"
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {event.notes ? truncate(event.notes, 80) : "-"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
             <span className="text-muted-foreground">

@@ -58,7 +58,7 @@ export const Topbar = () => {
   };
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-card px-6">
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-card/95 px-6 backdrop-blur">
       <div className="flex items-center gap-3 text-sm font-semibold tracking-tight">
         {isAuthenticated ? <SidebarTrigger /> : null}
         <span>React Secure Gate</span>

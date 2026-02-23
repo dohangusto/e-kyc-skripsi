@@ -17,7 +17,7 @@ export const AdminLayout = () => {
           <Sidebar />
         </div>
       ) : null}
-      <SidebarInset>
+      <SidebarInset className={!isAuthenticated ? "pl-0" : undefined}>
         <Topbar />
         {isAuthenticated ? (
           <main

@@ -1,17 +1,7 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type {
-  CaseStatus,
-  FaceMatch,
-  RiskLevel,
-  Eligibility,
-} from "@/domain/types";
+import type { CaseStatus, FaceMatch, RiskLevel, Eligibility } from "@/domain/types";
 import { PageHeader } from "@/presentation/components/page-header";
 import { EmptyState } from "@/presentation/components/empty-state";
 import { StatusBadge } from "@/presentation/components/status-badge";
@@ -42,12 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/presentation/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/presentation/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import type {
   CasesQueryState,
   AssignedFilter,
@@ -73,12 +58,11 @@ const statusOptions: Array<{ label: string; value: CaseStatus | "ALL" }> = [
   { label: "Need Reverify", value: "NEED_REVERIFY" },
 ];
 
-const eligibilityOptions: Array<{ label: string; value: "ALL" | Eligibility }> =
-  [
-    { label: "All eligibility", value: "ALL" },
-    { label: "Eligible", value: "ELIGIBLE" },
-    { label: "Ineligible", value: "INELIGIBLE" },
-  ];
+const eligibilityOptions: Array<{ label: string; value: "ALL" | Eligibility }> = [
+  { label: "All eligibility", value: "ALL" },
+  { label: "Eligible", value: "ELIGIBLE" },
+  { label: "Ineligible", value: "INELIGIBLE" },
+];
 
 const faceMatchOptions: Array<{ label: string; value: "ALL" | FaceMatch }> = [
   { label: "All face match", value: "ALL" },
@@ -164,37 +148,21 @@ export const CasesPage = () => {
   }, [flags.enableSavedViews, role]);
 
   const [search, setSearch] = useState(initial.defaultState.query);
-  const [debouncedSearch, setDebouncedSearch] = useState(
-    initial.defaultState.query,
-  );
-  const [status, setStatus] = useState<CaseStatus | "ALL">(
-    initial.defaultState.status,
-  );
+  const [debouncedSearch, setDebouncedSearch] = useState(initial.defaultState.query);
+  const [status, setStatus] = useState<CaseStatus | "ALL">(initial.defaultState.status);
   const [eligibility, setEligibility] = useState<"ALL" | Eligibility>(
-    initial.defaultState.eligibility,
+    initial.defaultState.eligibility
   );
-  const [faceMatch, setFaceMatch] = useState<"ALL" | FaceMatch>(
-    initial.defaultState.faceMatch,
-  );
-  const [riskLevel, setRiskLevel] = useState<"ALL" | RiskLevel>(
-    initial.defaultState.riskLevel,
-  );
-  const [triageTag, setTriageTag] = useState<TriageTagFilter>(
-    initial.defaultState.triageTag,
-  );
-  const [assigned, setAssigned] = useState<AssignedFilter>(
-    initial.defaultState.assigned,
-  );
-  const [sort, setSort] = useState<"NEWEST" | "OLDEST">(
-    initial.defaultState.sort,
-  );
+  const [faceMatch, setFaceMatch] = useState<"ALL" | FaceMatch>(initial.defaultState.faceMatch);
+  const [riskLevel, setRiskLevel] = useState<"ALL" | RiskLevel>(initial.defaultState.riskLevel);
+  const [triageTag, setTriageTag] = useState<TriageTagFilter>(initial.defaultState.triageTag);
+  const [assigned, setAssigned] = useState<AssignedFilter>(initial.defaultState.assigned);
+  const [sort, setSort] = useState<"NEWEST" | "OLDEST">(initial.defaultState.sort);
   const [pageSize, setPageSize] = useState(initial.defaultState.pageSize);
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [views, setViews] = useState<SavedView[]>(initial.loaded);
-  const [activeViewId, setActiveViewId] = useState<string | null>(
-    initial.defaultViewId,
-  );
+  const [activeViewId, setActiveViewId] = useState<string | null>(initial.defaultViewId);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [viewName, setViewName] = useState("");
@@ -219,7 +187,7 @@ export const CasesPage = () => {
       applyState(view.state);
       setActiveViewId(view.id);
     },
-    [applyState],
+    [applyState]
   );
 
   useEffect(() => {
@@ -252,7 +220,7 @@ export const CasesPage = () => {
       sort,
       activeTab,
       actorName,
-    ],
+    ]
   );
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
@@ -265,14 +233,12 @@ export const CasesPage = () => {
 
   const assignMutation = useMutation({
     mutationFn: (caseId: string) => caseUsecases.assignCase(caseId, actor),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["cases", "queue"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cases", "queue"] }),
   });
 
   const unassignMutation = useMutation({
     mutationFn: (caseId: string) => caseUsecases.unassignCase(caseId, actor),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["cases", "queue"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cases", "queue"] }),
   });
 
   const bulkMutation = useMutation({
@@ -280,7 +246,7 @@ export const CasesPage = () => {
       action:
         | { type: "ASSIGN_TO_ME" }
         | { type: "UNASSIGN" }
-        | { type: "TAG"; tag: "FOLLOW_UP" | "SUSPICIOUS" | null },
+        | { type: "TAG"; tag: "FOLLOW_UP" | "SUSPICIOUS" | null }
     ) => caseUsecases.bulkTriage(selectedIds, action, actor),
     onSuccess: () => {
       setSelectedIds([]);
@@ -296,8 +262,7 @@ export const CasesPage = () => {
   const items = data?.items ?? [];
   const currentPage = data?.page ?? page;
   const currentPageSize = data?.pageSize ?? pageSize;
-  const startIndex =
-    totalItems === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
   const endIndex = totalItems === 0 ? 0 : startIndex + items.length - 1;
 
   const selectAllOnPage = (checked: boolean) => {
@@ -309,9 +274,7 @@ export const CasesPage = () => {
   };
 
   const toggleSelected = (caseId: string, checked: boolean) => {
-    setSelectedIds((prev) =>
-      checked ? [...prev, caseId] : prev.filter((id) => id !== caseId),
-    );
+    setSelectedIds((prev) => (checked ? [...prev, caseId] : prev.filter((id) => id !== caseId)));
   };
 
   const clearFilters = () => {
@@ -446,21 +409,14 @@ export const CasesPage = () => {
         </TabsList>
         <TabsContent value="ALL" className="mt-4" />
         <TabsContent value="MY_QUEUE" className="mt-4">
-          <div className="text-xs text-muted-foreground">
-            Cases assigned to you
-          </div>
+          <div className="text-xs text-muted-foreground">Cases assigned to you</div>
         </TabsContent>
       </Tabs>
 
       {selectedIds.length > 0 && showBulkTriage ? (
         <Card className="flex flex-wrap items-center gap-2 p-4">
-          <span className="text-sm text-muted-foreground">
-            Selected {selectedIds.length} cases
-          </span>
-          <Button
-            size="sm"
-            onClick={() => bulkMutation.mutate({ type: "ASSIGN_TO_ME" })}
-          >
+          <span className="text-sm text-muted-foreground">Selected {selectedIds.length} cases</span>
+          <Button size="sm" onClick={() => bulkMutation.mutate({ type: "ASSIGN_TO_ME" })}>
             Assign to me
           </Button>
           <Button
@@ -473,18 +429,14 @@ export const CasesPage = () => {
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
-              bulkMutation.mutate({ type: "TAG", tag: "FOLLOW_UP" })
-            }
+            onClick={() => bulkMutation.mutate({ type: "TAG", tag: "FOLLOW_UP" })}
           >
             Tag: Follow up
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
-              bulkMutation.mutate({ type: "TAG", tag: "SUSPICIOUS" })
-            }
+            onClick={() => bulkMutation.mutate({ type: "TAG", tag: "SUSPICIOUS" })}
           >
             Tag: Suspicious
           </Button>
@@ -681,145 +633,122 @@ export const CasesPage = () => {
         />
       ) : (
         <Card className="overflow-hidden">
-          <div
-            className={`grid ${gridCols} gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground`}
-          >
-            {showBulkTriage ? (
-              <span>
-                <Checkbox
-                  checked={selectedIds.length === items.length}
-                  onCheckedChange={(checked) =>
-                    selectAllOnPage(Boolean(checked))
-                  }
-                />
-              </span>
-            ) : null}
-            <span>Applicant</span>
-            <span>NIK</span>
-            <span>Region</span>
-            <span>Age</span>
-            <span>Tag</span>
-            <span>Status</span>
-            <span>Signals</span>
-            <span>Risk</span>
-            <span>Assign</span>
-          </div>
-          <div className="divide-y">
-            {items
-              .filter((item) => {
-                if (triageTag === "ALL") return true;
-                if (triageTag === "NONE") return !item.triageTag;
-                return item.triageTag === triageTag;
-              })
-              .filter((item) => {
-                if (assigned === "ALL") return true;
-                if (assigned === "ASSIGNED_TO_ME")
-                  return item.assignedTo?.name === actorName;
-                if (assigned === "UNASSIGNED") return !item.assignedTo;
-                return true;
-              })
-              .map((item) => {
-                const ageHours =
-                  (new Date().getTime() - new Date(item.createdAt).getTime()) /
-                  3600000;
-                const slaBreached =
-                  (item.status === "FALLBACK_REVIEW" ||
-                    item.status === "EKYC_SUBMITTED") &&
-                  ageHours > 48;
+          <div className="max-h-[60vh] overflow-y-auto">
+            <div
+              className={`sticky top-0 z-10 grid ${gridCols} gap-3 border-b bg-muted/60 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground backdrop-blur`}
+            >
+              {showBulkTriage ? (
+                <span>
+                  <Checkbox
+                    checked={selectedIds.length === items.length}
+                    onCheckedChange={(checked) => selectAllOnPage(Boolean(checked))}
+                  />
+                </span>
+              ) : null}
+              <span>Applicant</span>
+              <span>NIK</span>
+              <span>Region</span>
+              <span>Age</span>
+              <span>Tag</span>
+              <span>Status</span>
+              <span>Signals</span>
+              <span>Risk</span>
+              <span>Assign</span>
+            </div>
+            <div className="divide-y">
+              {items
+                .filter((item) => {
+                  if (triageTag === "ALL") return true;
+                  if (triageTag === "NONE") return !item.triageTag;
+                  return item.triageTag === triageTag;
+                })
+                .filter((item) => {
+                  if (assigned === "ALL") return true;
+                  if (assigned === "ASSIGNED_TO_ME") return item.assignedTo?.name === actorName;
+                  if (assigned === "UNASSIGNED") return !item.assignedTo;
+                  return true;
+                })
+                .map((item) => {
+                  const ageHours =
+                    (new Date().getTime() - new Date(item.createdAt).getTime()) / 3600000;
+                  const slaBreached =
+                    (item.status === "FALLBACK_REVIEW" || item.status === "EKYC_SUBMITTED") &&
+                    ageHours > 48;
 
-                return (
-                  <div
-                    key={item.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate(`/cases/${item.id}`)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") navigate(`/cases/${item.id}`);
-                    }}
-                    className={`grid cursor-pointer ${gridCols} items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40`}
-                  >
-                    {showBulkTriage ? (
-                      <span onClick={(event) => event.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedIds.includes(item.id)}
-                          onCheckedChange={(checked) =>
-                            toggleSelected(item.id, Boolean(checked))
-                          }
-                        />
-                      </span>
-                    ) : null}
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {item.applicant.name}
+                  return (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/cases/${item.id}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") navigate(`/cases/${item.id}`);
+                      }}
+                      className={`grid cursor-pointer ${gridCols} items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/40`}
+                    >
+                      {showBulkTriage ? (
+                        <span onClick={(event) => event.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.includes(item.id)}
+                            onCheckedChange={(checked) => toggleSelected(item.id, Boolean(checked))}
+                          />
+                        </span>
+                      ) : null}
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{item.applicant.name}</span>
+                        <span className="text-xs text-muted-foreground">{item.id}</span>
+                      </div>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {maskNik(item.applicant.nik)}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {item.id}
+                        {item.applicant.region.province} / {item.applicant.region.city}
                       </span>
-                    </div>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {maskNik(item.applicant.nik)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {item.applicant.region.province} /{" "}
-                      {item.applicant.region.city}
-                    </span>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatAge(ageHours)}</span>
-                      {slaBreached ? (
-                        <Badge variant="destructive">SLA</Badge>
-                      ) : null}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {item.triageTag ? (
-                        <Badge variant="outline">{item.triageTag}</Badge>
-                      ) : (
-                        "-"
-                      )}
-                    </span>
-                    <StatusBadge status={item.status} abbreviated />
-                    <div className="flex flex-wrap gap-1">
-                      <SignalBadge
-                        type="faceMatch"
-                        value={item.signals.faceMatch}
-                        abbreviated
-                      />
-                      <SignalBadge
-                        type="restriction"
-                        value={item.signals.restriction}
-                        abbreviated
-                      />
-                    </div>
-                    <RiskBadge level={item.riskLevel} abbreviated />
-                    <div
-                      className="flex items-center gap-2"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {item.assignedTo ? (
-                        item.assignedTo.name === actorName ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => unassignMutation.mutate(item.id)}
-                          >
-                            Unassign
-                          </Button>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatAge(ageHours)}</span>
+                        {slaBreached ? <Badge variant="destructive">SLA</Badge> : null}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {item.triageTag ? <Badge variant="outline">{item.triageTag}</Badge> : "-"}
+                      </span>
+                      <StatusBadge status={item.status} abbreviated />
+                      <div className="flex flex-wrap gap-1">
+                        <SignalBadge type="faceMatch" value={item.signals.faceMatch} abbreviated />
+                        <SignalBadge
+                          type="restriction"
+                          value={item.signals.restriction}
+                          abbreviated
+                        />
+                      </div>
+                      <RiskBadge level={item.riskLevel} abbreviated />
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {item.assignedTo ? (
+                          item.assignedTo.name === actorName ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => unassignMutation.mutate(item.id)}
+                            >
+                              Unassign
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Assigned to {item.assignedTo.name}
+                            </span>
+                          )
                         ) : (
-                          <span className="text-xs text-muted-foreground">
-                            Assigned to {item.assignedTo.name}
-                          </span>
-                        )
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => assignMutation.mutate(item.id)}
-                        >
-                          Assign to me
-                        </Button>
-                      )}
+                          <Button size="sm" onClick={() => assignMutation.mutate(item.id)}>
+                            Assign to me
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+            </div>
           </div>
           <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
             <span className="text-muted-foreground">
@@ -864,18 +793,13 @@ export const CasesPage = () => {
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={makeDefault}
-                    onCheckedChange={(checked) =>
-                      setMakeDefault(Boolean(checked))
-                    }
+                    onCheckedChange={(checked) => setMakeDefault(Boolean(checked))}
                   />
                   Make default view on open
                 </label>
               </div>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setSaveDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button onClick={saveCurrentView} disabled={!viewName.trim()}>
@@ -892,9 +816,7 @@ export const CasesPage = () => {
               </DialogHeader>
               <div className="space-y-3">
                 {views.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">
-                    No saved views.
-                  </div>
+                  <div className="text-sm text-muted-foreground">No saved views.</div>
                 ) : (
                   views.map((view) => (
                     <div key={view.id} className="flex items-center gap-2">
@@ -910,9 +832,7 @@ export const CasesPage = () => {
                       <Button
                         size="sm"
                         variant={view.isDefault ? "secondary" : "outline"}
-                        onClick={() =>
-                          handleRenameView({ ...view, isDefault: true })
-                        }
+                        onClick={() => handleRenameView({ ...view, isDefault: true })}
                       >
                         Default
                       </Button>
@@ -928,10 +848,7 @@ export const CasesPage = () => {
                 )}
               </div>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setManageDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setManageDialogOpen(false)}>
                   Close
                 </Button>
               </DialogFooter>
