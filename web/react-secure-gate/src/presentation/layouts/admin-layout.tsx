@@ -7,12 +7,11 @@ export const AdminLayout = () => {
   const { isAuthenticated, isLocked } = useRole();
   const location = useLocation();
   const isHome = location.pathname === "/home";
+  const isChat = location.pathname.startsWith("/chat");
   return (
     <div className="flex h-screen bg-muted/40 text-foreground">
       {isAuthenticated ? (
-        <div
-          className={isLocked ? "pointer-events-none opacity-50" : undefined}
-        >
+        <div className={isLocked ? "pointer-events-none opacity-50" : undefined}>
           <Sidebar />
         </div>
       ) : null}
@@ -20,7 +19,7 @@ export const AdminLayout = () => {
         <Topbar />
         {isAuthenticated ? (
           <main
-            className={`flex-1 overflow-auto ${isHome ? "" : "p-6"} ${
+            className={`flex-1 overflow-auto ${isHome ? "" : isChat ? "px-6 pt-6 pb-0" : "p-6"} ${
               isLocked ? "pointer-events-none opacity-50" : ""
             }`}
           >
@@ -60,8 +59,8 @@ export const AdminLayout = () => {
                     Welcome
                   </div>
                   <div className="max-w-md text-sm text-muted-foreground">
-                    Silakan login untuk mengakses Secure Gate Admin. Semua menu
-                    akan terbuka setelah autentikasi berhasil.
+                    Silakan login untuk mengakses Secure Gate Admin. Semua menu akan terbuka setelah
+                    autentikasi berhasil.
                   </div>
                   <div className="space-y-3 text-xs text-muted-foreground">
                     <div className="flex items-center gap-2">
@@ -89,9 +88,7 @@ export const AdminLayout = () => {
               <div className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
                 Security Mode
               </div>
-              <div className="pt-2 text-xl font-semibold text-amber-900">
-                Page Locked
-              </div>
+              <div className="pt-2 text-xl font-semibold text-amber-900">Page Locked</div>
               <div className="pt-1 text-sm text-amber-900/80">
                 Gunakan tombol Unlock di top bar untuk melanjutkan.
               </div>

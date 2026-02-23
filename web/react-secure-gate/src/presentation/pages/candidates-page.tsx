@@ -5,12 +5,8 @@ import { EmptyState } from "@/presentation/components/empty-state";
 import { Button } from "@/presentation/components/ui/button";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Card } from "@/presentation/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/presentation/components/ui/tabs";
+import { Input } from "@/presentation/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { clusteringStore } from "@/shared/lib/clustering-store";
 import type { ClusteringSession } from "@/shared/types/clustering";
 import { maskNik } from "@/shared/lib/mask-nik";
@@ -21,6 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/presentation/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/presentation/components/ui/select";
 import {
   Drawer,
   DrawerClose,
@@ -61,9 +64,7 @@ const ClusterChart = ({ counts }: { counts: ClusterCounts }) => {
     <div className="flex w-full items-end justify-center gap-6">
       {items.map((item) => (
         <div key={item.label} className="flex flex-col items-center gap-2">
-          <div className="text-xs font-semibold text-foreground">
-            {item.value}
-          </div>
+          <div className="text-xs font-semibold text-foreground">{item.value}</div>
           <div className="flex h-24 items-end">
             <div
               className={`w-8 rounded-full ${item.color}`}
@@ -105,13 +106,18 @@ const statusCardClassMap: Record<ClusteringSession["status"], string> = {
 export const CandidatesPage = () => {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<ClusteringSession[]>([]);
-  const [selectedSession, setSelectedSession] =
-    useState<ClusteringSession | null>(null);
+  const [selectedSession, setSelectedSession] = useState<ClusteringSession | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"candidates" | "registered">(
-    "candidates",
-  );
+  const [activeTab, setActiveTab] = useState<"candidates" | "registered">("candidates");
+  const [dialogSearch, setDialogSearch] = useState("");
+  const [dialogDebouncedSearch, setDialogDebouncedSearch] = useState("");
+  const [dialogCluster, setDialogCluster] = useState<
+    "ALL" | ClusteringSession["results"][number]["cluster"]
+  >("ALL");
+  const [dialogSort, setDialogSort] = useState<
+    "SCORE_DESC" | "SCORE_ASC" | "NAME_ASC" | "NAME_DESC"
+  >("SCORE_DESC");
   const updateTimersRef = useRef<number[]>([]);
 
   const refreshSessions = () => {
@@ -133,6 +139,13 @@ export const CandidatesPage = () => {
       updateTimersRef.current = [];
     };
   }, []);
+
+  useEffect(() => {
+    const handler = window.setTimeout(() => {
+      setDialogDebouncedSearch(dialogSearch.trim());
+    }, 250);
+    return () => window.clearTimeout(handler);
+  }, [dialogSearch]);
 
   const {
     data: eligibleData,
@@ -157,6 +170,33 @@ export const CandidatesPage = () => {
   const canApprove = selectedSession?.status === "NEED_REVIEW";
   const canReject = selectedSession?.status === "NEED_REVIEW";
 
+  const filteredResults = useMemo(() => {
+    const results = selectedSession?.results ?? [];
+    const query = dialogDebouncedSearch.toLowerCase();
+    let filtered = results;
+    if (query) {
+      filtered = filtered.filter(
+        (item) => item.name.toLowerCase().includes(query) || item.nik.toLowerCase().includes(query)
+      );
+    }
+    if (dialogCluster !== "ALL") {
+      filtered = filtered.filter((item) => item.cluster === dialogCluster);
+    }
+
+    return [...filtered].sort((a, b) => {
+      if (dialogSort === "SCORE_ASC") return a.score - b.score;
+      if (dialogSort === "SCORE_DESC") return b.score - a.score;
+      if (dialogSort === "NAME_DESC") return b.name.localeCompare(a.name, "id-ID");
+      return a.name.localeCompare(b.name, "id-ID");
+    });
+  }, [selectedSession, dialogDebouncedSearch, dialogCluster, dialogSort]);
+
+  const hasDialogFilters =
+    dialogDebouncedSearch.length > 0 ||
+    dialogSearch.length > 0 ||
+    dialogCluster !== "ALL" ||
+    dialogSort !== "SCORE_DESC";
+
   const openDrawer = (session: ClusteringSession) => {
     setSelectedSession(session);
     setDrawerOpen(true);
@@ -166,12 +206,13 @@ export const CandidatesPage = () => {
     setSelectedSession(session);
     setDrawerOpen(false);
     setDialogOpen(true);
+    setDialogSearch("");
+    setDialogDebouncedSearch("");
+    setDialogCluster("ALL");
+    setDialogSort("SCORE_DESC");
   };
 
-  const updateSessionStatus = (
-    sessionId: string,
-    status: ClusteringSession["status"],
-  ) => {
+  const updateSessionStatus = (sessionId: string, status: ClusteringSession["status"]) => {
     const updated = clusteringStore.updateStatus(sessionId, status);
     if (updated) {
       setSelectedSession(updated);
@@ -214,9 +255,7 @@ export const CandidatesPage = () => {
 
       <Tabs
         value={activeTab}
-        onValueChange={(value) =>
-          setActiveTab(value as "candidates" | "registered")
-        }
+        onValueChange={(value) => setActiveTab(value as "candidates" | "registered")}
       >
         <TabsList>
           <TabsTrigger value="candidates">Calon Penerima</TabsTrigger>
@@ -228,11 +267,7 @@ export const CandidatesPage = () => {
             <EmptyState
               title="Belum ada session clustering"
               description="Jalankan proses clustering untuk menampilkan daftar kandidat."
-              action={
-                <Button onClick={() => navigate("/clustering")}>
-                  Buka Clustering
-                </Button>
-              }
+              action={<Button onClick={() => navigate("/clustering")}>Buka Clustering</Button>}
             />
           ) : (
             <>
@@ -266,34 +301,14 @@ export const CandidatesPage = () => {
                         )}
                       </Badge>
                     </div>
-                    <div className="text-base font-semibold text-foreground">
-                      {session.name}
-                    </div>
+                    <div className="text-base font-semibold text-foreground">{session.name}</div>
                     <div className="text-xs text-muted-foreground">
                       {new Date(session.createdAt).toLocaleString("id-ID")}
                     </div>
                     <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground">
-                      <span>
-                        PKH{" "}
-                        {
-                          session.results.filter((r) => r.cluster === "PKH")
-                            .length
-                        }
-                      </span>
-                      <span>
-                        BPNT{" "}
-                        {
-                          session.results.filter((r) => r.cluster === "BPNT")
-                            .length
-                        }
-                      </span>
-                      <span>
-                        PBI{" "}
-                        {
-                          session.results.filter((r) => r.cluster === "PBI")
-                            .length
-                        }
-                      </span>
+                      <span>PKH {session.results.filter((r) => r.cluster === "PKH").length}</span>
+                      <span>BPNT {session.results.filter((r) => r.cluster === "BPNT").length}</span>
+                      <span>PBI {session.results.filter((r) => r.cluster === "PBI").length}</span>
                     </div>
                     {session.status === "ON_UPDATING" ? (
                       <div className="flex items-center gap-2 text-[11px] text-blue-600">
@@ -348,23 +363,18 @@ export const CandidatesPage = () => {
                     className="grid grid-cols-[2.2fr_1.4fr_1.2fr_1fr] gap-4 px-5 py-4 text-sm"
                   >
                     <div>
-                      <div className="font-semibold text-foreground">
-                        {item.applicant.name}
-                      </div>
+                      <div className="font-semibold text-foreground">{item.applicant.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {maskNik(item.applicant.nik)}
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {item.applicant.region.province} /{" "}
-                      {item.applicant.region.city}
+                      {item.applicant.region.province} / {item.applicant.region.city}
                     </div>
                     <div>
                       <StatusBadge status={item.status} abbreviated />
                     </div>
-                    <div className="text-xs font-semibold text-emerald-600">
-                      Eligible
-                    </div>
+                    <div className="text-xs font-semibold text-emerald-600">Eligible</div>
                   </div>
                 ))}
               </div>
@@ -378,9 +388,7 @@ export const CandidatesPage = () => {
           <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-6 pb-8 pt-6 text-center">
             <div className="space-y-1">
               <DrawerTitle>Ringkasan Clustering</DrawerTitle>
-              <DrawerDescription>
-                Distribusi kandidat berdasarkan cluster.
-              </DrawerDescription>
+              <DrawerDescription>Distribusi kandidat berdasarkan cluster.</DrawerDescription>
               {selectedSession ? (
                 <div className="pt-3">
                   <Badge
@@ -412,11 +420,7 @@ export const CandidatesPage = () => {
               <Button onClick={handleApprove} disabled={!canApprove}>
                 Approve candidates
               </Button>
-              <Button
-                variant="destructive"
-                onClick={handleReject}
-                disabled={!canReject}
-              >
+              <Button variant="destructive" onClick={handleReject} disabled={!canReject}>
                 Reject clustering
               </Button>
               <DrawerClose asChild>
@@ -428,7 +432,7 @@ export const CandidatesPage = () => {
       </Drawer>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="w-[92vw] max-w-5xl p-8">
           <DialogHeader>
             <DialogTitle>Daftar Kandidat</DialogTitle>
             <DialogDescription>
@@ -437,38 +441,96 @@ export const CandidatesPage = () => {
                 : "Daftar kandidat dari sesi clustering."}
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4 max-h-[60vh] overflow-y-auto rounded-xl border border-border/60">
-            <div className="grid grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 border-b bg-muted/40 px-5 py-3 text-xs font-semibold uppercase text-muted-foreground">
+          <div className="mt-5 space-y-4">
+            <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
+              <Input
+                placeholder="Cari nama atau NIK..."
+                value={dialogSearch}
+                onChange={(event) => setDialogSearch(event.target.value)}
+              />
+              <Select
+                value={dialogCluster}
+                onValueChange={(value) =>
+                  setDialogCluster(value as "ALL" | ClusteringSession["results"][number]["cluster"])
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Cluster" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua cluster</SelectItem>
+                  <SelectItem value="PKH">PKH</SelectItem>
+                  <SelectItem value="BPNT">BPNT</SelectItem>
+                  <SelectItem value="PBI">PBI</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={dialogSort}
+                onValueChange={(value) =>
+                  setDialogSort(value as "SCORE_DESC" | "SCORE_ASC" | "NAME_ASC" | "NAME_DESC")
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SCORE_DESC">Skor tertinggi</SelectItem>
+                  <SelectItem value="SCORE_ASC">Skor terendah</SelectItem>
+                  <SelectItem value="NAME_ASC">Nama A-Z</SelectItem>
+                  <SelectItem value="NAME_DESC">Nama Z-A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>
+                Menampilkan {filteredResults.length} dari {selectedSession?.results.length ?? 0}{" "}
+                kandidat
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDialogSearch("");
+                  setDialogDebouncedSearch("");
+                  setDialogCluster("ALL");
+                  setDialogSort("SCORE_DESC");
+                }}
+                disabled={!hasDialogFilters}
+              >
+                Clear filters
+              </Button>
+            </div>
+          </div>
+          <div className="mt-4 max-h-[62vh] overflow-y-auto rounded-xl border border-border/60">
+            <div className="grid grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 border-b bg-muted/40 px-6 py-3 text-xs font-semibold uppercase text-muted-foreground">
               <span>Nama</span>
               <span>Cluster</span>
               <span>Skor</span>
               <span>Status</span>
             </div>
             <div className="divide-y">
-              {(selectedSession?.results ?? []).map((item) => (
-                <div
-                  key={`dialog-${selectedSession?.id ?? "session"}-${item.nik}`}
-                  className="grid grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 px-5 py-4 text-sm"
-                >
-                  <div>
-                    <div className="font-semibold text-foreground">
-                      {item.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {maskNik(item.nik)}
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium text-muted-foreground">
-                    {item.cluster}
-                  </div>
-                  <div className="text-sm font-semibold text-foreground">
-                    {item.score.toFixed(2)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Belum eKYC
-                  </div>
+              {filteredResults.length === 0 ? (
+                <div className="px-6 py-8 text-center text-sm text-muted-foreground">
+                  Tidak ada kandidat yang sesuai dengan filter.
                 </div>
-              ))}
+              ) : (
+                filteredResults.map((item) => (
+                  <div
+                    key={`dialog-${selectedSession?.id ?? "session"}-${item.nik}`}
+                    className="grid grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-sm"
+                  >
+                    <div>
+                      <div className="font-semibold text-foreground">{item.name}</div>
+                      <div className="text-xs text-muted-foreground">{maskNik(item.nik)}</div>
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">{item.cluster}</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {item.score.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Belum eKYC</div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </DialogContent>

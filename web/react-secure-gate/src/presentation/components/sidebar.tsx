@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -13,6 +14,8 @@ import {
   Home,
   Sparkles,
   Users,
+  MessageSquare,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useRole } from "@/presentation/components/role-context";
@@ -110,6 +113,12 @@ const navItems: Array<{
     roles: ["VERIFIER"],
   },
   {
+    label: "Chat",
+    to: "/chat",
+    icon: MessageSquare,
+    roles: ["VERIFIER"],
+  },
+  {
     label: "Settings",
     to: "/settings",
     icon: Settings,
@@ -119,6 +128,8 @@ const navItems: Array<{
 
 export const Sidebar = () => {
   const { role } = useRole();
+  const [casesLegendOpen, setCasesLegendOpen] = useState(true);
+  const [auditLegendOpen, setAuditLegendOpen] = useState(true);
   const statusLegendItems = Object.keys(statusLabelMap).map((status) => ({
     short: statusAbbreviationMap[status as keyof typeof statusLabelMap],
     full: statusLabelMap[status as keyof typeof statusLabelMap],
@@ -180,59 +191,93 @@ export const Sidebar = () => {
   }));
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r bg-card">
+    <aside className="flex h-full w-64 flex-col border-r bg-card overflow-hidden">
       <div className="flex h-14 items-center border-b px-6 text-sm font-semibold">
         Secure Gate Admin
       </div>
-      <nav className="flex-1 space-y-1 p-4 text-sm">
-        {navItems
-          .filter((item) => item.roles.includes(role))
-          .map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground",
-                    isActive &&
-                      "border-l-2 border-primary bg-primary/10 pl-2 text-primary font-medium",
-                  )
-                }
-              >
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-      </nav>
-      <div className="border-t">
-        <div className="flex h-12 items-center gap-2 px-6 text-sm font-semibold text-foreground">
-          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-          Legends
-        </div>
-        <div className="space-y-4 px-4 pb-4 text-xs">
-          <div>
-            <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground">
-              <Table2 className="h-3.5 w-3.5" />
-              Cases Table
-            </div>
-            <div className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2">
-              <LegendPopover label="Status" items={statusLegendItems} />
-              <LegendPopover label="Signals" items={signalLegendItems} />
-              <LegendPopover label="Risk" items={riskLegendItems} />
-            </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <nav className="space-y-1 p-4 text-sm">
+          {navItems
+            .filter((item) => item.roles.includes(role))
+            .map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-2 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground",
+                      isActive &&
+                        "border-l-2 border-primary bg-primary/10 pl-2 text-primary font-medium"
+                    )
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+        </nav>
+        <div className="border-t">
+          <div className="flex h-12 items-center gap-2 px-6 text-sm font-semibold text-foreground">
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            Legends
           </div>
-          <div>
-            <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground">
-              <ListChecks className="h-3.5 w-3.5" />
-              Audit Tables
+          <div className="space-y-4 px-4 pb-4 text-xs">
+            <div>
+              <button
+                type="button"
+                onClick={() => setCasesLegendOpen((prev) => !prev)}
+                className="flex w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground"
+                aria-expanded={casesLegendOpen}
+                aria-controls="legend-cases-table"
+              >
+                <span className="flex items-center gap-2">
+                  <Table2 className="h-3.5 w-3.5" />
+                  Cases Table
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${casesLegendOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {casesLegendOpen ? (
+                <div
+                  id="legend-cases-table"
+                  className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2"
+                >
+                  <LegendPopover label="Status" items={statusLegendItems} />
+                  <LegendPopover label="Signals" items={signalLegendItems} />
+                  <LegendPopover label="Risk" items={riskLegendItems} />
+                </div>
+              ) : null}
             </div>
-            <div className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2">
-              <LegendPopover label="Actor (level)" items={actorLegendItems} />
-              <LegendPopover label="Action" items={actionLegendItems} />
-              <LegendPopover label="Reason" items={reasonLegendItems} />
+            <div>
+              <button
+                type="button"
+                onClick={() => setAuditLegendOpen((prev) => !prev)}
+                className="flex w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground"
+                aria-expanded={auditLegendOpen}
+                aria-controls="legend-audit-table"
+              >
+                <span className="flex items-center gap-2">
+                  <ListChecks className="h-3.5 w-3.5" />
+                  Audit Tables
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${auditLegendOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {auditLegendOpen ? (
+                <div
+                  id="legend-audit-table"
+                  className="mt-2 space-y-1 rounded-md border border-border/60 bg-card/80 p-2"
+                >
+                  <LegendPopover label="Actor (level)" items={actorLegendItems} />
+                  <LegendPopover label="Action" items={actionLegendItems} />
+                  <LegendPopover label="Reason" items={reasonLegendItems} />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
