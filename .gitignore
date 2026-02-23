@@ -34,6 +34,8 @@ dist-ssr
 *.local
 .gocache/
 **/.gocache/
+**/.vite/
+**/node_modules/.vite/
 
 # Editor directories and files
 .vscode/*
