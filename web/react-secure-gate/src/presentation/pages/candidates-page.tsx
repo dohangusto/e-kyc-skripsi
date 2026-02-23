@@ -9,6 +9,7 @@ import { Input } from "@/presentation/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { clusteringStore } from "@/shared/lib/clustering-store";
 import type { ClusteringSession } from "@/shared/types/clustering";
+import type { CaseStatus } from "@/domain/types";
 import { maskNik } from "@/shared/lib/mask-nik";
 import {
   Dialog,
@@ -110,6 +111,10 @@ export const CandidatesPage = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"candidates" | "registered">("candidates");
+  const [registeredSearch, setRegisteredSearch] = useState("");
+  const [registeredDebouncedSearch, setRegisteredDebouncedSearch] = useState("");
+  const [registeredStatus, setRegisteredStatus] = useState<CaseStatus | "ALL">("ALL");
+  const [registeredSort, setRegisteredSort] = useState<"NEWEST" | "OLDEST">("NEWEST");
   const [dialogSearch, setDialogSearch] = useState("");
   const [dialogDebouncedSearch, setDialogDebouncedSearch] = useState("");
   const [dialogCluster, setDialogCluster] = useState<
@@ -147,19 +152,34 @@ export const CandidatesPage = () => {
     return () => window.clearTimeout(handler);
   }, [dialogSearch]);
 
+  useEffect(() => {
+    const handler = window.setTimeout(() => {
+      setRegisteredDebouncedSearch(registeredSearch.trim());
+    }, 300);
+    return () => window.clearTimeout(handler);
+  }, [registeredSearch]);
+
   const {
     data: eligibleData,
     isLoading: isEligibleLoading,
     isError: isEligibleError,
     refetch: refetchEligible,
   } = useQuery({
-    queryKey: ["candidates", "eligible-cases"],
+    queryKey: [
+      "candidates",
+      "eligible-cases",
+      registeredDebouncedSearch,
+      registeredStatus,
+      registeredSort,
+    ],
     queryFn: () =>
       caseUsecases.listCases({
         page: 1,
         pageSize: 200,
         eligibility: "ELIGIBLE",
-        sort: "NEWEST",
+        sort: registeredSort,
+        status: registeredStatus,
+        query: registeredDebouncedSearch || undefined,
       }),
     placeholderData: keepPreviousData,
   });
@@ -169,6 +189,30 @@ export const CandidatesPage = () => {
   const counts = useMemo(() => getCounts(selectedSession), [selectedSession]);
   const canApprove = selectedSession?.status === "NEED_REVIEW";
   const canReject = selectedSession?.status === "NEED_REVIEW";
+
+  const registeredStatusOptions: Array<{ label: string; value: CaseStatus | "ALL" }> = [
+    { label: "All statuses", value: "ALL" },
+    { label: "Eligibility Failed", value: "ELIGIBILITY_FAILED" },
+    { label: "eKYC In Progress", value: "EKYC_IN_PROGRESS" },
+    { label: "eKYC Submitted", value: "EKYC_SUBMITTED" },
+    { label: "Auto Verified", value: "AUTO_VERIFIED" },
+    { label: "Fallback Review", value: "FALLBACK_REVIEW" },
+    { label: "Approved Manual", value: "APPROVED_MANUAL" },
+    { label: "Rejected", value: "REJECTED" },
+    { label: "Need Reverify", value: "NEED_REVERIFY" },
+  ];
+
+  const registeredSortOptions = [
+    { label: "Newest", value: "NEWEST" },
+    { label: "Oldest", value: "OLDEST" },
+  ] as const;
+
+  const clearRegisteredFilters = () => {
+    setRegisteredSearch("");
+    setRegisteredDebouncedSearch("");
+    setRegisteredStatus("ALL");
+    setRegisteredSort("NEWEST");
+  };
 
   const filteredResults = useMemo(() => {
     const results = selectedSession?.results ?? [];
@@ -335,6 +379,51 @@ export const CandidatesPage = () => {
         </TabsContent>
 
         <TabsContent value="registered" className="space-y-6">
+          <Card className="space-y-4 p-4">
+            <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
+              <Input
+                placeholder="Cari nama atau NIK..."
+                value={registeredSearch}
+                onChange={(event) => setRegisteredSearch(event.target.value)}
+              />
+              <Select
+                value={registeredStatus}
+                onValueChange={(value) => setRegisteredStatus(value as CaseStatus | "ALL")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {registeredStatusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={registeredSort}
+                onValueChange={(value) => setRegisteredSort(value as "NEWEST" | "OLDEST")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  {registeredSortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>Menampilkan {eligibleCases.length} penerima terdaftar</span>
+              <Button variant="ghost" size="sm" onClick={clearRegisteredFilters}>
+                Clear filters
+              </Button>
+            </div>
+          </Card>
           {isEligibleLoading ? (
             <TableSkeleton />
           ) : isEligibleError ? (
