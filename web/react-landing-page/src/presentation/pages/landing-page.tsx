@@ -11,6 +11,45 @@ import {
   Sparkles,
   UserCheck,
 } from "lucide-react";
+import mockup1 from "../../assets/images/mockup1.png";
+import mockup2 from "../../assets/images/mockup2.png";
+import mockup3 from "../../assets/images/mockup3.png";
+import mockup4 from "../../assets/images/mockup4.png";
+import mockup5 from "../../assets/images/mockup5.png";
+import mockup6 from "../../assets/images/mockup6.png";
+
+const slides = [
+  {
+    image: mockup1,
+    title: "Verifikasi Wajah",
+    desc: "Teknologi AI untuk mencocokkan wajah secara real-time dengan database nasional.",
+  },
+  {
+    image: mockup2,
+    title: "Scan KTP Otomatis",
+    desc: "Sistem membaca dan mengisi data secara instan tanpa input manual.",
+  },
+  {
+    image: mockup3,
+    title: "Validasi Data",
+    desc: "Sinkronisasi langsung dengan sistem pusat untuk memastikan keakuratan.",
+  },
+  {
+    image: mockup4,
+    title: "Liveness Detection",
+    desc: "Mencegah spoofing dengan deteksi pengguna asli.",
+  },
+  {
+    image: mockup5,
+    title: "Enkripsi Tingkat Tinggi",
+    desc: "Semua data diamankan dengan standar keamanan modern.",
+  },
+  {
+    image: mockup6,
+    title: "Tracking Proses",
+    desc: "Pantau status verifikasi secara real-time.",
+  },
+];
 
 const stats = [
   { value: "5 Menit", label: "rata-rata proses verifikasi" },
@@ -169,8 +208,12 @@ export const LandingPage = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [fade, setFade] = useState(true);
   const slideWidth = 82;
   const slideOffset = (100 - slideWidth) / 2;
+  const slideCount = slides.length;
 
   const verificationSteps = [
     {
@@ -211,6 +254,24 @@ export const LandingPage = () => {
 
     return () => window.clearInterval(timer);
   }, [isCarouselPaused, verificationSteps.length]);
+
+  useEffect(() => {
+    if (isHovered) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setCurrentIndex((prev) => (prev === slideCount - 1 ? 0 : prev + 1));
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [isHovered, slideCount]);
+
+  useEffect(() => {
+    setFade(false);
+    const timeout = window.setTimeout(() => setFade(true), 150);
+    return () => window.clearTimeout(timeout);
+  }, [currentIndex]);
 
   useEffect(() => {
     const raf = window.requestAnimationFrame(() => setIsReady(true));
@@ -281,7 +342,7 @@ export const LandingPage = () => {
             </div>
           </nav>
 
-          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid items-center gap-12 lg:gap-16 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="flex flex-col gap-6">
               <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-700/70">
                 <ShieldCheck className="h-4 w-4 text-brand-500" />
@@ -316,36 +377,57 @@ export const LandingPage = () => {
               </div>
             </div>
 
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex flex-col items-center gap-6 md:items-start">
               <div className="absolute -top-10 right-10 h-24 w-24 rounded-full bg-brand-500/30 blur-2xl" />
               <div className="absolute bottom-8 left-6 h-16 w-16 rounded-full bg-brand-100/80 blur-xl" />
 
-              <div className="glass-panel relative w-full max-w-sm rounded-[32px] p-6">
-                <div className="flex flex-col gap-6">
-                  <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-[#1b2730] p-6 text-brand-50 shadow-lift">
-                    <p className="text-xs uppercase tracking-[0.3em] text-brand-50/70">
-                      Dashboard Warga
-                    </p>
-                    <h3 className="mt-4 text-2xl font-semibold">Mulai verifikasi identitas Anda</h3>
-                    <p className="mt-3 text-sm text-brand-50/70">
-                      Lengkapi data di aplikasi agar proses bansos berjalan lancar.
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-brand-700/10 bg-white/80 px-4 py-4">
-                    <p className="text-sm font-semibold text-brand-700">
-                      Siap verifikasi hari ini?
-                    </p>
-                    <p className="mt-2 text-xs text-brand-700/60">
-                      Lihat rangkaian langkah verifikasi di bagian “Langkah Verifikasi” untuk
-                      panduan lengkap.
-                    </p>
+              <div
+                className="relative w-[170px] sm:w-[200px] md:w-[230px] lg:w-[260px] xl:w-[290px] animate-float drop-shadow-xl"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+              >
+                <div className="overflow-hidden rounded-3xl">
+                  <div
+                    className="flex transition-transform duration-700 ease-in-out"
+                    style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                  >
+                    {slides.map((slide, index) => (
+                      <img
+                        key={index}
+                        src={slide.image}
+                        alt={`Mockup ${index + 1}`}
+                        className="w-full flex-shrink-0 object-contain"
+                      />
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              <div className="absolute -bottom-6 right-0 hidden animate-float rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-brand-700 shadow-lift md:flex">
-                Petugas siap membantu 24/7
+                <div className="mt-4 flex justify-center gap-2">
+                  {slides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentIndex(index)}
+                      className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
+                        currentIndex === index ? "bg-blue-600 scale-110" : "bg-gray-300"
+                      }`}
+                      aria-label={`Slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div
+                  className={`static mt-6 w-full right-0 rounded-2xl border border-[#fe9a50]/20 bg-[#263540] p-4 text-center shadow-lg transition-all duration-500 md:absolute md:top-1/2 md:-right-28 md:z-10 md:w-[220px] md:-translate-y-1/2 md:mt-0 md:text-left ${
+                    fade ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"
+                  }`}
+                >
+                  <div className="mb-3 h-1 w-10 rounded-full bg-[#fe9a50]" />
+                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                    {slides[currentIndex].title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-gray-300">
+                    {slides[currentIndex].desc}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
