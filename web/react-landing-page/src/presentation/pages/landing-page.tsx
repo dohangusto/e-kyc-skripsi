@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   Camera,
   CheckCircle2,
@@ -11,6 +11,45 @@ import {
   Sparkles,
   UserCheck,
 } from "lucide-react";
+import mockup1 from "../../assets/images/mockup1.png";
+import mockup2 from "../../assets/images/mockup2.png";
+import mockup3 from "../../assets/images/mockup3.png";
+import mockup4 from "../../assets/images/mockup4.png";
+import mockup5 from "../../assets/images/mockup5.png";
+import mockup6 from "../../assets/images/mockup6.png";
+
+const slides = [
+  {
+    image: mockup1,
+    title: "Verifikasi Wajah",
+    desc: "Teknologi AI untuk mencocokkan wajah secara real-time dengan database nasional.",
+  },
+  {
+    image: mockup2,
+    title: "Scan KTP Otomatis",
+    desc: "Sistem membaca dan mengisi data secara instan tanpa input manual.",
+  },
+  {
+    image: mockup3,
+    title: "Validasi Data",
+    desc: "Sinkronisasi langsung dengan sistem pusat untuk memastikan keakuratan.",
+  },
+  {
+    image: mockup4,
+    title: "Liveness Detection",
+    desc: "Mencegah spoofing dengan deteksi pengguna asli.",
+  },
+  {
+    image: mockup5,
+    title: "Enkripsi Tingkat Tinggi",
+    desc: "Semua data diamankan dengan standar keamanan modern.",
+  },
+  {
+    image: mockup6,
+    title: "Tracking Proses",
+    desc: "Pantau status verifikasi secara real-time.",
+  },
+];
 
 const stats = [
   { value: "5 Menit", label: "rata-rata proses verifikasi" },
@@ -168,6 +207,13 @@ const SectionHeading = ({
 export const LandingPage = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [fade, setFade] = useState(true);
+  const slideWidth = 82;
+  const slideOffset = (100 - slideWidth) / 2;
+  const slideCount = slides.length;
 
   const verificationSteps = [
     {
@@ -209,12 +255,46 @@ export const LandingPage = () => {
     return () => window.clearInterval(timer);
   }, [isCarouselPaused, verificationSteps.length]);
 
+  useEffect(() => {
+    if (isHovered) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setCurrentIndex((prev) => (prev === slideCount - 1 ? 0 : prev + 1));
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [isHovered, slideCount]);
+
+  useEffect(() => {
+    setFade(false);
+    const timeout = window.setTimeout(() => setFade(true), 150);
+    return () => window.clearTimeout(timeout);
+  }, [currentIndex]);
+
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => setIsReady(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+
   const handlePrev = () => {
     setActiveSlide((prev) => (prev - 1 + verificationSteps.length) % verificationSteps.length);
   };
 
   const handleNext = () => {
     setActiveSlide((prev) => (prev + 1) % verificationSteps.length);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      handlePrev();
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      handleNext();
+    }
   };
 
   return (
@@ -262,7 +342,7 @@ export const LandingPage = () => {
             </div>
           </nav>
 
-          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid items-center gap-12 lg:gap-16 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="flex flex-col gap-6">
               <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-700/70">
                 <ShieldCheck className="h-4 w-4 text-brand-500" />
@@ -297,36 +377,57 @@ export const LandingPage = () => {
               </div>
             </div>
 
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex flex-col items-center gap-6 md:items-start">
               <div className="absolute -top-10 right-10 h-24 w-24 rounded-full bg-brand-500/30 blur-2xl" />
               <div className="absolute bottom-8 left-6 h-16 w-16 rounded-full bg-brand-100/80 blur-xl" />
 
-              <div className="glass-panel relative w-full max-w-sm rounded-[32px] p-6">
-                <div className="flex flex-col gap-6">
-                  <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-[#1b2730] p-6 text-brand-50 shadow-lift">
-                    <p className="text-xs uppercase tracking-[0.3em] text-brand-50/70">
-                      Dashboard Warga
-                    </p>
-                    <h3 className="mt-4 text-2xl font-semibold">Mulai verifikasi identitas Anda</h3>
-                    <p className="mt-3 text-sm text-brand-50/70">
-                      Lengkapi data di aplikasi agar proses bansos berjalan lancar.
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-brand-700/10 bg-white/80 px-4 py-4">
-                    <p className="text-sm font-semibold text-brand-700">
-                      Siap verifikasi hari ini?
-                    </p>
-                    <p className="mt-2 text-xs text-brand-700/60">
-                      Lihat rangkaian langkah verifikasi di bagian “Langkah Verifikasi” untuk
-                      panduan lengkap.
-                    </p>
+              <div
+                className="relative w-[170px] sm:w-[200px] md:w-[230px] lg:w-[260px] xl:w-[290px] animate-float drop-shadow-xl"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+              >
+                <div className="overflow-hidden rounded-3xl">
+                  <div
+                    className="flex transition-transform duration-700 ease-in-out"
+                    style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                  >
+                    {slides.map((slide, index) => (
+                      <img
+                        key={index}
+                        src={slide.image}
+                        alt={`Mockup ${index + 1}`}
+                        className="w-full flex-shrink-0 object-contain"
+                      />
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              <div className="absolute -bottom-6 right-0 hidden animate-float rounded-2xl bg-white px-4 py-3 text-xs font-semibold text-brand-700 shadow-lift md:flex">
-                Petugas siap membantu 24/7
+                <div className="mt-4 flex justify-center gap-2">
+                  {slides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentIndex(index)}
+                      className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
+                        currentIndex === index ? "bg-blue-600 scale-110" : "bg-gray-300"
+                      }`}
+                      aria-label={`Slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div
+                  className={`static mt-6 w-full right-0 rounded-2xl border border-[#fe9a50]/20 bg-[#263540] p-4 text-center shadow-lg transition-all duration-500 md:absolute md:top-1/2 md:-right-28 md:z-10 md:w-[220px] md:-translate-y-1/2 md:mt-0 md:text-left ${
+                    fade ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"
+                  }`}
+                >
+                  <div className="mb-3 h-1 w-10 rounded-full bg-[#fe9a50]" />
+                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                    {slides[currentIndex].title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-gray-300">
+                    {slides[currentIndex].desc}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -336,54 +437,85 @@ export const LandingPage = () => {
       <main className="relative">
         <section
           id="langkah"
-          className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16 lg:px-10"
+          className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-16 lg:px-10"
         >
-          <SectionHeading
-            eyebrow="Persiapan"
-            title="Siapkan data dan dokumen utama sebelum mulai verifikasi"
-            description="Bagian ini merangkum persiapan penting agar proses verifikasi berjalan lancar dan cepat disetujui."
-          />
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center">
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-brand-700/60">
+              Persiapan
+            </span>
+            <h2 className="text-4xl font-semibold text-brand-700 md:text-5xl">
+              Siapkan data dan dokumen utama sebelum mulai verifikasi
+            </h2>
+            <p className="text-base text-brand-700/70 md:text-lg">
+              Bagian ini merangkum persiapan penting agar proses verifikasi berjalan lancar dan
+              cepat disetujui.
+            </p>
+          </div>
           <div
-            className="relative"
+            className="relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             onMouseEnter={() => setIsCarouselPaused(true)}
             onMouseLeave={() => setIsCarouselPaused(false)}
+            onKeyDown={handleKeyDown}
+            tabIndex={0}
+            role="group"
+            aria-roledescription="carousel"
+            aria-label="Langkah persiapan verifikasi"
           >
-            <div className="overflow-hidden rounded-[32px] border border-brand-700/10 bg-white/70 shadow-lift">
+            <div className="relative overflow-hidden rounded-[40px] border border-brand-700/10 bg-white/80 shadow-[0_35px_70px_-55px_rgba(10,16,24,0.45)] backdrop-blur">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/85 via-white/60 to-brand-50/60" />
+              <div className="absolute -top-24 right-10 h-40 w-40 rounded-full bg-amber-400/15 blur-[80px] animate-pulseSoft" />
+              <div className="absolute bottom-0 left-6 h-24 w-24 rounded-full bg-brand-100/35 blur-[55px]" />
+              <div className="pointer-events-none absolute -left-16 top-1/2 h-24 w-56 -translate-y-1/2 rotate-12 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-40" />
               <div
-                className="flex transition-transform duration-700 ease-out"
-                style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+                className="relative flex transition-transform duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+                style={{
+                  transform: `translateX(calc(${slideOffset}% - ${activeSlide * slideWidth}%))`,
+                }}
               >
                 {verificationSteps.map((step, index) => {
                   const Icon = step.icon;
+                  const isActive = activeSlide === index;
                   return (
-                    <div key={step.title} className="min-w-full p-6 md:p-10">
-                      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-brand-700 to-[#1b2730] p-8 text-brand-50">
-                        <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-brand-500/30 blur-[40px]" />
-                        <div className="absolute bottom-4 left-10 h-16 w-16 rounded-full bg-brand-100/40 blur-[36px]" />
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500/20 text-brand-50">
-                              <Icon className="h-6 w-6" />
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-[0.3em] text-brand-50/60">
-                                Langkah {index + 1}
-                              </p>
-                              <h3 className="text-2xl font-semibold">{step.title}</h3>
-                            </div>
+                    <div key={step.title} className="min-w-[82%] px-4 py-8 md:px-6 md:py-12">
+                      <div
+                        className={`relative rounded-[36px] transition-all duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                          isReady && isActive
+                            ? "opacity-100 translate-y-0"
+                            : "opacity-70 translate-y-6"
+                        }`}
+                      >
+                        <div className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[#0f172a] p-8 text-brand-50 shadow-[0_28px_60px_-50px_rgba(5,10,20,0.65)]">
+                          <div className="absolute left-0 top-0 h-[2px] w-full bg-amber-400/80" />
+                          <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-amber-400/12 blur-[45px]" />
+                          <div className="absolute bottom-4 left-10 h-16 w-16 rounded-full bg-brand-100/12 blur-[36px]" />
+                          <div className="pointer-events-none absolute right-6 top-8 text-[72px] font-semibold text-white/5">
+                            {String(index + 1).padStart(2, "0")}
                           </div>
-                          <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold">
-                            {step.badge}
-                          </span>
-                        </div>
-                        <p className="mt-6 text-base text-brand-50/80">{step.description}</p>
-                        <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                          <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 text-sm">
-                            <CheckCircle2 className="h-5 w-5 text-brand-500" />
-                            <span>{step.highlight}</span>
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.18)]">
+                                <Icon className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.3em] text-brand-50/60">
+                                  Langkah {index + 1}
+                                </p>
+                                <h3 className="text-2xl font-semibold">{step.title}</h3>
+                              </div>
+                            </div>
+                            <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs font-semibold text-brand-50/90">
+                              {step.badge}
+                            </span>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-brand-50/70">
-                            {step.detail}
+                          <p className="mt-6 text-base text-brand-50/75">{step.description}</p>
+                          <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                              <CheckCircle2 className="h-5 w-5 text-amber-300" />
+                              <span>{step.highlight}</span>
+                            </div>
+                            <div className="rounded-2xl border border-brand-500/25 bg-brand-500/10 px-4 py-3 text-xs text-brand-50/70">
+                              {step.detail}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -396,34 +528,39 @@ export const LandingPage = () => {
             <div className="mt-6 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700/20 bg-white/80 text-brand-700 transition duration-300 hover:-translate-y-0.5 hover:border-brand-700/40 hover:shadow-lift"
+                  className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-700/20 bg-transparent text-brand-700/70 transition duration-300 hover:-translate-y-0.5 hover:border-amber-400/60 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
                   type="button"
                   onClick={handlePrev}
                   aria-label="Sebelumnya"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-5 w-5 transition group-hover:-translate-x-0.5" />
                 </button>
                 <button
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700/20 bg-white/80 text-brand-700 transition duration-300 hover:-translate-y-0.5 hover:border-brand-700/40 hover:shadow-lift"
+                  className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-700/20 bg-transparent text-brand-700/70 transition duration-300 hover:-translate-y-0.5 hover:border-amber-400/60 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
                   type="button"
                   onClick={handleNext}
                   aria-label="Berikutnya"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
                 </button>
               </div>
-              <div className="flex flex-1 items-center justify-center gap-2">
-                {verificationSteps.map((step, index) => (
-                  <button
-                    key={step.title}
-                    type="button"
-                    onClick={() => setActiveSlide(index)}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      activeSlide === index ? "w-10 bg-brand-500" : "w-4 bg-brand-700/20"
-                    }`}
-                    aria-label={`Lihat ${step.title}`}
+              <div className="flex flex-1 items-center justify-center">
+                <div
+                  className="relative h-[3px] w-full max-w-lg overflow-hidden rounded-full bg-brand-700/25"
+                  role="progressbar"
+                  aria-label="Progres langkah verifikasi"
+                  aria-valuenow={activeSlide + 1}
+                  aria-valuemin={1}
+                  aria-valuemax={verificationSteps.length}
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200 transition-transform duration-700 ease-out"
+                    style={{
+                      width: `${100 / verificationSteps.length}%`,
+                      transform: `translateX(${activeSlide * 100}%)`,
+                    }}
                   />
-                ))}
+                </div>
               </div>
               <div className="hidden items-center gap-2 text-xs text-brand-700/60 md:flex">
                 <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulseSoft" />
