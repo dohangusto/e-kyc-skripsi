@@ -16,6 +16,7 @@ import { AnalyticsPage } from "@/presentation/pages/analytics-page";
 import { ClusteringPage } from "@/presentation/pages/clustering-page";
 import { CandidatesPage } from "@/presentation/pages/candidates-page";
 import { ChatPage } from "@/presentation/pages/chat-page";
+import { ProfilePage } from "@/presentation/pages/profile-page";
 
 export const routes = [
   {
@@ -124,6 +125,14 @@ export const routes = [
         element: (
           <RoleGuard allow={["VERIFIER"]}>
             <SettingsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <RoleGuard allow={["VERIFIER", "SUPERVISOR"]}>
+            <ProfilePage />
           </RoleGuard>
         ),
       },

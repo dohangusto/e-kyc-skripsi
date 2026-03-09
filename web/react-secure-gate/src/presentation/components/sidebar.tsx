@@ -16,10 +16,6 @@ import {
   Users,
   MessageSquare,
   ChevronDown,
-  Pencil,
-  Trash2,
-  PlusCircle,
-  Eye,
 } from "lucide-react";
 import { useRole } from "@/presentation/components/role-context";
 import type { Role } from "@/domain/types";
@@ -416,54 +412,20 @@ export const Sidebar = () => {
       </SidebarContent>
 
       <SidebarFooter className="border-t bg-card/95">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="group flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-muted/60"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                {actorInitials}
-              </div>
-              <div className="flex-1 leading-tight group-data-[state=collapsed]:sr-only">
-                <div className="text-sm font-semibold text-foreground">{actorName}</div>
-                <div className="text-xs text-muted-foreground">{roleLabel}</div>
-              </div>
-              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180 group-data-[state=collapsed]:hidden" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="end" sideOffset={12}>
-            <DropdownMenuLabel className="p-0">
-              <div className="flex items-center gap-3 px-2 py-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                  {actorInitials}
-                </div>
-                <div className="leading-tight">
-                  <div className="text-sm font-semibold text-foreground">{actorName}</div>
-                  <div className="text-xs text-muted-foreground">{roleLabel}</div>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Eye className="h-4 w-4" />
-              View Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Pencil className="h-4 w-4" />
-              Edit Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <PlusCircle className="h-4 w-4" />
-              Create Profile
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
-              <Trash2 className="h-4 w-4" />
-              Delete Profile
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Link
+          to="/profile"
+          className="group flex w-full items-center justify-between gap-3 rounded-md px-3 py-3.5 text-left transition-colors hover:bg-muted/60 active:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              {actorInitials}
+            </div>
+            <div className="min-w-0 leading-tight group-data-[state=collapsed]:sr-only">
+              <div className="truncate text-sm font-semibold text-foreground">{actorName}</div>
+              <div className="truncate text-xs text-muted-foreground">{roleLabel}</div>
+            </div>
+          </div>
+        </Link>
       </SidebarFooter>
     </AppSidebar>
   );
