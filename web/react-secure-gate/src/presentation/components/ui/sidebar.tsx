@@ -29,7 +29,7 @@ const SidebarProvider = ({
 
   return (
     <SidebarContext.Provider value={{ open, setOpen }}>
-      <div className={cn("flex min-h-svh w-full", className)} {...props}>
+      <div className={cn("relative flex min-h-svh w-full", className)} {...props}>
         {children}
       </div>
     </SidebarContext.Provider>
@@ -52,7 +52,7 @@ const Sidebar = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement>>
         ref={ref}
         data-state={open ? "expanded" : "collapsed"}
         className={cn(
-          "group relative flex h-svh flex-col border-r bg-card text-card-foreground transition-[width] duration-200 ease-linear",
+          "group fixed left-0 top-0 z-40 flex h-svh flex-col border-r bg-card text-card-foreground transition-[width] duration-200 ease-linear",
           open ? "w-64" : "w-16",
           className
         )}
@@ -89,9 +89,16 @@ const SidebarFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
 SidebarFooter.displayName = "SidebarFooter";
 
 const SidebarInset = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex min-w-0 flex-1 flex-col", className)} {...props} />
-  )
+  ({ className, ...props }, ref) => {
+    const { open } = useSidebar();
+    return (
+      <div
+        ref={ref}
+        className={cn("flex min-w-0 flex-1 flex-col", open ? "pl-64" : "pl-16", className)}
+        {...props}
+      />
+    );
+  }
 );
 SidebarInset.displayName = "SidebarInset";
 

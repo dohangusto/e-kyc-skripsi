@@ -35,23 +35,22 @@ export const reasonAbbreviationMap: Record<string, string> = {
 };
 
 export const reasonClassMap: Record<string, string> = {
-  EVIDENCE_STRONG_MANUAL_REVIEW:
-    "border-emerald-200 bg-emerald-50 text-emerald-700",
-  FACE_MATCH_SYSTEM_FALSE_NEGATIVE:
-    "border-emerald-200 bg-emerald-50 text-emerald-700",
-  FACE_MISMATCH_CONFIRMED: "border-red-200 bg-red-50 text-red-700",
-  LIVENESS_FAILED: "border-red-200 bg-red-50 text-red-700",
-  DOCUMENT_TAMPERED: "border-red-200 bg-red-50 text-red-700",
-  NOT_ELIGIBLE: "border-red-200 bg-red-50 text-red-700",
-  SUSPECTED_FRAUD: "border-red-200 bg-red-50 text-red-700",
-  BLURRY_DOCUMENT: "border-blue-200 bg-blue-50 text-blue-700",
-  POOR_LIGHTING: "border-blue-200 bg-blue-50 text-blue-700",
-  LIVENESS_UNCERTAIN: "border-blue-200 bg-blue-50 text-blue-700",
-  DATA_INCONSISTENT_NEED_RECAPTURE: "border-blue-200 bg-blue-50 text-blue-700",
-  MANUAL_VERIFICATION_REQUIRED: "border-amber-200 bg-amber-50 text-amber-700",
-  DISPUTE_INVESTIGATION: "border-amber-200 bg-amber-50 text-amber-700",
-  SUPERVISOR_REQUEST: "border-amber-200 bg-amber-50 text-amber-700",
-  DATA_INCONSISTENCY_CHECK: "border-amber-200 bg-amber-50 text-amber-700",
+  EVIDENCE_STRONG_MANUAL_REVIEW: "border-[#FF9B51]/70 bg-[#FF9B51]/20 text-[#25343F]",
+  FACE_MATCH_SYSTEM_FALSE_NEGATIVE: "border-[#BFC9D1]/80 bg-[#EAEFEF] text-[#25343F]",
+  FACE_MISMATCH_CONFIRMED: "border-[#25343F] bg-[#25343F] text-[#FF9B51]",
+  LIVENESS_FAILED: "border-[#25343F]/70 bg-[#25343F]/15 text-[#25343F]",
+  DOCUMENT_TAMPERED: "border-[#FF9B51]/80 bg-[#25343F]/10 text-[#FF9B51]",
+  NOT_ELIGIBLE: "border-[#25343F]/60 bg-[#EAEFEF]/70 text-[#25343F]",
+  SUSPECTED_FRAUD: "border-[#25343F] bg-[#25343F] text-[#EAEFEF]",
+  BLURRY_DOCUMENT: "border-[#BFC9D1]/70 bg-[#BFC9D1]/30 text-[#25343F]",
+  POOR_LIGHTING: "border-[#FF9B51]/50 bg-[#EAEFEF]/80 text-[#FF9B51]",
+  LIVENESS_UNCERTAIN: "border-[#FF9B51]/60 bg-[#FF9B51]/10 text-[#25343F]",
+  DATA_INCONSISTENT_NEED_RECAPTURE: "border-[#25343F]/40 bg-[#EAEFEF]/90 text-[#25343F]",
+  MANUAL_VERIFICATION_REQUIRED:
+    "border-[#FF9B51]/70 bg-[linear-gradient(135deg,rgba(255,155,81,0.25),rgba(234,239,239,0.8))] text-[#25343F]",
+  DISPUTE_INVESTIGATION: "border-[#25343F]/60 bg-[#BFC9D1]/20 text-[#25343F]",
+  SUPERVISOR_REQUEST: "border-[#FF9B51]/70 bg-[#BFC9D1]/35 text-[#25343F]",
+  DATA_INCONSISTENCY_CHECK: "border-[#BFC9D1]/60 bg-[#EAEFEF]/60 text-[#25343F]",
 };
 
 export const getReasonLabel = (reasonCode?: string) => {
@@ -65,8 +64,6 @@ export const getReasonAbbreviation = (reasonCode?: string) => {
 };
 
 export const getReasonClass = (reasonCode?: string) => {
-  if (!reasonCode) return "border-slate-200 bg-slate-50 text-slate-700";
-  return (
-    reasonClassMap[reasonCode] ?? "border-slate-200 bg-slate-50 text-slate-700"
-  );
+  if (!reasonCode) return "border-[#BFC9D1]/80 bg-[#EAEFEF]/70 text-[#25343F]";
+  return reasonClassMap[reasonCode] ?? "border-[#BFC9D1]/80 bg-[#EAEFEF]/70 text-[#25343F]";
 };

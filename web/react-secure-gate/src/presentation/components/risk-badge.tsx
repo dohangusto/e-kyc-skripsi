@@ -15,13 +15,13 @@ export const riskAbbreviationMap: Record<RiskLevel, string> = {
 
 export const riskClassMap: Record<RiskLevel, { className: string }> = {
   LOW: {
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-[#BFC9D1]/80 bg-[#EAEFEF] text-[#25343F]",
   },
   MEDIUM: {
-    className: "border-amber-200 bg-amber-50 text-amber-700",
+    className: "border-[#FF9B51]/70 bg-[#FF9B51]/25 text-[#25343F]",
   },
   HIGH: {
-    className: "border-red-200 bg-red-50 text-red-700",
+    className: "border-[#25343F] bg-[#25343F] text-[#EAEFEF]",
   },
 };
 
