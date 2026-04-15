@@ -12,6 +12,7 @@ import type { ClusterResult } from "@/shared/types/clustering";
 import { toast } from "sonner";
 
 type BansosType = "PKH" | "PBI" | "BPNT" | "Non-Bansos";
+type AidBansosType = Exclude<BansosType, "Non-Bansos">;
 
 type BansosResult = ClusterResult & {
   birthYear: number;
@@ -103,6 +104,12 @@ const clusteringResults: BansosResult[] = [
 ];
 
 const BANSOS_OPTIONS: BansosType[] = ["PKH", "PBI", "BPNT", "Non-Bansos"];
+const AID_BANSOS_OPTIONS: AidBansosType[] = ["PKH", "PBI", "BPNT"];
+const createEmptyQuota = (): Record<AidBansosType, number> => ({
+  PKH: 0,
+  PBI: 0,
+  BPNT: 0,
+});
 
 export const ClusteringPage = () => {
   const navigate = useNavigate();
@@ -119,6 +126,8 @@ export const ClusteringPage = () => {
   const [activeBansos, setActiveBansos] = useState<"Semua" | BansosType>(
     "Semua",
   );
+  const [quotaByBansos, setQuotaByBansos] =
+    useState<Record<AidBansosType, number>>(createEmptyQuota);
   const [sortKey, setSortKey] = useState<
     "priority" | "score" | "bansosType"
   >("priority");
@@ -203,7 +212,7 @@ export const ClusteringPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, activeBansos, sortKey, sortDir]);
+  }, [searchQuery, activeBansos, sortKey, sortDir, quotaByBansos]);
 
   const formatFileSize = (size: number) => {
     if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
@@ -246,6 +255,7 @@ export const ClusteringPage = () => {
     setLogs([]);
     setSessionName("");
     setSavedSessionId(null);
+    setQuotaByBansos(createEmptyQuota());
     timerRef.current = window.setInterval(() => {
       setProgress((prev) => {
         const next = Math.min(prev + Math.random() * 18 + 6, 100);
@@ -274,9 +284,17 @@ export const ClusteringPage = () => {
       toast.error("Nama session wajib diisi.");
       return;
     }
-    const session = clusteringStore.addSession(sessionName.trim(), results);
+    if (!selectedResults.length) {
+      toast.error("Atur kuota hingga ada penerima yang terpilih.");
+      return;
+    }
+    const session = clusteringStore.addSession(sessionName.trim(), selectedResults);
+    clusteringStore.updateReviewSelection(session.id, {
+      quota: quotaByBansos,
+      selectedNiks: selectedResults.map((item) => item.nik),
+    });
     setSavedSessionId(session.id);
-    toast.success("Session clustering disimpan.");
+    toast.success(`${selectedResults.length} penerima disimpan ke session.`);
   };
 
   const handleToggleLogs = (event: SyntheticEvent<HTMLDetailsElement>) => {
@@ -344,9 +362,43 @@ export const ClusteringPage = () => {
     )}-${scoreRange.max.toFixed(2)}.`;
   }, [results, scoreRange, topBansosEntry]);
 
+  const selectedResults = AID_BANSOS_OPTIONS.flatMap((bansos) =>
+    [...results]
+      .filter((item) => item.bansosType === bansos)
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, Math.max(0, quotaByBansos[bansos] ?? 0)),
+  ).sort((a, b) => a.priority - b.priority);
+
+  const selectedCountByBansos = selectedResults.reduce((acc, item) => {
+    if (item.bansosType === "Non-Bansos") return acc;
+    acc[item.bansosType] += 1;
+    return acc;
+  }, createEmptyQuota());
+
+  const selectedScoreRange = selectedResults.length
+    ? {
+        min: Math.min(...selectedResults.map((item) => item.score)),
+        max: Math.max(...selectedResults.map((item) => item.score)),
+      }
+    : null;
+
+  const totalSelectedRecipients = selectedResults.length;
+  const remainingPriorityRecipients = Math.max(
+    priorityCount - totalSelectedRecipients,
+    0,
+  );
+  const activeQuotaTotal = AID_BANSOS_OPTIONS.reduce(
+    (total, bansos) => total + quotaByBansos[bansos],
+    0,
+  );
+  const quotaInsight =
+    totalSelectedRecipients > 0
+      ? `${totalSelectedRecipients} penerima masuk kuota aktif dari ${priorityCount} kandidat prioritas.`
+      : "Belum ada penerima yang masuk kuota. Atur kuota per bansos untuk membentuk daftar final.";
+
   const filteredResults = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
-    return results.filter((item) => {
+    return selectedResults.filter((item) => {
       if (activeBansos !== "Semua" && item.bansosType !== activeBansos)
         return false;
       if (!term) return true;
@@ -355,7 +407,7 @@ export const ClusteringPage = () => {
         item.nik.toLowerCase().includes(term)
       );
     });
-  }, [results, searchQuery, activeBansos]);
+  }, [selectedResults, searchQuery, activeBansos]);
 
   const sortedResults = useMemo(() => {
     const sorted = [...filteredResults];
@@ -378,11 +430,11 @@ export const ClusteringPage = () => {
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
-  const topPriority = results.length
-    ? Math.min(...results.map((item) => item.priority))
+  const topPriority = selectedResults.length
+    ? Math.min(...selectedResults.map((item) => item.priority))
     : null;
-  const scoreSpan = scoreRange
-    ? Math.max(scoreRange.max - scoreRange.min, 0.01)
+  const scoreSpan = selectedScoreRange
+    ? Math.max(selectedScoreRange.max - selectedScoreRange.min, 0.01)
     : 1;
   const currentYear = new Date().getFullYear();
   const getPriorityClass = (priority: number) => {
@@ -396,6 +448,22 @@ export const ClusteringPage = () => {
     PBI: "border-secondary/40 bg-secondary/40 text-secondary-foreground",
     BPNT: "border-accent/40 bg-accent/30 text-accent-foreground",
     "Non-Bansos": "border-muted-foreground/20 bg-muted/40 text-muted-foreground",
+  };
+
+  const handleQuotaChange = (bansos: AidBansosType, value: string) => {
+    const parsed = Number(value);
+    const nextValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+    const maxValue = bansosCounts[bansos];
+    setSavedSessionId(null);
+    setQuotaByBansos((prev) => ({
+      ...prev,
+      [bansos]: Math.min(nextValue, maxValue),
+    }));
+  };
+
+  const handleResetQuota = () => {
+    setSavedSessionId(null);
+    setQuotaByBansos(createEmptyQuota());
   };
 
   return (
@@ -720,10 +788,11 @@ export const ClusteringPage = () => {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-sm font-semibold text-foreground">
-                    Simpan Hasil Rekomendasi
+                    Simpan Hasil Seleksi
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Session akan digunakan untuk peninjauan atau audit berikutnya.
+                    Session akan menyimpan daftar penerima sesuai kuota aktif
+                    untuk peninjauan atau audit berikutnya.
                   </div>
                 </div>
                 {savedSessionId ? (
@@ -741,11 +810,16 @@ export const ClusteringPage = () => {
                 <Button
                   size="lg"
                   onClick={handleSaveSession}
-                  disabled={Boolean(savedSessionId)}
+                  disabled={Boolean(savedSessionId) || !totalSelectedRecipients}
                   className="w-full md:w-auto"
                 >
                   {savedSessionId ? "Saved" : "Save Session"}
                 </Button>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
+                {totalSelectedRecipients
+                  ? `${totalSelectedRecipients} penerima siap disimpan dari kuota yang aktif.`
+                  : "Belum ada penerima terpilih. Isi kuota agar session bisa disimpan."}
               </div>
               {savedSessionId ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -806,12 +880,116 @@ export const ClusteringPage = () => {
               <Card className="p-5 sm:p-6 animate-in fade-in slide-in-from-top-2 duration-500">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
+                    <div className="text-sm font-semibold text-foreground">
+                      Seleksi Penerima Berdasarkan Kuota
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Atur jumlah penerima per jenis bansos. Sistem akan memilih
+                      kandidat dengan priority terkecil lebih dulu pada tiap kategori.
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetQuota}
+                    className="w-full sm:w-auto"
+                  >
+                    Reset kuota
+                  </Button>
+                </div>
+
+                <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                  {AID_BANSOS_OPTIONS.map((bansos) => (
+                    <div
+                      key={bansos}
+                      className="rounded-xl border border-border/60 bg-background p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${bansosBadgeClass[bansos]}`}
+                        >
+                          {bansos}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          Tersedia {bansosCounts[bansos]}
+                        </span>
+                      </div>
+                      <div className="mt-4">
+                        <label
+                          htmlFor={`quota-${bansos}`}
+                          className="text-[11px] font-semibold uppercase text-muted-foreground"
+                        >
+                          Kuota penerima
+                        </label>
+                        <Input
+                          id={`quota-${bansos}`}
+                          type="number"
+                          min={0}
+                          max={bansosCounts[bansos]}
+                          inputMode="numeric"
+                          value={quotaByBansos[bansos]}
+                          onChange={(event) =>
+                            handleQuotaChange(bansos, event.target.value)
+                          }
+                          className="mt-2"
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Masuk kuota</span>
+                        <span className="font-semibold text-foreground">
+                          {selectedCountByBansos[bansos]} / {bansosCounts[bansos]}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 rounded-xl border border-primary/20 bg-primary/10 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold uppercase text-primary/80">
+                        Daftar final penerima
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {quotaInsight}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Kuota aktif saat ini: {activeQuotaTotal} slot untuk PKH,
+                        PBI, dan BPNT.
+                      </div>
+                    </div>
+                    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-primary/20 bg-background/70 px-3 py-2">
+                        <div className="text-[11px] uppercase text-muted-foreground">
+                          Terpilih
+                        </div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">
+                          {totalSelectedRecipients}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2">
+                        <div className="text-[11px] uppercase text-muted-foreground">
+                          Belum teralokasi
+                        </div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">
+                          {remainingPriorityRecipients}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-5 sm:p-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <div className="text-lg font-semibold text-foreground">
-                      Hasil Rekomendasi Bansos
+                      Preview Seleksi Penerima
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
-                      Tabel pemetaan prioritas penerima dan rekomendasi bantuan
-                      utama dari proses scoring.
+                      Tabel final penerima berdasarkan kuota aktif, priority, dan
+                      rekomendasi bantuan utama dari proses scoring.
                     </div>
                     {insightSummary ? (
                       <div className="mt-3 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
@@ -836,7 +1014,7 @@ export const ClusteringPage = () => {
                       >
                         Semua
                       </Button>
-                      {bansosList.map((bansos) => (
+                      {AID_BANSOS_OPTIONS.map((bansos) => (
                         <Button
                           key={bansos}
                           type="button"
@@ -900,12 +1078,13 @@ export const ClusteringPage = () => {
                         {paginatedResults.map((item) => {
                           const isTopPriority =
                             topPriority !== null && item.priority === topPriority;
-                          const scorePercent = scoreRange
-                            ? scoreRange.max === scoreRange.min
+                          const scorePercent = selectedScoreRange
+                            ? selectedScoreRange.max === selectedScoreRange.min
                               ? 100
                               : Math.min(
                                   Math.max(
-                                    ((item.score - scoreRange.min) / scoreSpan) *
+                                    ((item.score - selectedScoreRange.min) /
+                                      scoreSpan) *
                                       100,
                                     0,
                                   ),
@@ -987,7 +1166,7 @@ export const ClusteringPage = () => {
                       </div>
                     ) : (
                       <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-                        Belum ada hasil yang bisa ditampilkan.
+                        Belum ada penerima yang masuk kuota aktif.
                       </div>
                     )}
                   </div>
